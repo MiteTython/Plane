@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Orbit">
+<meta name="theme-color" content="#0f1730">
+<link rel="manifest" href="data:application/json,{%22name%22:%22Orbit%20Reader%22,%22short_name%22:%22Orbit%22,%22display%22:%22standalone%22,%22orientation%22:%22portrait%22,%22background_color%22:%22%230f1730%22,%22theme_color%22:%22%230f1730%22}">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}img{max-width:100%}</style>
+<title>Orbit Reader</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,500&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: one-screen app. Shelf = list. Reader = full-bleed stage with a fixed eye line, chrome top and bottom. */
+:root{
+  --bg:#f4f2ee;--fg:#1c1a17;--dim:#6e6a62;--accent:#3f74b3;--line:#0000001f;--card:#ffffff;
+  --serif:'Literata',Georgia,'Times New Roman',serif;--sans:'DM Sans',system-ui,-apple-system,sans-serif;
+  --gut-l:max(16px,env(safe-area-inset-left,0px));--gut-r:max(16px,env(safe-area-inset-right,0px));
+  /* reader surface, overridden per theme by script */
+  --rbg:#0f1730;--rfg:#e2e8f0;--rdm:#94a3b8;--rfont:var(--serif);--rsize:32px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0b0c10;--fg:#e6e3dc;--dim:#807d76;--accent:#6f9fd8;--line:#ffffff1f;--card:#15171d;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0b0c10;--fg:#e6e3dc;--dim:#807d76;--accent:#6f9fd8;--line:#ffffff1f;--card:#15171d;color-scheme:dark}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html{height:100%;box-sizing:border-box}
+body{height:100%;margin:0;position:relative;overflow:hidden;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;touch-action:manipulation}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.view{position:absolute;inset:0;display:none;flex-direction:column}.view.on{display:flex}
+.bar{display:flex;align-items:center;gap:10px;min-height:56px;padding-block:8px;padding-left:var(--gut-l);padding-right:var(--gut-r);flex-shrink:0}
+.bar h1{font-size:17px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;margin:0;flex:1}
+.btn{min-height:40px;padding:8px 14px;border-radius:12px;border:1px solid var(--line);font-weight:500;white-space:nowrap}
+.btn.accent{background:var(--accent);color:#fff;border-color:transparent}
+.btn.big{min-height:52px;padding:12px 22px;font-size:17px}
+
+/* SHELF */
+.list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.row{display:flex;align-items:center;gap:14px;padding-block:12px;padding-left:var(--gut-l);padding-right:var(--gut-r);border-bottom:1px solid var(--line);cursor:pointer}
+.cov{width:46px;aspect-ratio:.7;flex-shrink:0;border-radius:4px;background:var(--card);border:1px solid var(--line);overflow:hidden;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:20px;color:var(--dim)}
+.cov img{width:100%;height:100%;object-fit:cover;display:block}
+.mid{flex:1;min-width:0}
+.ttl{font-size:17px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sub{font-size:13px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.sub.acc{color:var(--accent);font-weight:500}
+.del{flex-shrink:0;min-width:44px;min-height:44px;border-radius:10px;color:var(--dim);font-size:15px}
+.del[data-armed="1"]{color:#fff;background:#b23a3a}
+.empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;padding-left:var(--gut-l);padding-right:var(--gut-r);color:var(--dim)}
+.empty p{margin:0;max-width:30ch;line-height:1.45}
+.hint{font-size:13px}
+
+/* READER */
+#reader{background:var(--rbg);color:var(--rfg)}
+.rchrome{transition:opacity .4s}
+#reader.playing .rchrome{opacity:.35}
+#reader .btn{border-color:color-mix(in srgb,currentColor 22%,transparent)}
+.rtitle{flex:1;min-width:0;text-align:center}
+.rtitle div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#rName{font-weight:600;font-size:14px}
+#rChap{font-size:12px;color:var(--rdm);margin-top:1px}
+#stage{flex:1;position:relative;overflow:hidden;touch-action:none;cursor:grab}
+#flow{position:absolute;top:0;left:calc(var(--gut-l) + 4px);right:calc(var(--gut-r) + 4px);font-family:var(--rfont);font-size:var(--rsize);line-height:1.34;will-change:transform;text-wrap:pretty}
+#flow p{margin:0 0 .55em}
+#flow section{padding-top:1.2em;margin-top:1.2em;border-top:1px solid color-mix(in srgb,currentColor 18%,transparent)}
+#flow section:first-child{border-top:0;margin-top:0;padding-top:.4em}
+#flow h2{font-family:var(--sans);font-size:.5em;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--rdm);margin:0 0 1.4em}
+#flow .end{color:var(--rdm);font-family:var(--sans);font-size:.5em;letter-spacing:.14em;text-transform:uppercase;padding:3em 0 40vh}
+#mask{position:absolute;inset:0;pointer-events:none}
+#eye{position:absolute;left:0;right:0;top:calc(38% - 1px);height:2px;pointer-events:none}
+#eye::before,#eye::after{content:'';position:absolute;top:0;width:10px;height:2px;background:var(--accent);border-radius:1px}
+#eye::before{left:calc(var(--gut-l) - 12px)}#eye::after{right:calc(var(--gut-r) - 12px)}
+.rfoot{flex-shrink:0;padding-left:var(--gut-l);padding-right:var(--gut-r);padding-block:4px 10px}
+#progWrap{padding-block:10px;touch-action:none;cursor:pointer}
+#prog{height:4px;border-radius:2px;background:color-mix(in srgb,currentColor 15%,transparent);overflow:hidden}
+#pfill{height:100%;width:0;background:var(--accent)}
+.meta{display:flex;justify-content:space-between;font-size:12px;color:var(--rdm);font-variant-numeric:tabular-nums;margin-bottom:8px}
+.ctl{display:flex;align-items:center;gap:10px}
+.ctl .btn{min-width:48px;min-height:48px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:14px;font-size:22px;font-weight:500}
+.ctl .side{flex:1;display:flex;align-items:center;justify-content:center;gap:4px;font-size:13px;color:var(--rdm);min-width:0}
+.ctl .side b{font-size:17px;color:var(--rfg);font-variant-numeric:tabular-nums}
+#play{width:68px;height:68px;min-width:68px;border-radius:50%;background:var(--accent);color:#fff;border:0}
+#play svg{width:28px;height:28px;fill:currentColor}
+.ctl .chb{font-size:13px;font-weight:500;min-width:48px}
+
+/* SHEETS */
+#dimmer{position:absolute;inset:0;background:#00000066;z-index:40}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:50;background:var(--card);color:var(--fg);border-radius:20px 20px 0 0;padding-block:12px 20px;padding-left:var(--gut-l);padding-right:var(--gut-r);max-height:72%;overflow-y:auto;box-shadow:0 -8px 30px #0003}
+.sheet .sh{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);padding:6px 0 10px}
+.srow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.srow>span{font-weight:500}
+.seg{display:flex;align-items:center;gap:6px}
+.seg .btn{min-width:48px}.seg .btn.on{background:var(--accent);color:#fff;border-color:transparent}
+.seg b{min-width:40px;text-align:center;font-variant-numeric:tabular-nums}
+.themes{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;width:100%}
+.sw{height:44px;border-radius:10px;border:2px solid transparent;font-family:var(--serif);font-size:18px;display:flex;align-items:center;justify-content:center}
+.sw.on{border-color:var(--accent)}
+.chl{display:block;width:100%;text-align:left;padding:12px 4px;border-top:1px solid var(--line);font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chl.on{color:var(--accent);font-weight:600}
+#logView{font:11px/1.4 ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-word;background:var(--bg);border-radius:10px;padding:10px;max-height:40vh;overflow:auto;user-select:text;-webkit-user-select:text;margin:8px 0 0}
+#toast{position:absolute;top:14%;left:50%;transform:translateX(-50%);max-width:88%;background:#000000d9;color:#fff;font-size:15px;font-weight:500;padding:10px 18px;border-radius:12px;z-index:100;opacity:0;transition:opacity .25s;pointer-events:none;text-align:center}
+#toast.show{opacity:1}
+@media (prefers-reduced-motion: reduce){.rchrome,#toast{transition:none}}
+</style>
+</head>
+<body>
+
+<div id="shelf" class="view on">
+  <header class="bar"><h1>Orbit Reader</h1><button class="btn accent" id="addBtn">+ Add EPUB</button></header>
+  <div class="list" id="list"></div>
+</div>
+
+<div id="reader" class="view">
+  <header class="bar rchrome">
+    <button class="btn" id="backBtn">‹ Shelf</button>
+    <div class="rtitle"><div id="rName"></div><div id="rChap"></div></div>
+    <button class="btn" id="aaBtn">Aa</button>
+  </header>
+  <div id="stage"><div id="flow"></div><div id="mask"></div><div id="eye"></div></div>
+  <div class="rfoot rchrome">
+    <div id="progWrap"><div id="prog"><div id="pfill"></div></div></div>
+    <div class="meta"><span id="pct">0%</span><span id="left"></span></div>
+    <div class="ctl">
+      <button class="btn chb" id="chBtn">Ch.</button>
+      <button class="btn" id="slow" aria-label="Slower">−</button>
+      <button id="play" aria-label="Play">
+        <svg id="icPlay" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z"/></svg>
+        <svg id="icPause" viewBox="0 0 24 24" hidden><path d="M6 4h4v16H6zm8 0h4v16h-4z"/></svg>
+      </button>
+      <button class="btn" id="fast" aria-label="Faster">+</button>
+      <div class="side"><b id="wpmV">140</b><span>wpm</span></div>
+    </div>
+  </div>
+</div>
+
+<div id="dimmer" hidden></div>
+<div class="sheet" id="sheet" hidden>
+  <div class="sh">Reading</div>
+  <div class="srow"><span>Size</span><div class="seg"><button class="btn" data-size="-1">A−</button><b id="sizeV"></b><button class="btn" data-size="1">A+</button></div></div>
+  <div class="srow"><span>Font</span><div class="seg"><button class="btn" data-font="0" id="fontSerif">Serif</button><button class="btn" data-font="1" id="fontSans">Sans</button></div></div>
+  <div class="srow"><span>Theme</span><div class="themes" id="themes"></div></div>
+  <div class="srow"><span>Diagnostics</span><div class="seg"><button class="btn" id="logBtn">View</button><button class="btn" id="copyLog">Copy</button></div></div>
+  <pre id="logView" hidden></pre>
+</div>
+<div class="sheet" id="chsheet" hidden><div class="sh">Chapters</div><div id="chList"></div></div>
+
+<div id="toast"></div>
+<input type="file" id="fp" accept=".epub,application/epub+zip" multiple hidden>
+
+<script>
+// ═══ DIAGNOSTICS — always on ═══
+const LOG=[],T0=performance.now();
+function log(stage,msg,data){const e={t:Math.round(performance.now()-T0),stage,msg,data};LOG.push(e);if(LOG.length>500)LOG.shift();
+  console.log(`[${e.t}ms][${stage}] ${msg}`,data===undefined?'':data)}
+function fail(stage,expected,got,extra){const m=`${stage}: expected ${expected}, got ${got}`;log(stage,'FAIL '+m,extra);const err=new Error(m);err.stage=stage;err.extra=extra;return err}
+function assert(c,stage,expected,got,extra){if(!c)throw fail(stage,expected,got,extra)}
+window.addEventListener('error',e=>log('window','uncaught',String(e.message)));
+window.addEventListener('unhandledrejection',e=>log('window','unhandled rejection',String(e.reason)));
+
+// ═══ CONSTANTS ═══
+const $=id=>document.getElementById(id);
+const THEMES=[
+  {n:'Slate',bg:'#0f1730',fg:'#e2e8f0',dm:'#94a3b8'},
+  {n:'Void',bg:'#000000',fg:'#d4d4d4',dm:'#55555a'},
+  {n:'Storm',bg:'#181c24',fg:'#c8d0dc',dm:'#6c7484'},
+  {n:'Deep Sea',bg:'#030e1a',fg:'#b8d4e8',dm:'#4d7b9a'},
+  {n:'Moss',bg:'#071a12',fg:'#d1fae5',dm:'#3fa872'},
+  {n:'Ember',bg:'#1a0a0a',fg:'#fcd5ce',dm:'#a86a60'},
+  {n:'Violet Hour',bg:'#12071f',fg:'#e4d8f8',dm:'#8b6fc0'},
+  {n:'Copper',bg:'#14100c',fg:'#e8c4a0',dm:'#9a7850'},
+  {n:'Bone',bg:'#f5f0e8',fg:'#2c2418',dm:'#8a7e6b'},
+  {n:'Parchment',bg:'#ede4d0',fg:'#3a3028',dm:'#7a6e58'},
+];
+const SIZES=[22,25,28,32,36,40,46];
+const FONTS=['var(--serif)','var(--sans)'];
+const EYE=0.38, WPM_MIN=40, WPM_MAX=400, WPM_STEP=10;
+const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const PREF_DEF={size:3,font:0,theme:0,wpm:140};
+
+// ═══ STATE ═══
+let prefs={...PREF_DEF}, state={}, lastId=null, books=[], view='shelf';
+let book=null,totalH=0,totalWords=0,cur=0,target=0,playing=false,chOffsets=[],curCh=-1,lock=null,lastT=0,uiT=0;
+
+// ═══ STORAGE (best-effort; wrapped per the artifact/iOS storage rules) ═══
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){log('ls','read failed',String(e));return null}}
+function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){log('ls','write failed',String(e))}}
+let db;
+function openDB(){return new Promise((res,rej)=>{
+  const r=indexedDB.open('OrbitReader',2);
+  r.onupgradeneeded=e=>{const d=e.target.result;
+    if(!d.objectStoreNames.contains('books'))d.createObjectStore('books',{keyPath:'id'});
+    if(!d.objectStoreNames.contains('state'))d.createObjectStore('state',{keyPath:'key'})};
+  r.onsuccess=e=>{db=e.target.result;res(db)};r.onerror=e=>rej(e.target.error)})}
+function dbPut(s,o){return new Promise((r,j)=>{const t=db.transaction(s,'readwrite');t.objectStore(s).put(o);t.oncomplete=()=>r();t.onerror=e=>j(e.target.error)})}
+function dbGetAll(s){return new Promise((r,j)=>{const t=db.transaction(s,'readonly');const q=t.objectStore(s).getAll();q.onsuccess=()=>r(q.result);q.onerror=e=>j(e.target.error)})}
+function dbDel(s,k){return new Promise((r,j)=>{const t=db.transaction(s,'readwrite');t.objectStore(s).delete(k);t.oncomplete=()=>r();t.onerror=e=>j(e.target.error)})}
+async function hashBuf(buf){
+  if(crypto.subtle){const h=await crypto.subtle.digest('SHA-256',buf);return Array.from(new Uint8Array(h)).map(x=>x.toString(16).padStart(2,'0')).join('').slice(0,16)}
+  let h=0x811c9dc5;const u=new Uint8Array(buf);for(let i=0;i<u.length;i++){h^=u[i];h=Math.imul(h,0x01000193)>>>0}return'fnv'+h.toString(16)+'-'+u.length}
+function b64(blob){return new Promise((r,j)=>{const f=new FileReader();f.onload=()=>r(f.result);f.onerror=()=>j(f.error);f.readAsDataURL(blob)})}
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function words(s){return s.split(/\s+/).filter(Boolean).length}
+function fmtMin(m){if(!isFinite(m))return'—';m=Math.ceil(m);if(m<1)return'<1 min';if(m<90)return m+' min';return Math.floor(m/60)+'h '+(m%60)+'m'}
+
+// ═══ EPUB PARSER ═══
+async function parseEpub(buf){
+  const t0=performance.now();
+  const zip=await JSZip.loadAsync(buf);
+  const cx=await zip.file('META-INF/container.xml')?.async('text');
+  assert(cx,'container','META-INF/container.xml present','missing (not an EPUB zip?)');
+  const rm=cx.match(/full-path="([^"]+)"/);assert(rm,'container','a rootfile full-path','none');
+  const rp=rm[1],rd=rp.includes('/')?rp.slice(0,rp.lastIndexOf('/')+1):'';
+  const opf=await zip.file(rp)?.async('text');assert(opf,'opf',`OPF at ${rp}`,'missing');
+  const title=(opf.match(/<dc:title[^>]*>([^<]+)/i)||[])[1]?.trim()||'Untitled';
+  const author=(opf.match(/<dc:creator[^>]*>([^<]+)/i)||[])[1]?.trim()||'Unknown';
+  const man={};let m;const itemRx=/<item\s([^>]+?)\/?>/gi;
+  while(m=itemRx.exec(opf)){const a=m[1];const id=(a.match(/\bid="([^"]+)"/)||[])[1],href=(a.match(/\bhref="([^"]+)"/)||[])[1],type=(a.match(/media-type="([^"]+)"/)||[])[1]||'';if(id&&href)man[id]={href,type}}
+  const spine=[];const spineBlock=(opf.match(/<spine[^>]*>([\s\S]*?)<\/spine>/i)||[])[1]||'';const sRx=/idref="([^"]+)"/gi;
+  while(m=sRx.exec(spineBlock))spine.push(m[1]);
+  assert(spine.length>0,'spine','≥1 itemref',spine.length,{manifest:Object.keys(man).length});
+  log('parse','opf',{title,author,manifest:Object.keys(man).length,spine:spine.length});
+  // cover
+  let coverBlob=null;
+  const covId=(opf.match(/name="cover"\s+content="([^"]+)"/i)||[])[1];
+  const tryCover=async href=>{try{const b=await zip.file(rd+href)?.async('blob');if(b&&b.size)coverBlob=b}catch(e){}};
+  if(covId&&man[covId])await tryCover(man[covId].href);
+  if(!coverBlob)for(const[id,mi]of Object.entries(man)){if(mi.type.startsWith('image/')&&(id+mi.href).toLowerCase().includes('cover')){await tryCover(mi.href);if(coverBlob)break}}
+  // paths
+  function resolveHref(href){href=decodeURIComponent(href);const cands=[rd+href,href];
+    if(href.startsWith('../')){const base=rd.split('/').filter(Boolean);for(const hp of href.split('/')){if(hp==='..')base.pop();else base.push(hp)}cands.unshift(base.join('/'))}
+    return cands.find(c=>zip.file(c))||rd+href}
+  // chapters
+  const P=new DOMParser(),chapters=[];let skipped=0;
+  for(const sid of spine){
+    const mi=man[sid];if(!mi){skipped++;continue}
+    if(!mi.type.includes('html')&&!mi.type.includes('xml')){skipped++;continue}
+    const raw=await zip.file(resolveHref(mi.href))?.async('text');if(!raw){skipped++;continue}
+    const doc=P.parseFromString(raw,'text/html');doc.querySelectorAll('script,style,link,meta').forEach(e=>e.remove());
+    const body=doc.body||doc.documentElement;
+    const hd=body.querySelector('h1,h2,h3');const heading=hd?hd.textContent.replace(/\s+/g,' ').trim():'';
+    let ps=[];
+    body.querySelectorAll('p,h1,h2,h3,h4,h5,h6,li,blockquote,div.text,div.chapter').forEach(el=>{
+      if(el.querySelector('p,h1,h2,h3,h4,h5,h6'))return;const t=el.textContent.replace(/\s+/g,' ').trim();if(t.length>1)ps.push(t)});
+    if(ps.length<3){const dv=[];body.querySelectorAll('div,section,article').forEach(el=>{
+      const direct=Array.from(el.childNodes).filter(n=>n.nodeType===3&&n.textContent.trim()).map(n=>n.textContent.trim()).join(' ');if(direct.length>10)dv.push(direct)});if(dv.length>ps.length)ps=dv}
+    if(ps.length<2){const text=(body.textContent||'').trim();if(text.length>20){const blocks=text.split(/\n\s*\n/).map(s=>s.replace(/\s+/g,' ').trim()).filter(s=>s.length>1);if(blocks.length>ps.length)ps=blocks}}
+    if(heading&&ps[0]===heading)ps.shift();
+    if(!ps.length&&!heading){skipped++;continue}
+    const w=ps.reduce((s,p)=>s+words(p),0);
+    chapters.push({title:heading||ps[0].slice(0,60),heading:!!heading,paragraphs:ps,words:w});
+  }
+  const total=chapters.reduce((s,c)=>s+c.words,0);
+  assert(chapters.length>0,'chapters','≥1 chapter with text',0,{spine:spine.length,skipped});
+  assert(total>0,'chapters','>0 words',total);
+  log('parse','done',{chapters:chapters.length,skipped,words:total,ms:Math.round(performance.now()-t0)});
+  return{title,author,coverBlob,chapters,words:total};
+}
+
+// ═══ SHELF ═══
+function show(v){document.querySelectorAll('.view').forEach(e=>e.classList.remove('on'));$(v).classList.add('on');view=v;
+  document.documentElement.style.background=v==='reader'?THEMES[prefs.theme].bg:'';if(v==='shelf')drawShelf()}
+function drawShelf(){
+  const el=$('list');
+  const order=[...books].sort((a,b)=>(state[b.id]?.at||0)-(state[a.id]?.at||0)||(b.added||0)-(a.added||0));
+  if(!order.length){el.innerHTML=`<div class="empty"><p>Nothing on the shelf.</p><button class="btn accent big" id="emptyAdd">Add an EPUB</button><p class="hint">Opens Files. Pick from iCloud Drive, Downloads, or any app's folder.</p></div>`;
+    $('emptyAdd').onclick=pick;return}
+  el.innerHTML=order.map(b=>{const s=state[b.id];const pct=s?Math.round(s.ratio*100):0;
+    const sub=s?`${pct}% · ${fmtMin((1-s.ratio)*b.words/prefs.wpm)} left`:`${fmtMin(b.words/prefs.wpm)} at ${prefs.wpm} wpm`;
+    const cov=b.cover?`<img src="${b.cover}" alt="">`:`<span>${esc(b.title.charAt(0))}</span>`;
+    return`<div class="row" data-id="${b.id}"><div class="cov">${cov}</div><div class="mid"><div class="ttl">${esc(b.title)}</div><div class="sub">${esc(b.author)}</div><div class="sub acc">${b.id===lastId&&s?'Continue · ':''}${sub}</div></div><button class="del" data-del="${b.id}" aria-label="Remove book">✕</button></div>`}).join('')}
+function pick(){$('fp').click()}
+$('addBtn').onclick=pick;
+$('list').addEventListener('click',e=>{
+  const d=e.target.closest('[data-del]');
+  if(d){if(d.dataset.armed==='1'){delBook(d.dataset.del)}else{d.dataset.armed='1';d.textContent='Remove?';setTimeout(()=>{d.dataset.armed='';d.textContent='✕'},2500)}return}
+  const r=e.target.closest('.row');if(r)openBook(books.find(b=>b.id===r.dataset.id))});
+async function delBook(id){try{await dbDel('books',id);books=books.filter(b=>b.id!==id);delete state[id];saveState();if(lastId===id){lastId=null;lsSet('orbit_last','')}
+  log('shelf','removed',id);toast('Removed');drawShelf()}catch(err){log('shelf','FAIL remove',String(err));toast('Remove failed: '+err.message)}}
+
+$('fp').addEventListener('change',async e=>{
+  const files=[...e.target.files];e.target.value='';
+  for(const f of files){
+    const t0=performance.now();log('import','file',{name:f.name,size:f.size,type:f.type});toast(`Importing ${f.name}…`,6000);
+    try{
+      assert(/\.epub$/i.test(f.name)||f.type==='application/epub+zip','import','an .epub file',`${f.name} (${f.type||'no type'})`);
+      const buf=await f.arrayBuffer();const id=await hashBuf(buf);
+      if(books.some(b=>b.id===id)){toast('Already on the shelf');continue}
+      const p=await parseEpub(buf);
+      let cover=null;if(p.coverBlob){try{cover=await b64(p.coverBlob);if(cover.length>600000)cover=null}catch(err){log('cover','skipped',String(err))}}
+      const bk={id,title:p.title,author:p.author,cover,chapters:p.chapters,words:p.words,added:Date.now()};
+      await dbPut('books',bk);books.push(bk);
+      log('import','ok',{title:bk.title,chapters:bk.chapters.length,words:bk.words,ms:Math.round(performance.now()-t0)});
+      toast(`Added: ${bk.title}`);
+    }catch(err){log('import','FAIL',{name:f.name,error:String(err),stage:err.stage,extra:err.extra});toast(`Import failed — ${err.message}`,5000)}
+  }
+  drawShelf()});
+
+// ═══ READER ═══
+const stage=$('stage'),flow=$('flow');
+function pxPerSec(){return totalWords>0?(prefs.wpm/60)*(totalH/totalWords):0}
+function setMask(bg){$('mask').style.background=`linear-gradient(to bottom,${bg} 0%,${bg}e6 5%,${bg}99 11%,${bg}33 18%,transparent 25%,transparent 70%,${bg}33 78%,${bg}99 87%,${bg}e6 95%,${bg} 100%)`}
+function applyTheme(){const t=THEMES[prefs.theme]||THEMES[0];const r=$('reader').style;r.setProperty('--rbg',t.bg);r.setProperty('--rfg',t.fg);r.setProperty('--rdm',t.dm);setMask(t.bg);
+  if(view==='reader')document.documentElement.style.background=t.bg;
+  document.querySelectorAll('.sw').forEach((s,i)=>s.classList.toggle('on',i===prefs.theme))}
+function applyType(){const r=$('reader').style;r.setProperty('--rsize',SIZES[prefs.size]+'px');r.setProperty('--rfont',FONTS[prefs.font]);
+  $('sizeV').textContent=SIZES[prefs.size];$('fontSerif').classList.toggle('on',prefs.font===0);$('fontSans').classList.toggle('on',prefs.font===1)}
+async function measure(){await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+  totalH=flow.scrollHeight;chOffsets=[...flow.querySelectorAll('section')].map(s=>s.offsetTop);
+  assert(totalH>0,'layout','flow height > 0',totalH,{sections:chOffsets.length})}
+async function openBook(b){
+  if(!b)return;book=b;lastId=b.id;lsSet('orbit_last',b.id);totalWords=b.words||1;curCh=-1;
+  applyTheme();applyType();$('rName').textContent=b.title;$('rChap').textContent='';$('wpmV').textContent=prefs.wpm;
+  flow.innerHTML='<p>Loading…</p>';show('reader');
+  try{
+    let h='';b.chapters.forEach((c,i)=>{h+=`<section data-ch="${i}">`;if(c.heading)h+=`<h2>${esc(c.title)}</h2>`;for(const p of c.paragraphs)h+=`<p>${esc(p)}</p>`;h+='</section>'});
+    h+='<div class="end">End</div>';flow.innerHTML=h;
+    await measure();
+    const s=state[b.id];target=cur=s?clamp(Math.round(s.ratio*totalH),0,totalH):0;playing=false;setPlayUI();lastT=0;render(true);
+    log('open',b.title,{chapters:b.chapters.length,words:totalWords,totalH,pxPerSec:pxPerSec().toFixed(1)});
+  }catch(err){log('open','FAIL',String(err));toast('Could not lay out this book — '+err.message,5000);show('shelf')}}
+function render(force){
+  const eye=stage.clientHeight*EYE;flow.style.transform=`translate3d(0,${Math.round(eye-cur)}px,0)`;
+  const now=performance.now();if(!force&&now-uiT<250)return;uiT=now;
+  const r=totalH?cur/totalH:0;$('pfill').style.width=(r*100).toFixed(1)+'%';$('pct').textContent=Math.round(r*100)+'%';
+  $('left').textContent=fmtMin((1-r)*totalWords/prefs.wpm)+' left';
+  let ci=0;for(let i=0;i<chOffsets.length;i++)if(chOffsets[i]<=cur+1)ci=i;
+  if(ci!==curCh){curCh=ci;$('rChap').textContent=book.chapters[ci]?.title||`Section ${ci+1}`}}
+function tick(ts){requestAnimationFrame(tick);const dt=lastT?Math.min(0.1,(ts-lastT)/1000):0;lastT=ts;if(!book||view!=='reader')return;
+  if(playing){target=Math.min(totalH,target+pxPerSec()*dt);cur=target;render();if(target>=totalH){pause();toast('End of book')}}
+  else{const d=target-cur;if(Math.abs(d)>0.5){cur+=d*(REDUCED?1:0.22);render()}else if(cur!==target){cur=target;render()}}}
+requestAnimationFrame(tick);
+
+// play / pause / wake lock
+function setPlayUI(){$('icPlay').hidden=playing;$('icPause').hidden=!playing;$('play').setAttribute('aria-label',playing?'Pause':'Play');$('reader').classList.toggle('playing',playing)}
+async function reqLock(){try{if(navigator.wakeLock&&!lock){lock=await navigator.wakeLock.request('screen');lock.addEventListener('release',()=>{lock=null});log('wake','acquired')}}catch(e){log('wake','denied',String(e))}}
+function relLock(){try{lock?.release()}catch(e){}lock=null}
+function play(){if(!book)return;if(target>=totalH){target=cur=0}playing=true;lastT=0;setPlayUI();reqLock();log('play',`${prefs.wpm} wpm`,{pxPerSec:pxPerSec().toFixed(1),at:Math.round(cur)})}
+function pause(){if(!playing)return;playing=false;setPlayUI();relLock();savePos();log('pause','',{at:Math.round(cur)})}
+function togglePlay(){playing?pause():play()}
+$('play').onclick=togglePlay;
+$('backBtn').onclick=()=>{pause();savePos();book=null;show('shelf')};
+$('aaBtn').onclick=()=>openSheet('sheet');
+$('chBtn').onclick=()=>{drawChapters();openSheet('chsheet')};
+function setWpm(v){prefs.wpm=clamp(v,WPM_MIN,WPM_MAX);$('wpmV').textContent=prefs.wpm;savePrefs();render(true)}
+$('slow').onclick=()=>setWpm(prefs.wpm-WPM_STEP);$('fast').onclick=()=>setWpm(prefs.wpm+WPM_STEP);
+
+// drag to scrub, tap to toggle
+let pd=null;
+stage.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button!==0)return;pd={y:e.clientY,t:target,moved:false};try{stage.setPointerCapture(e.pointerId)}catch(err){}});
+stage.addEventListener('pointermove',e=>{if(!pd)return;const dy=e.clientY-pd.y;if(!pd.moved){if(Math.abs(dy)<8)return;pd.moved=true;if(playing)pause()}target=cur=clamp(pd.t-dy,0,totalH);render()});
+stage.addEventListener('pointerup',()=>{if(!pd)return;if(!pd.moved)togglePlay();else savePos();pd=null});
+stage.addEventListener('pointercancel',()=>{pd=null});
+stage.addEventListener('wheel',e=>{e.preventDefault();if(playing)pause();target=clamp(target+e.deltaY,0,totalH)},{passive:false});
+// progress bar seek
+const pw=$('progWrap');let seeking=false;
+function seekTo(x){const r=$('prog').getBoundingClientRect();target=cur=clamp((x-r.left)/r.width,0,1)*totalH;render(true)}
+pw.addEventListener('pointerdown',e=>{seeking=true;if(playing)pause();try{pw.setPointerCapture(e.pointerId)}catch(err){}seekTo(e.clientX)});
+pw.addEventListener('pointermove',e=>{if(seeking)seekTo(e.clientX)});
+pw.addEventListener('pointerup',()=>{if(seeking){seeking=false;savePos()}});
+pw.addEventListener('pointercancel',()=>{seeking=false});
+// keyboard (desktop testing)
+document.addEventListener('keydown',e=>{if(view!=='reader'||e.target.tagName==='INPUT')return;
+  if(e.code==='Space'){e.preventDefault();togglePlay()}
+  else if(e.key==='ArrowUp'){e.preventDefault();setWpm(prefs.wpm+WPM_STEP)}else if(e.key==='ArrowDown'){e.preventDefault();setWpm(prefs.wpm-WPM_STEP)}
+  else if(e.key==='ArrowRight')target=clamp(target+stage.clientHeight*.3,0,totalH);else if(e.key==='ArrowLeft')target=clamp(target-stage.clientHeight*.3,0,totalH)
+  else if(e.key==='Escape')$('backBtn').click()});
+
+// ═══ SHEETS ═══
+function openSheet(id){$('dimmer').hidden=false;$(id).hidden=false}
+function closeSheets(){$('dimmer').hidden=true;$('sheet').hidden=true;$('chsheet').hidden=true;$('logView').hidden=true}
+$('dimmer').onclick=closeSheets;
+async function retype(fn){const r=totalH?cur/totalH:0;fn();applyType();savePrefs();if(!book)return;await measure();target=cur=Math.round(r*totalH);render(true)}
+document.querySelectorAll('[data-size]').forEach(b=>b.onclick=()=>retype(()=>{prefs.size=clamp(prefs.size+ +b.dataset.size,0,SIZES.length-1)}));
+document.querySelectorAll('[data-font]').forEach(b=>b.onclick=()=>retype(()=>{prefs.font=+b.dataset.font}));
+$('themes').innerHTML=THEMES.map((t,i)=>`<button class="sw" data-theme="${i}" style="background:${t.bg};color:${t.fg}" aria-label="${t.n}">Aa</button>`).join('');
+$('themes').querySelectorAll('.sw').forEach(b=>b.onclick=()=>{prefs.theme=+b.dataset.theme;applyTheme();savePrefs();toast(THEMES[prefs.theme].n)});
+function drawChapters(){$('chList').innerHTML=book.chapters.map((c,i)=>`<button class="chl${i===curCh?' on':''}" data-ch="${i}">${esc(c.title)}</button>`).join('');
+  $('chList').querySelectorAll('.chl').forEach(b=>b.onclick=()=>{if(playing)pause();target=cur=clamp(chOffsets[+b.dataset.ch]||0,0,totalH);render(true);savePos();closeSheets()})}
+$('logBtn').onclick=()=>{const v=$('logView');v.hidden=!v.hidden;if(!v.hidden)v.textContent=logText()};
+function logText(){return LOG.map(e=>`${String(e.t).padStart(7)}ms ${e.stage.padEnd(9)} ${e.msg}${e.data!==undefined?' '+JSON.stringify(e.data):''}`).join('\n')}
+$('copyLog').onclick=()=>{const t=logText();navigator.clipboard?.writeText(t).then(()=>toast('Log copied')).catch(()=>{const v=$('logView');v.hidden=false;v.textContent=t;toast('Select and copy the log below')})};
+
+// ═══ PERSIST ═══
+function savePrefs(){lsSet('orbit_prefs',JSON.stringify(prefs))}
+function saveState(){lsSet('orbit_state',JSON.stringify(state))}
+function savePos(){if(!book||!totalH)return;state[book.id]={ratio:clamp(cur/totalH,0,1),at:Date.now()};saveState()}
+document.addEventListener('visibilitychange',()=>{if(document.hidden){pause();savePos()}});
+window.addEventListener('pagehide',savePos);
+let rz;window.addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(async()=>{if(!book||view!=='reader')return;const r=totalH?cur/totalH:0;try{await measure()}catch(e){return}target=cur=Math.round(r*totalH);render(true)},150)});
+setInterval(()=>{if(playing)savePos()},5000);
+
+// ═══ TOAST ═══
+let tt;function toast(m,ms=1400){const e=$('toast');e.textContent=m;e.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>e.classList.remove('show'),ms)}
+
+// ═══ INIT ═══
+(async function init(){
+  try{const p=JSON.parse(lsGet('orbit_prefs')||'{}');prefs={...PREF_DEF,...p};prefs.size=clamp(prefs.size|0,0,SIZES.length-1);prefs.font=prefs.font===1?1:0;prefs.theme=clamp(prefs.theme|0,0,THEMES.length-1);prefs.wpm=clamp(+prefs.wpm||140,WPM_MIN,WPM_MAX)}catch(e){prefs={...PREF_DEF}}
+  try{state=JSON.parse(lsGet('orbit_state')||'{}')||{}}catch(e){state={}}
+  lastId=lsGet('orbit_last')||null;
+  applyTheme();applyType();$('wpmV').textContent=prefs.wpm;
+  try{await openDB();books=await dbGetAll('books');log('init','shelf loaded',{books:books.length,secure:!!crypto.subtle,wakeLock:'wakeLock'in navigator,standalone:!!navigator.standalone})}
+  catch(err){log('init','FAIL db',String(err));toast('Storage unavailable — books will not persist',4000)}
+  drawShelf();
+})();
+</script>
+</body>
+</html>
