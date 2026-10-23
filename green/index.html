@@ -505,7 +505,7 @@ nav .badge{position:absolute;top:2px;right:18%;background:var(--bills);color:#ff
 // Am I Green — the app. Reads the vault through the GitHub API.
 // Data in: data/ledger.json (courier). Decisions out: config/*.json, data/tags.json, data/state.json.
 // ============================================================
-const BUILD='build 68';
+const BUILD='build 69';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const fmt=n=>(n<0?'−':'')+'$'+Math.abs(Math.round(n)).toLocaleString();
 const fmt2=n=>(n<0?'−':'')+'$'+Math.abs(n).toFixed(2);
@@ -748,7 +748,6 @@ function renderGreen(){
     <div class="row" style="font-size:12px"><span><b class="c-green">runway</b> <span class="mono" style="font-weight:700">${fmt(mine)}</span> <span class="muted">· stash + petty left</span></span><span><span class="muted">not mine</span> <span class="mono" style="font-weight:700">${fmt(notMine)}</span></span></div>
     ${c.stash<0?'<div class="rnotes"><span class="c-red">Stash is below zero. A straggle bounces.</span></div>':''}</div>`;}
   // recent: ten most recent posted moves across all accounts; tap a row to tag, tap the header for the full ledger
-  {const recent=txns.filter(t=>t.st==='posted'&&!t.split).sort((a,b)=>b.date-a.date).slice(0,10);html+=`<div class="card fadein" id="recentcard"><div class="row" style="cursor:pointer" id="recentHead"><h2>Recent</h2><span class="muted" style="font-size:12px">full ledger ›</span></div><div class="stack" style="gap:0;margin-top:6px">${recent.map(t=>`<div class="rrow2" data-tx="${esc(t.id)}"><span class="ldot" style="background:var(--${t.lane})"></span><div class="rn"><div class="n"><span class="nm-edit" data-nm="${esc(t.id)}">${esc(t.n)}</span>${t.pend?' <span class="tag">pending</span>':''}</div><div class="m">${dow(t.date)} ${ds(t.date)} · ${laneName(t.lane)} · <span class="${t.b?'':'c-bills'}">${t.b?tagLabel(t):'untagged'}</span></div></div><span class="mono ${t.a>0?'c-green':''}" style="font-weight:700">${fmt2(t.a)}</span></div>`).join('')}</div></div>`;}
   // lines: balance, 7 back and 14 ahead, with every move labeled
   const map=balancesByDay(addDays(TODAY,-7),addDays(TODAY,14));const EF=CONF.efTarget||0;
   ['checking','bills','savings'].forEach((lane,i)=>{const s=S[lane];const pts=[],dates=[];for(let x=addDays(TODAY,-7);x<=addDays(TODAY,14);x=addDays(x,1)){const b=map.get(x.toDateString());pts.push(b[lane]);dates.push(x);}
@@ -770,6 +769,7 @@ function renderGreen(){
     const pctEF=EF?Math.round(BAL.savings/EF*100)+'%':'';
     html+=`<div class="card lane fadein" data-lane="${lane}" style="animation-delay:${i*90}ms"><div class="row"><div><div class="eyebrow c-${lane}">${laneName(lane)} · ${lane==='savings'?'war chest':lane==='bills'?'in buckets':'stash'}</div><div class="amt grad ${lane==='savings'?'':lane==='bills'?'':col(s.free)}" data-count="${lane==='savings'?BAL[lane]:lane==='bills'?fillSum():s.free}">$0</div></div><div style="text-align:right"><div class="eyebrow">${lane==='savings'?(EF?'of '+fmt(EF):'balance'):'balance now'}</div><div class="mono" style="font-size:15px;font-weight:700">${lane==='savings'?pctEF:fmt(BAL[lane])}</div></div></div>${lane==='bills'?`<div class="muted" style="font-size:12px;margin-top:2px">${Math.abs(s.free)<5?'Every dollar is assigned to a bill.':s.free>0?fmt(s.free)+' is outside the buckets (the cushion).':'Buckets claim '+fmt(-s.free)+' more than the balance. Tap cover in the inbox.'}</div>`:''}
       ${eqBody(lane,s)}</div>`;});
+  {const recent=txns.filter(t=>t.st==='posted'&&!t.split).sort((a,b)=>b.date-a.date).slice(0,10);html+=`<div class="card fadein" id="recentcard"><div class="row" style="cursor:pointer" id="recentHead"><h2>Recent</h2><span class="muted" style="font-size:12px">full ledger ›</span></div><div class="stack" style="gap:0;margin-top:6px">${recent.map(t=>`<div class="rrow2" data-tx="${esc(t.id)}"><span class="ldot" style="background:var(--${t.lane})"></span><div class="rn"><div class="n"><span class="nm-edit" data-nm="${esc(t.id)}">${esc(t.n)}</span>${t.pend?' <span class="tag">pending</span>':''}</div><div class="m">${dow(t.date)} ${ds(t.date)} · ${laneName(t.lane)} · <span class="${t.b?'':'c-bills'}">${t.b?tagLabel(t):'untagged'}</span></div></div><span class="mono ${t.a>0?'c-green':''}" style="font-weight:700">${fmt2(t.a)}</span></div>`).join('')}</div></div>`;}
   v.innerHTML=html;
   v.querySelectorAll('[data-count]').forEach((el,i)=>setTimeout(()=>countTo(el,+el.dataset.count,900),120+i*90));
   v.querySelectorAll('.lane').forEach(el=>el.onclick=e=>{if(e.target.closest('svg'))return;openAcct(el.dataset.lane);});wireScrub(v);
