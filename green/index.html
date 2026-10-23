@@ -469,7 +469,7 @@ nav .badge{position:absolute;top:2px;right:18%;background:var(--bills);color:#ff
 :root[data-look="swiss"] .ltable tr.today td{background:#111;color:#fff;border-bottom:0}
 :root[data-look="swiss"] .cal .cd{border-radius:0;background:#f1f1f1}:root[data-look="swiss"] .cal .pay{background:#111;color:#fff}:root[data-look="swiss"] .cal .pay b,:root[data-look="swiss"] .cal .pay .v{color:#fff}
 :root[data-look="swiss"] .lgo{background:#fff;border:1px solid #111;border-radius:0}
-:root[data-look="swiss"] .eq .tot{border-top:2px solid #111}
+:root[data-look="swiss"] .eq .tot{border-top:2px solid #111}:root[data-look="swiss"] .btn{background:#f1f1f1;color:#111}:root[data-look="swiss"] .btn.good,:root[data-look="swiss"] .btn.primary{background:#111;color:#fff}:root[data-look="swiss"] .btn.ghost{background:transparent;border:1px solid #111;color:#111}:root[data-look="swiss"] .wm{background:none;color:#111;-webkit-text-fill-color:#111;animation:none;filter:none}:root[data-look="swiss"] .done .big,:root[data-look="swiss"] .grad{text-shadow:none;filter:none}:root[data-look="swiss"] .deckhead .btn{border:1px solid #111}:root[data-look="swiss"] #skinBtn,:root[data-look="swiss"] #syncPill{border:1px solid #111;color:#111;background:#fff}:root[data-look="swiss"] .streak{background:#f1f1f1;color:#111}:root[data-look="swiss"] .deck,:root[data-look="swiss"] .deckarea{background:#fff}
 /* ── look: native ── inset groups, system face */
 :root[data-look="native"]{--bg:#000;--surface:#1c1c1e;--surface2:#2c2c2e;--fg:#fff;--muted:#8e8e93;--line:#38383a;--green:#30d158;--red:#ff453a;--amber:#ffd60a;--violet:#bf5af2;--g-free:linear-gradient(90deg,#30d158,#30d158);--g-amber:linear-gradient(90deg,#ffd60a,#ffd60a);--g-red:linear-gradient(90deg,#ff453a,#ff453a);--shadow:none;--r:12px;--r2:10px;--r3:8px;--display:-apple-system,"SF Pro Display",system-ui,sans-serif;--body:-apple-system,"SF Pro Text",system-ui,sans-serif;--mono:-apple-system,"SF Pro Text",system-ui,sans-serif;color-scheme:dark}
 :root[data-look="native"],:root[data-look="native"] body{background:#000}
@@ -504,7 +504,7 @@ nav .badge{position:absolute;top:2px;right:18%;background:var(--bills);color:#ff
 :root[data-look="pro"] .navstat{background:#ff9f1c;color:#000}:root[data-look="pro"] .navstat b,:root[data-look="pro"] .navstat span{color:#000}
 :root[data-look="pro"] .dot{box-shadow:none;border-radius:0}
 :root[data-look="pro"] .cal .cd{border:1px solid #333;background:#000}:root[data-look="pro"] .cal .pay{background:#1f2a14}
-:root[data-look="pro"] .lgo{background:#fff}
+:root[data-look="pro"] .lgo{background:#fff}:root[data-look="pro"] .btn.good,:root[data-look="pro"] .btn.primary{background:#ff9f1c;color:#000}:root[data-look="pro"] .wm{background:none;color:#ff9f1c;-webkit-text-fill-color:#ff9f1c;animation:none;filter:none}
 :root[data-look="dawn"]{--bg:#faf7ff;--surface:#ffffff;--surface2:#f1eaff;--fg:#1b1030;--muted:#6d5c93;--line:#e8dcff;--green:#0a9d63;--savings:#0a9d63;--bills:#c4229e;--checking:#b8860b;--violet:#7b3fe4;--amber:#c7731a;--red:#d9306f;--g-free:linear-gradient(90deg,#0a9d63,#1a7fc9);--g-amber:linear-gradient(90deg,#c7731a,#e0a04a);--g-red:linear-gradient(90deg,#d9306f,#e86a9a);--shadow:0 10px 30px rgba(192,77,255,.12);color-scheme:light}
 :root[data-look="dawn"] .card{border:1px solid #e8dcff}
 :root[data-look="dawn"] .dot{box-shadow:0 0 10px rgba(10,157,99,.45)}
@@ -562,7 +562,7 @@ nav .badge{position:absolute;top:2px;right:18%;background:var(--bills);color:#ff
 // Am I Green — the app. Reads the vault through the GitHub API.
 // Data in: data/ledger.json (courier). Decisions out: config/*.json, data/tags.json, data/state.json.
 // ============================================================
-const BUILD='build 93';
+const BUILD='build 94';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const fmt=n=>(n<0?'−':'')+'$'+Math.abs(Math.round(n)).toLocaleString();
 const fmt2=n=>(n<0?'−':'')+'$'+Math.abs(n).toFixed(2);
