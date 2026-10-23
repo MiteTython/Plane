@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ccircle cx=%2750%27 cy=%2750%27 r=%2740%27 fill=%27%233dffb0%27/%3E%3C/svg%3E">
 <title>Vault</title>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Vault"><link rel="apple-touch-icon" id="touchIcon" href="icons/vault-line.png"><link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=JetBrains+Mono:wght@500;700&family=Space+Grotesk:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=JetBrains+Mono:wght@500;700&family=Space+Grotesk:wght@500;700&family=Archivo:wght@500;600;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap">
 <style>
 /* Layout: one-screen phone app. Green (quiet detail + lines), Flow (the runway ledger four ways), Buckets (tiles with the tag queue), Debts (countdown), Plan (spend planner). */
 :root{
@@ -441,7 +441,7 @@ nav .badge{position:absolute;top:2px;right:18%;background:var(--bills);color:#ff
 :root[data-look="aurora"] .card{border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
 :root[data-look="dusk"]{--bg:#000;--surface:#0b0d1f;--surface2:#151936;--fg:#e6e9ff;--muted:#8089b8;--line:rgba(128,137,184,.18);--shadow:none;--violet:#9d6bff}
 :root[data-look="dusk"] body{background:#000}
-:root[data-look="dusk"] html{background:#e3001b}
+:root[data-look="dusk"]{background:#e3001b}
 :root[data-look="dusk"] .card{border:1px solid rgba(255,255,255,.07)}
 :root[data-look="dusk"] .dot{box-shadow:none}
 :root[data-look="dusk"] .big,:root[data-look="dusk"] .amt{text-shadow:none}
@@ -451,6 +451,60 @@ nav .badge{position:absolute;top:2px;right:18%;background:var(--bills);color:#ff
 :root[data-look="highlight"] .dot{box-shadow:0 0 12px #c8ff2e}
 :root[data-look="highlight"] .big,:root[data-look="highlight"] .amt{text-shadow:0 0 18px rgba(200,255,46,.35)}
 :root[data-look="highlight"] .btn.primary{background:#c8ff2e;color:#0e0e12}
+/* ── look: swiss ── rules, weight, one red */
+:root[data-look="swiss"]{--bg:#fff;--surface:#fff;--surface2:#f1f1f1;--fg:#111;--muted:#6a6a6a;--line:rgba(0,0,0,.14);--green:#111;--red:#e3001b;--amber:#b85c00;--violet:#111;--g-free:linear-gradient(90deg,#111,#111);--g-amber:linear-gradient(90deg,#b85c00,#b85c00);--g-red:linear-gradient(90deg,#e3001b,#e3001b);--shadow:none;--r:0;--r2:0;--r3:0;--display:"Archivo",Helvetica,Arial,sans-serif;--body:"Archivo",Helvetica,Arial,sans-serif;--mono:"Archivo",Helvetica,Arial,sans-serif;color-scheme:light}
+:root[data-look="swiss"],:root[data-look="swiss"] body{background:#fff}
+:root[data-look="swiss"] .card{border:0;border-top:2px solid #111;border-radius:0;padding:12px 0 14px;background:transparent}
+:root[data-look="swiss"] .card .card,:root[data-look="swiss"] .irow,:root[data-look="swiss"] .kpi,:root[data-look="swiss"] .tile,:root[data-look="swiss"] .mrow,:root[data-look="swiss"] .plrow,:root[data-look="swiss"] .rsent{border-radius:0}
+:root[data-look="swiss"] .amt,:root[data-look="swiss"] .big{text-shadow:none;letter-spacing:-.05em;font-weight:800}
+:root[data-look="swiss"] .mono{font-weight:600}
+:root[data-look="swiss"] .pill,:root[data-look="swiss"] .tag,:root[data-look="swiss"] .chip,:root[data-look="swiss"] .btn{border-radius:0}
+:root[data-look="swiss"] .pill{border-color:#111;color:#111}
+:root[data-look="swiss"] .eyebrow{color:#111;font-weight:600}
+:root[data-look="swiss"] header h1{letter-spacing:-.04em}
+:root[data-look="swiss"] nav{background:#fff;border-top:3px solid #111;box-shadow:none}
+:root[data-look="swiss"] nav button[aria-selected="true"]{color:#e3001b}:root[data-look="swiss"] nav button[aria-selected="true"] svg{background:transparent;color:#e3001b}
+:root[data-look="swiss"] .navstat{border-radius:0;background:#111;color:#fff}:root[data-look="swiss"] .navstat b,:root[data-look="swiss"] .navstat span{color:#fff}
+:root[data-look="swiss"] .dot{box-shadow:none;border-radius:0}
+:root[data-look="swiss"] .ltable tr.today td{background:#111;color:#fff;border-bottom:0}
+:root[data-look="swiss"] .cal .cd{border-radius:0;background:#f1f1f1}:root[data-look="swiss"] .cal .pay{background:#111;color:#fff}:root[data-look="swiss"] .cal .pay b,:root[data-look="swiss"] .cal .pay .v{color:#fff}
+:root[data-look="swiss"] .lgo{background:#fff;border:1px solid #111;border-radius:0}
+:root[data-look="swiss"] .eq .tot{border-top:2px solid #111}
+/* ── look: native ── inset groups, system face */
+:root[data-look="native"]{--bg:#000;--surface:#1c1c1e;--surface2:#2c2c2e;--fg:#fff;--muted:#8e8e93;--line:#38383a;--green:#30d158;--red:#ff453a;--amber:#ffd60a;--violet:#bf5af2;--g-free:linear-gradient(90deg,#30d158,#30d158);--g-amber:linear-gradient(90deg,#ffd60a,#ffd60a);--g-red:linear-gradient(90deg,#ff453a,#ff453a);--shadow:none;--r:12px;--r2:10px;--r3:8px;--display:-apple-system,"SF Pro Display",system-ui,sans-serif;--body:-apple-system,"SF Pro Text",system-ui,sans-serif;--mono:-apple-system,"SF Pro Text",system-ui,sans-serif;color-scheme:dark}
+:root[data-look="native"],:root[data-look="native"] body{background:#000}
+:root[data-look="native"] .card{border:0;padding:14px 16px}
+:root[data-look="native"] .amt,:root[data-look="native"] .big{text-shadow:none;letter-spacing:-.02em;font-weight:700}
+:root[data-look="native"] .mono{font-variant-numeric:tabular-nums;font-weight:600}
+:root[data-look="native"] .eyebrow{text-transform:none;letter-spacing:0;font-size:13px;font-family:var(--body);color:#8e8e93;font-weight:500}
+:root[data-look="native"] .pill{background:#2c2c2e;border:0;text-transform:none;letter-spacing:0;font-size:12px;font-family:var(--body)}
+:root[data-look="native"] .row{min-height:30px}
+:root[data-look="native"] .eq .row{border-bottom:1px solid #38383a;padding:10px 0}:root[data-look="native"] .eq .row:last-child{border-bottom:0}:root[data-look="native"] .eq .tot{border-top:0;font-weight:600}
+:root[data-look="native"] nav{background:#161618;border-top:1px solid #2c2c2e;box-shadow:none}
+:root[data-look="native"] nav button{color:#8e8e93;text-transform:none;letter-spacing:0;font-size:10px;font-family:var(--body)}
+:root[data-look="native"] nav button[aria-selected="true"]{color:#0a84ff}:root[data-look="native"] nav button[aria-selected="true"] svg{background:transparent;color:#0a84ff}
+:root[data-look="native"] .navstat{background:#2c2c2e;border-radius:10px}
+:root[data-look="native"] .dot{box-shadow:none}
+:root[data-look="native"] .btn.primary{background:#0a84ff;color:#fff}
+:root[data-look="native"] .cal .pay{background:rgba(48,209,88,.2)}
+/* ── look: pro ── amber, mono, dense */
+:root[data-look="pro"]{--bg:#000;--surface:#000;--surface2:#141414;--fg:#f0f0f0;--muted:#8a8a8a;--line:#333;--green:#4ade80;--red:#ff5a5f;--amber:#ffd166;--violet:#ff9f1c;--g-free:linear-gradient(90deg,#fff,#fff);--g-amber:linear-gradient(90deg,#ffd166,#ffd166);--g-red:linear-gradient(90deg,#ff5a5f,#ff5a5f);--shadow:none;--r:0;--r2:0;--r3:0;--display:"IBM Plex Mono",ui-monospace,Menlo,monospace;--body:"IBM Plex Mono",ui-monospace,Menlo,monospace;--mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;color-scheme:dark}
+:root[data-look="pro"],:root[data-look="pro"] body{background:#000;font-size:13px}
+:root[data-look="pro"] .card{border:1px solid #333;border-radius:0;padding:10px 12px}
+:root[data-look="pro"] .card .card,:root[data-look="pro"] .irow,:root[data-look="pro"] .kpi,:root[data-look="pro"] .tile,:root[data-look="pro"] .mrow,:root[data-look="pro"] .plrow,:root[data-look="pro"] .rsent,:root[data-look="pro"] .pill,:root[data-look="pro"] .tag,:root[data-look="pro"] .chip,:root[data-look="pro"] .btn,:root[data-look="pro"] .cal .cd,:root[data-look="pro"] .navstat,:root[data-look="pro"] .lgo{border-radius:0}
+:root[data-look="pro"] .amt,:root[data-look="pro"] .big{text-shadow:none;letter-spacing:0;font-weight:600;font-size:28px}
+:root[data-look="pro"] .eyebrow{color:#ff9f1c;letter-spacing:.06em}
+:root[data-look="pro"] h2,:root[data-look="pro"] header h1{font-weight:600;letter-spacing:0;font-size:16px;color:#ff9f1c}
+:root[data-look="pro"] .pill{border-color:#ff9f1c;color:#ff9f1c;text-transform:uppercase}
+:root[data-look="pro"] .eq .row{padding:3px 0;font-size:12px}:root[data-look="pro"] .eq .tot{background:#141414;padding:4px 6px;margin:3px -6px 0;border-top:0;color:#ffd166}
+:root[data-look="pro"] .ptab,:root[data-look="pro"] .ltable,:root[data-look="pro"] .matrix{font-size:11px}
+:root[data-look="pro"] nav{background:#1a1a1a;border-top:1px solid #333;box-shadow:none}
+:root[data-look="pro"] nav button{color:#ff9f1c;font-size:9px}
+:root[data-look="pro"] nav button[aria-selected="true"]{color:#000}:root[data-look="pro"] nav button[aria-selected="true"] svg{background:#ff9f1c;color:#000;border-radius:0}
+:root[data-look="pro"] .navstat{background:#ff9f1c;color:#000}:root[data-look="pro"] .navstat b,:root[data-look="pro"] .navstat span{color:#000}
+:root[data-look="pro"] .dot{box-shadow:none;border-radius:0}
+:root[data-look="pro"] .cal .cd{border:1px solid #333;background:#000}:root[data-look="pro"] .cal .pay{background:#1f2a14}
+:root[data-look="pro"] .lgo{background:#fff}
 :root[data-look="dawn"]{--bg:#faf7ff;--surface:#ffffff;--surface2:#f1eaff;--fg:#1b1030;--muted:#6d5c93;--line:#e8dcff;--green:#0a9d63;--savings:#0a9d63;--bills:#c4229e;--checking:#b8860b;--violet:#7b3fe4;--amber:#c7731a;--red:#d9306f;--g-free:linear-gradient(90deg,#0a9d63,#1a7fc9);--g-amber:linear-gradient(90deg,#c7731a,#e0a04a);--g-red:linear-gradient(90deg,#d9306f,#e86a9a);--shadow:0 10px 30px rgba(192,77,255,.12);color-scheme:light}
 :root[data-look="dawn"] .card{border:1px solid #e8dcff}
 :root[data-look="dawn"] .dot{box-shadow:0 0 10px rgba(10,157,99,.45)}
@@ -508,7 +562,7 @@ nav .badge{position:absolute;top:2px;right:18%;background:var(--bills);color:#ff
 // Am I Green — the app. Reads the vault through the GitHub API.
 // Data in: data/ledger.json (courier). Decisions out: config/*.json, data/tags.json, data/state.json.
 // ============================================================
-const BUILD='build 86';
+const BUILD='build 87';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const fmt=n=>(n<0?'−':'')+'$'+Math.abs(Math.round(n)).toLocaleString();
 const fmt2=n=>(n<0?'−':'')+'$'+Math.abs(n).toFixed(2);
@@ -711,7 +765,7 @@ const stCol=s=>s==='red'?'var(--red)':s==='amber'?'var(--amber)':'var(--green)';
 // VERDICT
 // ============================================================
 function verdictItems(ctx){const {st,S,flags,u,ghosts,redB,daysToPay,streak,isPayday}=ctx;const out=[];const m=x=>`<b class="mono">${fmt(x)}</b>`;
-  {const cash=billsCash();if(cash>=0)out.push({i:laneMark('bills')||'🏛️',t:`${CONF.lanes.bills.n} covers every bill to payday`,s:`${fmt(BAL.bills)} in · ${fmt(BAL.bills-cash)} leaves · <b class="c-green">${fmt(cash)} clear</b>`,go:'tab:buckets',act:'buckets'});}
+  {const cash=billsCash();if(cash>=0)out.push({i:laneMark('bills')||'🏛️',t:`${CONF.lanes.bills.n} covers every bill to payday`,s:`${fmt(BAL.bills)} in · ${fmt(BAL.bills-cash)} leaves before ${ds(NEXTPAY)} · <b class="c-green">${fmt(cash)} stays locked</b> for later bills`,go:'tab:buckets',act:'buckets'});}
   if(isPayday)out.push({i:'💵',t:'Payday landed this morning',s:'the split is counted below'});
   flags.filter(f=>f.c==='red'&&f.lane).forEach(f=>{const v=f.lane==='bills'?billsCash():S[f.lane].free;out.push({c:'red',i:'🚨',t:`${CONF.lanes[f.lane].n} comes up ${m(-v)} short before payday`,s:`${fmt(Math.ceil(-v/10)*10)} moved over closes it. One move.`,go:f.lane==='bills'?'tab:buckets':'acct:'+f.lane,act:'see'});});
   flags.filter(f=>f.c==='amber'&&f.lane).forEach(f=>{if(f.short){/* label drift lives on the Buckets page, not the inbox */}else out.push({c:'amber',i:'⚠️',t:`${CONF.lanes[f.lane].n} is thin: ${m(S[f.lane].free)} of room`,s:'not red · just don\'t add to it this week',go:'acct:'+f.lane,act:'see'});});
@@ -1127,7 +1181,10 @@ function show(name){$('#deck').hidden=true;$('#acct').hidden=true;closeSheet();O
 $$('nav [role=tab]').forEach(b=>b.onclick=()=>show(b.dataset.v));
 const SKINS=[
  {id:'dusk',n:'Dusk',s:'black. navy cards. the night one.',bg:'#000',sw:['#1f8fe8','#a04ba8','#1fc9c9'],fg:'#eef0ff'},
- {id:'dawn',n:'Dawn',s:'the daylight version. same accents on white.',bg:'#faf7ff',sw:['#117aca','#650360','#00949a'],fg:'#1b1030'}
+ {id:'dawn',n:'Dawn',s:'the daylight version. same accents on white.',bg:'#faf7ff',sw:['#117aca','#650360','#00949a'],fg:'#1b1030'},
+ {id:'swiss',n:'Swiss',s:'rules and weight. no cards. one red.',bg:'#fff',sw:['#111','#e3001b','#f1f1f1'],fg:'#111'},
+ {id:'native',n:'Native',s:'inset groups, system face. looks like Settings.',bg:'#000',sw:['#1c1c1e','#30d158','#0a84ff'],fg:'#fff'},
+ {id:'pro',n:'Pro',s:'amber on black, all mono, dense.',bg:'#000',sw:['#ff9f1c','#ffd166','#333'],fg:'#f0f0f0'}
 ];
 let skin='dusk';try{skin=localStorage.getItem('aig-skin')||'dusk';}catch(e){}if(!SKINS.some(k=>k.id===skin))skin='dusk';
 let neon='magenta',fx=['brackets','chroma'];try{neon=localStorage.getItem('aig-neon')||'magenta';const f=localStorage.getItem('aig-fx');if(f)fx=JSON.parse(f).filter(x=>x!=='scan');}catch(e){}
