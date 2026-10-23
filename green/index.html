@@ -439,9 +439,10 @@ nav .badge{position:absolute;top:2px;right:18%;background:var(--bills);color:#ff
 :root[data-look="aurora"]{--surface:rgba(12,7,26,.74);--surface2:rgba(255,255,255,.08);--shadow:0 10px 30px rgba(0,0,0,.4);--g-free:linear-gradient(90deg,#3dffb0,#3bd6ff,#ff4fd8)}
 :root[data-look="aurora"] body::after{content:"";position:fixed;inset:-40%;background:conic-gradient(from 180deg at 50% 50%,#c04dff,#3bd6ff,#3dffb0,#ff4fd8,#c04dff);filter:blur(70px);opacity:.42;z-index:-1;animation:lookspin 24s linear infinite;pointer-events:none}
 :root[data-look="aurora"] .card{border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
-:root[data-look="dusk"]{--bg:#080b1f;--surface:#0f1333;--surface2:#171c44;--fg:#e6e9ff;--muted:#8089b8;--line:rgba(128,137,184,.18);--shadow:0 16px 40px rgba(0,0,0,.5);--violet:#9d6bff}
-:root[data-look="dusk"] body{background:linear-gradient(170deg,#090c24,#0d081e) fixed}
-:root[data-look="dusk"] .card{border:1px solid rgba(255,255,255,.06)}
+:root[data-look="dusk"]{--bg:#000;--surface:#0b0d1f;--surface2:#151936;--fg:#e6e9ff;--muted:#8089b8;--line:rgba(128,137,184,.18);--shadow:none;--violet:#9d6bff}
+:root[data-look="dusk"] body{background:#000}
+:root[data-look="dusk"] html{background:#000}
+:root[data-look="dusk"] .card{border:1px solid rgba(255,255,255,.07)}
 :root[data-look="dusk"] .dot{box-shadow:none}
 :root[data-look="dusk"] .big,:root[data-look="dusk"] .amt{text-shadow:none}
 :root[data-look="dusk"] .amt.grad,:root[data-look="dusk"] .big.grad{background:none;-webkit-text-fill-color:var(--green);color:var(--green)}
@@ -507,7 +508,7 @@ nav .badge{position:absolute;top:2px;right:18%;background:var(--bills);color:#ff
 // Am I Green — the app. Reads the vault through the GitHub API.
 // Data in: data/ledger.json (courier). Decisions out: config/*.json, data/tags.json, data/state.json.
 // ============================================================
-const BUILD='build 79';
+const BUILD='build 80';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const fmt=n=>(n<0?'−':'')+'$'+Math.abs(Math.round(n)).toLocaleString();
 const fmt2=n=>(n<0?'−':'')+'$'+Math.abs(n).toFixed(2);
@@ -1095,11 +1096,8 @@ function currentTab(){const cur=$$('nav [role=tab]').find(t=>t.getAttribute('ari
 function show(name){$('#deck').hidden=true;$('#acct').hidden=true;closeSheet();Object.keys(views).forEach(k=>{$('#v-'+k).hidden=k!==name;});$$('nav [role=tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.v===name)));views[name]();const v=$('#v-'+name);if(v&&name!=='flow')v.scrollTop=0;}
 $$('nav [role=tab]').forEach(b=>b.onclick=()=>show(b.dataset.v));
 const SKINS=[
- {id:'none',n:'None',s:'the base. purple black, hot accents, glow.',bg:'#0a0616',sw:['#ffd23f','#ff4fd8','#3dffb0'],fg:'#f4ecff'},
- {id:'aurora',n:'Aurora',s:'one slow color wash behind glass cards.',bg:'linear-gradient(135deg,#c04dff,#3bd6ff,#3dffb0)',sw:['#ffd23f','#ff4fd8','#3dffb0'],fg:'#fff'},
- {id:'dusk',n:'Dusk',s:'navy to violet, soft shadows, no tricks.',bg:'linear-gradient(170deg,#0e1338,#160c2e)',sw:['#ffd23f','#ff4fd8','#3dffb0'],fg:'#eef0ff'},
- {id:'highlight',n:'Highlight',s:'all grey. one acid green for money you can touch.',bg:'#0e0e12',sw:['#e6e6ec','#9a9aa6','#c8ff2e'],fg:'#e6e6ec'},
- {id:'dawn',n:'Dawn',s:'the daylight version. same accents on white.',bg:'#faf7ff',sw:['#b8860b','#c4229e','#0a9d63'],fg:'#1b1030'}
+ {id:'dusk',n:'Dusk',s:'black. navy cards. the night one.',bg:'#000',sw:['#1f8fe8','#a04ba8','#1fc9c9'],fg:'#eef0ff'},
+ {id:'dawn',n:'Dawn',s:'the daylight version. same accents on white.',bg:'#faf7ff',sw:['#117aca','#650360','#00949a'],fg:'#1b1030'}
 ];
 let skin='dusk';try{skin=localStorage.getItem('aig-skin')||'dusk';}catch(e){}if(!SKINS.some(k=>k.id===skin))skin='dusk';
 let neon='magenta',fx=['brackets','chroma'];try{neon=localStorage.getItem('aig-neon')||'magenta';const f=localStorage.getItem('aig-fx');if(f)fx=JSON.parse(f).filter(x=>x!=='scan');}catch(e){}
