@@ -1,1 +1,29 @@
-{"name": "Vault", "short_name": "Vault", "start_url": "./", "display": "standalone", "background_color": "#0e1338", "theme_color": "#0e1338", "icons": [{"src": "icons/vault-line-512.png", "sizes": "512x512", "type": "image/png"}, {"src": "icons/vault-line.png", "sizes": "180x180", "type": "image/png"}]}
+{
+ "name": "Vault",
+ "short_name": "Vault",
+ "id": "/Plane/green/",
+ "start_url": "/Plane/green/",
+ "scope": "/Plane/green/",
+ "display": "standalone",
+ "display_override": [
+  "standalone",
+  "minimal-ui"
+ ],
+ "orientation": "portrait",
+ "background_color": "#080b1f",
+ "theme_color": "#0f1333",
+ "icons": [
+  {
+   "src": "/Plane/green/icons/vault-line-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "/Plane/green/icons/vault-line.png",
+   "sizes": "180x180",
+   "type": "image/png",
+   "purpose": "any"
+  }
+ ]
+}
