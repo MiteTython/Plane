@@ -37,7 +37,7 @@ input,select{font:inherit;color:var(--fg);background:var(--surface2);border:1px 
 .grad{background:var(--g-free);-webkit-background-clip:text;background-clip:text;color:transparent}
 .grad.amber{background:var(--g-amber);-webkit-background-clip:text;background-clip:text}.grad.red{background:var(--g-red);-webkit-background-clip:text;background-clip:text}
 
-#app{height:100%;display:flex;flex-direction:column;max-width:520px;margin:0 auto;position:relative}
+#app{height:100%;height:100dvh;display:flex;flex-direction:column;max-width:520px;margin:0 auto;position:relative}
 header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-block:calc(env(safe-area-inset-top,0px) + 14px) 8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 header h1{font-family:var(--display);font-weight:800;font-size:24px;margin:0;letter-spacing:-.02em}
 .pill{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);border-radius:999px;padding:5px 10px;color:var(--muted);white-space:nowrap;font-weight:700}
@@ -308,8 +308,8 @@ input[type=range]{accent-color:var(--bills);padding:0;background:transparent;bor
 .plan:last-child{border-bottom:0}
 .plan .bar{height:10px;border-radius:999px;background:var(--surface2);overflow:hidden}.plan .bar i{display:block;height:100%;background:var(--g-free);width:0;transition:width .8s var(--ease)}
 
-nav{display:flex;background:var(--bg);padding-bottom:max(4px,env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-nav button{flex:1;padding-block:6px 2px;font-size:10px;letter-spacing:.04em;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px;position:relative;font-weight:700;min-height:48px;transition:color .2s,transform .2s}nav button svg{transition:transform .25s var(--spring)}nav button[aria-selected="true"] svg{transform:translateY(-2px) scale(1.08);color:var(--bills)}nav button:active svg{transform:scale(.9)}
+nav{display:flex;background:var(--bg);padding-bottom:max(0px,calc(env(safe-area-inset-bottom,0px) - 12px));border-top:1px solid var(--line);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+nav button{flex:1;padding-block:6px 0;font-size:10px;letter-spacing:.04em;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px;position:relative;font-weight:700;min-height:48px;transition:color .2s,transform .2s}nav button svg{transition:transform .25s var(--spring)}nav button[aria-selected="true"] svg{transform:translateY(-2px) scale(1.08);color:var(--bills)}nav button:active svg{transform:scale(.9)}
 nav button[aria-selected="true"]{color:var(--fg)}
 nav button i{display:block;width:22px;height:4px;border-radius:2px;background:transparent;transition:background .2s}
 nav button[aria-selected="true"] i{background:var(--bills)}
@@ -504,7 +504,7 @@ nav .badge{position:absolute;top:2px;right:18%;background:var(--bills);color:#ff
 // Am I Green — the app. Reads the vault through the GitHub API.
 // Data in: data/ledger.json (courier). Decisions out: config/*.json, data/tags.json, data/state.json.
 // ============================================================
-const BUILD='build 24';
+const BUILD='build 25';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const fmt=n=>(n<0?'−':'')+'$'+Math.abs(Math.round(n)).toLocaleString();
 const fmt2=n=>(n<0?'−':'')+'$'+Math.abs(n).toFixed(2);
