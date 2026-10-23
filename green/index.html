@@ -502,7 +502,7 @@ nav .badge{position:absolute;top:6px;right:14%;background:var(--bills);color:#ff
 // Am I Green — the app. Reads the vault through the GitHub API.
 // Data in: data/ledger.json (courier). Decisions out: config/*.json, data/tags.json, data/state.json.
 // ============================================================
-const BUILD='build 19';
+const BUILD='build 20';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const fmt=n=>(n<0?'−':'')+'$'+Math.abs(Math.round(n)).toLocaleString();
 const fmt2=n=>(n<0?'−':'')+'$'+Math.abs(n).toFixed(2);
@@ -734,6 +734,7 @@ let deckQueue=[],cur=null,deckReturn='buckets',pickedSub=null,qscope='untagged';
 function queueFor(){if(qscope==='untagged')return untagged();const all=txns.filter(t=>t.st==='posted'&&!t.split);return (qscope==='month'?all.filter(t=>t.date>=WIN.from):all).sort((a,b)=>b.date-a.date);}
 function openDeck(ret){deckReturn=ret||'buckets';deckQueue=queueFor();combo=0;$('#deck').hidden=false;renderCard();}
 function closeDeck(){$('#deck').hidden=true;show(deckReturn);}
+function pettyTags(){return CONF.pettyTags||Object.keys(CONF.petty);}
 function bucketChips(lane){return BUCKETS.filter(b=>b.lane==='bills').map(b=>`<button class="chip" data-tag="${b.id}|${b.id}">${b.e} ${b.n}</button>`).join('');}
 function allChips(t){return `<div class="chips"><span class="muted" style="font-size:11px;align-self:center">petty</span>${pettyTags().map(k=>`<button class="chip" data-tag="petty|${k}">${k}</button>`).join('')}</div><div class="chips"><button class="chip good" data-tag="stash|stash">🧦 Stash</button><button class="chip" data-tag="transfer|transfer">↔️ Transfer</button><button class="chip" data-tag="lake|lake">🛡️ War chest</button></div><div class="chips"><span class="muted" style="font-size:11px;align-self:center">bills</span>${bucketChips()}</div><div class="chips"><button class="chip" data-tag="ghost|dispute">👻 Dispute</button><button class="chip" data-split>Split</button><button class="chip" data-rule>Make a rule</button></div>`;}
 function lineChips(b){const lines=(bk(b).lines||[]);if(!lines.length)return '';return `<div class="suggest rule"><b>Which ${bname(b)} line?</b><span class="muted">So the planned pull and this one match up.</span><div class="chips">${lines.map(l=>`<button class="chip" data-tag="${b}|${esc(l.key)}">${esc(l.n)} <span class="muted">${fmt(Math.abs(l.amount))}</span></button>`).join('')}<button class="chip" data-tag="${b}|${b}">just ${bname(b)}</button></div></div>`;}
@@ -884,7 +885,7 @@ async function refreshNow(){if(refreshing)return;if(!cfg.token){openSettings();r
 // ============================================================
 const views={green:renderGreen,flow:renderFlow,buckets:renderBuckets,debts:renderDebts};
 function currentTab(){const cur=$$('nav [role=tab]').find(t=>t.getAttribute('aria-selected')==='true');return cur?cur.dataset.v:'green';}
-function show(name){Object.keys(views).forEach(k=>{$('#v-'+k).hidden=k!==name;});$$('nav [role=tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.v===name)));views[name]();}
+function show(name){$('#deck').hidden=true;$('#acct').hidden=true;closeSheet();Object.keys(views).forEach(k=>{$('#v-'+k).hidden=k!==name;});$$('nav [role=tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.v===name)));views[name]();const v=$('#v-'+name);if(v&&name!=='flow')v.scrollTop=0;}
 $$('nav [role=tab]').forEach(b=>b.onclick=()=>show(b.dataset.v));
 const SKINS=[
  {id:'none',n:'None',s:'the base. purple black, hot accents, glow.',bg:'#0a0616',sw:['#ffd23f','#ff4fd8','#3dffb0'],fg:'#f4ecff'},
