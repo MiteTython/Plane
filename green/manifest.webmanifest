@@ -5,13 +5,9 @@
  "start_url": "/Plane/green/",
  "scope": "/Plane/green/",
  "display": "standalone",
- "display_override": [
-  "standalone",
-  "minimal-ui"
- ],
  "orientation": "portrait",
- "background_color": "#080b1f",
- "theme_color": "#0f1333",
+ "background_color": "#000000",
+ "theme_color": "#000000",
  "icons": [
   {
    "src": "/Plane/green/icons/vault-line-512.png",
