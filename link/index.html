@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Link a bank</title>
+<style>
+body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#0a0616;color:#f4ecff;min-height:100vh;display:grid;place-items:center;padding:24px;box-sizing:border-box}
+.c{max-width:440px;width:100%;text-align:center}
+h1{font-weight:800;letter-spacing:-.02em;margin:0 0 8px}
+p{color:#9b8cc4;line-height:1.5}
+button{font:inherit;font-weight:700;padding:14px 22px;border-radius:14px;border:0;background:#ff4fd8;color:#fff;cursor:pointer;min-height:48px}
+button.g{background:#1e1240;color:#f4ecff}
+textarea{width:100%;box-sizing:border-box;font-family:ui-monospace,monospace;font-size:12px;background:#140c2a;color:#3dffb0;border:1px solid #3a2a60;border-radius:12px;padding:12px;min-height:84px;margin:12px 0}
+.ok{color:#3dffb0;font-weight:700}
+.bad{color:#ff3d8a}
+small{color:#6d5c93}
+</style>
+</head>
+<body>
+<div class="c">
+  <h1>Link a bank</h1>
+  <p id="s">Reading the token…</p>
+  <div id="out"></div>
+  <p><small>This page holds no secrets. It opens Plaid with a one-time token, and shows you a code to paste back into Terminal.</small></p>
+</div>
+<script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+<script>
+(function(){
+  const s=document.getElementById('s'),out=document.getElementById('out');
+  // link_token arrives in the URL hash the first time; we park it in sessionStorage so it survives the OAuth round trip.
+  const h=new URLSearchParams(location.hash.slice(1));
+  if(h.get('token')){sessionStorage.setItem('aig-link',h.get('token'));history.replaceState(null,'',location.pathname+location.search);}
+  const token=sessionStorage.getItem('aig-link');
+  if(!token){s.innerHTML='<span class="bad">No token.</span> Run <code>python3 courier/link.py chase</code> in Terminal and open the link it prints.';return;}
+  const isReturn=location.search.includes('oauth_state_id');
+  const handler=Plaid.create({
+    token,
+    receivedRedirectUri:isReturn?location.href:undefined,
+    onSuccess:(publicToken,meta)=>{
+      sessionStorage.removeItem('aig-link');
+      const inst=(meta&&meta.institution&&meta.institution.name)||'bank';
+      s.innerHTML=`<span class="ok">Linked ${inst}.</span> Copy this and paste it into Terminal:`;
+      out.innerHTML=`<textarea id="pt" readonly>${publicToken}</textarea><button id="cp">Copy</button>`;
+      document.getElementById('cp').onclick=()=>{navigator.clipboard.writeText(publicToken).then(()=>{document.getElementById('cp').textContent='Copied';});};
+    },
+    onExit:(err)=>{if(err){s.innerHTML=`<span class="bad">${err.display_message||err.error_code||'exit'}</span>`;}else{s.textContent='Closed without linking.';}out.innerHTML='<button class="g" id="again">Open Plaid again</button>';document.getElementById('again').onclick=()=>handler.open();}
+  });
+  s.textContent=isReturn?'Finishing the bank login…':'Ready.';
+  if(!isReturn){out.innerHTML='<button id="go">Open Plaid Link</button>';document.getElementById('go').onclick=()=>handler.open();}
+  else handler.open();
+})();
+</script>
+</body>
+</html>
