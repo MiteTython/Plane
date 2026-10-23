@@ -99,6 +99,7 @@ h2{font-family:var(--display);font-weight:800;font-size:20px;margin:0;letter-spa
 .flag .ft{font-weight:800;font-size:14px;line-height:1.3}.flag .fw{font-size:12px;color:var(--muted);line-height:1.4;margin-top:2px}
 .flag .btn{white-space:nowrap}
 .echips{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 10px}.echip{display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border-radius:999px;background:var(--surface2);border:1px solid transparent;color:var(--fg);font:inherit;font-size:13px;font-weight:700;cursor:pointer;min-height:36px}.echip b{font-family:var(--mono);font-weight:700}.echip.stash{background:rgba(61,255,176,.1);border-color:rgba(61,255,176,.4)}.echip.locked{opacity:.55}.echip.locked b{text-decoration:line-through}
+.rrow2{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer}.rrow2:last-child{border-bottom:0}.rrow2 .ldot{width:8px;height:8px;border-radius:50%;display:block}.rrow2 .n{font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rrow2 .m{font-size:11px;color:var(--muted);font-family:var(--mono)}
 .inbox{display:flex;flex-direction:column;gap:6px;margin-top:4px}.irow{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 12px;border-radius:var(--r2);background:var(--surface2);animation:txin .35s var(--ease) both}.irow.go{cursor:pointer}.irow .ii{font-size:18px;text-align:center}.irow .t{font-weight:700;font-size:14px;line-height:1.3}.irow .s{font-size:12px;color:var(--muted);margin-top:2px}.irow .ia{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--bills);white-space:nowrap}.irow.red{border-left:3px solid var(--red)}.irow.amber{border-left:3px solid var(--amber)}.irow.blue{border-left:3px solid var(--bills)}
 .verdict{margin:0;font-size:17px;line-height:1.55;font-weight:500}.verdict .vn{font-family:var(--mono);font-weight:700;white-space:nowrap}.score3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.kpi{background:var(--surface2);border-radius:var(--r2);padding:10px 8px;text-align:center}.kpi .kv{font-family:var(--display);font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.1;margin:4px 0 2px}.kpi .km{font-size:11px;color:var(--muted)}
 .legend-toggle{font-size:12px;color:var(--muted);text-align:left;font-weight:700;text-decoration:underline;text-underline-offset:3px}
@@ -527,7 +528,7 @@ const LOG=[];function log(stage,msg,extra){const line={at:new Date().toISOString
 function fail(stage,expected,got,evidence){const e=new Error(`${stage}: expected ${expected}, got ${got}`);e.evidence=evidence;log(stage,`FAIL expected ${expected}, got ${got}`,evidence);return e;}
 
 // ---------- alt views & toast ----------
-let alt={flow:1,buckets:0,deck:1};
+let alt={flow:0,buckets:0,deck:1};
 try{const s=localStorage.getItem('aig-alt6');if(s)alt=Object.assign(alt,JSON.parse(s));}catch(e){}
 function saveAlt(){try{localStorage.setItem('aig-alt6',JSON.stringify(alt));}catch(e){}}
 const ALTS={flow:['Ledger','Cards'],buckets:['Tiles','Bars'],deck:['Swipe','List']};
@@ -739,6 +740,8 @@ function renderGreen(){
   // recent: ten most recent posted, any account; tap to tag or retag
   {const recent=txns.filter(t=>t.st==='posted').sort((a,b)=>b.date-a.date||String(b.id).localeCompare(String(a.id))).slice(0,10);
   html+=`<div class="card fadein"><div class="row"><h2>Recent</h2><button class="btn small ghost" id="seeAll">all activity ›</button></div><div class="stack" style="gap:6px;margin-top:8px">${recent.map(t=>`<div class="qrow" data-tx="${esc(t.id)}" style="padding:8px 10px"><div><div class="n">${esc(t.n)}</div><div class="m">${dow(t.date)} ${ds(t.date)} · ${CONF.lanes[t.lane].n}${t.pend?' · pending':''}</div></div><div><div class="a ${t.a>0?'c-green':''}">${fmt2(t.a)}</div><div class="tl ${t.b?'':'none'}">${t.b?tagLabel(t):'untagged · tap'}</div></div></div>`).join('')}</div></div>`;}
+  // recent: ten most recent posted moves across all accounts; tap a row to tag, tap the header for the full ledger
+  {const recent=txns.filter(t=>t.st==='posted'&&!t.split).sort((a,b)=>b.date-a.date).slice(0,10);html+=`<div class="card fadein" id="recentcard"><div class="row" style="cursor:pointer" id="recentHead"><h2>Recent</h2><span class="muted" style="font-size:12px">full ledger ›</span></div><div class="stack" style="gap:0;margin-top:6px">${recent.map(t=>`<div class="rrow2" data-tx="${esc(t.id)}"><span class="ldot" style="background:var(--${t.lane})"></span><div class="rn"><div class="n">${esc(t.n)}${t.pend?' <span class="tag">pending</span>':''}</div><div class="m">${dow(t.date)} ${ds(t.date)} · ${CONF.lanes[t.lane].n} · <span class="${t.b?'':'c-bills'}">${t.b?tagLabel(t):'untagged'}</span></div></div><span class="mono ${t.a>0?'c-green':''}" style="font-weight:700">${fmt2(t.a)}</span></div>`).join('')}</div></div>`;}
   // lines: balance, 7 back and 14 ahead, with every move labeled
   const map=balancesByDay(addDays(TODAY,-7),addDays(TODAY,14));const EF=CONF.efTarget||0;
   ['checking','bills','savings'].forEach((lane,i)=>{const s=S[lane];const pts=[],dates=[];for(let x=addDays(TODAY,-7);x<=addDays(TODAY,14);x=addDays(x,1)){const b=map.get(x.toDateString());pts.push(b[lane]);dates.push(x);}
@@ -768,6 +771,8 @@ function renderGreen(){
   v.querySelectorAll('[data-flag]').forEach(b=>b.onclick=()=>{const f=flags[+b.dataset.flag];if(f.tag){openDeck('green');return;}if(f.b){openBucket=f.b;show('buckets');return;}if(f.lane){if(f.c==='red')toast(`Move <b>${f.act.replace('Move ','').replace(' from cushion','')}</b> from cushion in the bank app · the ledger will see it on the next sync`);else openSpoken(f.lane);}});
   const lb=$('#legendBtn');if(lb)lb.onclick=()=>{$('#legendBox').hidden=!$('#legendBox').hidden;};
   v.querySelectorAll('.qrow[data-tx]').forEach(el=>el.onclick=()=>{const t=txns.find(x=>String(x.id)===el.dataset.tx);if(t)openTagSheet(t,()=>renderGreen());});const sa=$('#seeAll');if(sa)sa.onclick=()=>show('flow');
+  const rh=$('#recentHead');if(rh)rh.onclick=()=>{alt.flow=0;saveAlt();show('flow');};
+  v.querySelectorAll('#recentcard [data-tx]').forEach(el=>el.onclick=()=>{const t=txns.find(x=>String(x.id)===el.dataset.tx);if(t)openTagSheet(t,()=>renderGreen());});
   v.querySelectorAll('[data-go]').forEach(el=>el.onclick=()=>{const [k,arg]=el.dataset.go.split(':');if(k==='acct')openAcct(arg);else if(k==='tab')show(arg);else if(k==='deck')openDeck('green');else if(k==='bucket'){openBucket=arg;show('buckets');}else if(k==='day')openDay(new Date(arg));});
   $('#badgeTag').hidden=!u.length;$('#badgeTag').textContent=u.length;
 }
