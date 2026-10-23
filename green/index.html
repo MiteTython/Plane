@@ -37,9 +37,24 @@ input,select{font:inherit;color:var(--fg);background:var(--surface2);border:1px 
 .grad{background:var(--g-free);-webkit-background-clip:text;background-clip:text;color:transparent}
 .grad.amber{background:var(--g-amber);-webkit-background-clip:text;background-clip:text}.grad.red{background:var(--g-red);-webkit-background-clip:text;background-clip:text}
 
-#app{height:100%;height:100dvh;display:flex;flex-direction:column;max-width:520px;margin:0 auto;position:relative}
-header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-block:calc(env(safe-area-inset-top,0px) + 14px) 8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-header h1{font-family:var(--display);font-weight:800;font-size:24px;margin:0;letter-spacing:-.02em}
+#app{position:fixed;inset:0;height:auto;display:flex;flex-direction:column;max-width:520px;margin:0 auto}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;padding-block:calc(env(safe-area-inset-top,0px) + 14px) 8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header h1{font-family:var(--display);font-weight:800;font-size:24px;margin:0;letter-spacing:-.02em;display:flex;align-items:center;gap:10px}
+.wm{font-size:26px;letter-spacing:-.04em;background:linear-gradient(100deg,var(--checking) 0%,var(--bills) 35%,var(--savings) 70%,var(--checking) 100%);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;animation:shimmer 7s linear infinite;filter:drop-shadow(0 0 14px rgba(192,76,181,.25))}
+@keyframes shimmer{0%{background-position:0% 50%}100%{background-position:300% 50%}}
+.stpill{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;padding:4px 9px;border-radius:999px;background:var(--surface2);color:var(--green);border:1px solid transparent;animation:pillin .6s var(--spring) both;transform-origin:left center}
+.stpill i{width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 0 0 currentColor;animation:ping 2.4s ease-out infinite}
+.stpill.amber{color:var(--amber)}.stpill.red{color:var(--red);animation:pillin .6s var(--spring) both,shake 3s ease-in-out infinite 1s}
+@keyframes ping{0%{box-shadow:0 0 0 0 currentColor;opacity:1}70%{box-shadow:0 0 0 7px transparent;opacity:1}100%{box-shadow:0 0 0 0 transparent}}
+@keyframes pillin{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+@keyframes shake{0%,92%,100%{transform:none}94%{transform:translateX(-2px)}96%{transform:translateX(2px)}98%{transform:translateX(-1px)}}
+.echip{animation:pop .45s var(--spring) both}.echip:nth-child(1){animation-delay:.05s}.echip:nth-child(2){animation-delay:.1s}.echip:nth-child(3){animation-delay:.15s}.echip:nth-child(4){animation-delay:.2s}.echip:nth-child(5){animation-delay:.25s}.echip:nth-child(6){animation-delay:.3s}.echip:nth-child(7){animation-delay:.35s}
+@keyframes pop{from{transform:scale(.7);opacity:0}to{transform:none;opacity:1}}
+.kpi{animation:rise .5s var(--ease) both}.kpi:nth-child(2){animation-delay:.08s}.kpi:nth-child(3){animation-delay:.16s}@keyframes rise{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}
+.btn:active,.tagbtn:active,.mrow:active,.irow.go:active,.tile:active{transform:scale(.97)}.btn,.tagbtn,.mrow,.irow,.tile{transition:transform .15s var(--spring),background .2s}
+.lane,.scrubout,.linechart{-webkit-user-select:none;user-select:none}
+.card{animation:cardin .5s var(--ease) both}@keyframes cardin{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
+.irow{animation:rowin .4s var(--ease) both}@keyframes rowin{from{transform:translateX(-8px);opacity:0}to{transform:none;opacity:1}}
 .pill{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);border-radius:999px;padding:5px 10px;color:var(--muted);white-space:nowrap;font-weight:700}
 .pill.sample{color:var(--amber);border-color:currentColor}
 .streak{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:12px;font-weight:700;color:var(--amber);background:rgba(255,179,74,.12);border-radius:999px;padding:4px 9px}
@@ -308,7 +323,7 @@ input[type=range]{accent-color:var(--bills);padding:0;background:transparent;bor
 .plan:last-child{border-bottom:0}
 .plan .bar{height:10px;border-radius:999px;background:var(--surface2);overflow:hidden}.plan .bar i{display:block;height:100%;background:var(--g-free);width:0;transition:width .8s var(--ease)}
 
-nav{display:flex;background:var(--bg);padding-bottom:max(0px,calc(env(safe-area-inset-bottom,0px) - 12px));border-top:1px solid var(--line);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+nav{display:flex;background:var(--bg);padding-bottom:max(0px,calc(env(safe-area-inset-bottom,0px) - 14px));border-top:1px solid var(--line);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 nav button{flex:1;padding-block:6px 0;font-size:10px;letter-spacing:.04em;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px;position:relative;font-weight:700;min-height:48px;transition:color .2s,transform .2s}nav button svg{transition:transform .25s var(--spring)}nav button[aria-selected="true"] svg{transform:translateY(-2px) scale(1.08);color:var(--bills)}nav button:active svg{transform:scale(.9)}
 nav button[aria-selected="true"]{color:var(--fg)}
 nav button i{display:block;width:22px;height:4px;border-radius:2px;background:transparent;transition:background .2s}
@@ -397,10 +412,10 @@ nav .badge{position:absolute;top:2px;right:18%;background:var(--bills);color:#ff
 :root[data-skin="neon"][data-neon="cyan"]{--bills:#3bd6ff;--violet:#c04dff;--g-free:linear-gradient(90deg,#3dffb0,#3bd6ff)}
 :root[data-skin="neon"][data-neon="magenta"]{--bills:#ff4fd8;--savings:#3dffb0;--checking:#ffd23f;--violet:#ff2d95;--g-free:linear-gradient(90deg,#3dffb0,#ff4fd8);--shadow:0 12px 40px rgba(255,79,216,.25)}
 :root[data-fx~="grid"] main{background-image:linear-gradient(rgba(192,77,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(192,77,255,.08) 1px,transparent 1px);background-size:28px 28px;background-position:center bottom}
-:root[data-fx~="glitch"] header h1{position:relative;animation:glitch 4s steps(1) infinite}
-:root[data-fx~="glitch"] header h1::before,:root[data-fx~="glitch"] header h1::after{content:attr(data-t);position:absolute;left:0;top:0;opacity:.7;pointer-events:none}
-:root[data-fx~="glitch"] header h1::before{color:var(--bills);transform:translate(-2px,0);clip-path:inset(0 0 55% 0);animation:gl1 3s steps(1) infinite}
-:root[data-fx~="glitch"] header h1::after{color:var(--violet);transform:translate(2px,0);clip-path:inset(55% 0 0 0);animation:gl2 2.7s steps(1) infinite}
+:root[data-fx~="glitch"] header .wm{position:relative;animation:glitch 4s steps(1) infinite}
+:root[data-fx~="glitch"] header .wm::before,:root[data-fx~="glitch"] header .wm::after{content:attr(data-t);position:absolute;left:0;top:0;opacity:.7;pointer-events:none}
+:root[data-fx~="glitch"] header .wm::before{color:var(--bills);transform:translate(-2px,0);clip-path:inset(0 0 55% 0);animation:gl1 3s steps(1) infinite}
+:root[data-fx~="glitch"] header .wm::after{color:var(--violet);transform:translate(2px,0);clip-path:inset(55% 0 0 0);animation:gl2 2.7s steps(1) infinite}
 @keyframes glitch{0%,94%,100%{transform:none}95%{transform:translate(1px,-1px)}97%{transform:translate(-1px,1px)}}
 @keyframes gl1{0%,90%,100%{opacity:0}92%,96%{opacity:.7}}
 @keyframes gl2{0%,88%,100%{opacity:0}90%,94%{opacity:.7}}
@@ -461,8 +476,8 @@ nav .badge{position:absolute;top:2px;right:18%;background:var(--bills);color:#ff
 <body>
 <div id="app">
   <header>
-    <div class="row" style="gap:10px"><div class="dot" id="dot"></div><h1 id="title">Am I green?</h1></div>
-    <div class="row" style="gap:6px"><span class="streak"><svg viewBox="0 0 12 14" aria-hidden="true"><path d="M6 0c1 3 4 4 4 8a4 4 0 0 1-8 0c0-2 1-3 2-4 0 2 1 3 2 3 1-2-1-4 0-7z" fill="currentColor"/></svg><span id="streakN">0</span></span><button class="pill" id="lookBtn" style="color:var(--fg)">look</button><button class="pill" id="skinBtn" style="color:var(--fg)">⚙</button><button class="pill sample" id="syncPill">connect</button></div>
+    <div class="row" style="gap:10px"><div class="dot" id="dot"></div><h1 id="title"><span class="wm" data-t="Vault">Vault</span><span class="stpill" id="stpill"><i></i><span id="stword">reading</span></span></h1></div>
+    <div class="row" style="gap:6px"><span class="streak"><svg viewBox="0 0 12 14" aria-hidden="true"><path d="M6 0c1 3 4 4 4 8a4 4 0 0 1-8 0c0-2 1-3 2-4 0 2 1 3 2 3 1-2-1-4 0-7z" fill="currentColor"/></svg><span id="streakN">0</span></span><button class="pill" id="skinBtn" style="color:var(--fg)">⚙</button><button class="pill sample" id="syncPill">connect</button></div>
   </header>
   <main>
     <div class="view" id="v-green"></div>
@@ -488,7 +503,7 @@ nav .badge{position:absolute;top:2px;right:18%;background:var(--bills);color:#ff
 // Am I Green — the app. Reads the vault through the GitHub API.
 // Data in: data/ledger.json (courier). Decisions out: config/*.json, data/tags.json, data/state.json.
 // ============================================================
-const BUILD='build 33';
+const BUILD='build 34';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const fmt=n=>(n<0?'−':'')+'$'+Math.abs(Math.round(n)).toLocaleString();
 const fmt2=n=>(n<0?'−':'')+'$'+Math.abs(n).toFixed(2);
@@ -695,7 +710,7 @@ function verdictItems(ctx){const {st,S,flags,u,ghosts,redB,daysToPay,streak,isPa
 // ============================================================
 // GREEN
 // ============================================================
-function renderSetup(msg,withButtons){const v=$('#v-green');$('#title').textContent='Am I green?';$('#dot').className='dot amber';v.innerHTML=`<div class="card stack fadein"><h2>${esc(msg)}</h2><div class="muted" style="font-size:13px">The app reads a private GitHub repo (the vault). The courier writes the ledger there; your tags and rules go back the same way.</div><div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn primary" id="suSettings">Settings</button>${withButtons?'<button class="btn" id="suRetry">Try again</button>':''}</div></div>`;$('#suSettings').onclick=openSettings;const r=$('#suRetry');if(r)r.onclick=loadAll;['flow','buckets','debts'].forEach(k=>$('#v-'+k).innerHTML='');}
+function renderSetup(msg,withButtons){const v=$('#v-green');{const sp=$('#stpill');if(sp){sp.className='stpill amber';$('#stword').textContent='setup';}}$('#dot').className='dot amber';v.innerHTML=`<div class="card stack fadein"><h2>${esc(msg)}</h2><div class="muted" style="font-size:13px">The app reads a private GitHub repo (the vault). The courier writes the ledger there; your tags and rules go back the same way.</div><div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn primary" id="suSettings">Settings</button>${withButtons?'<button class="btn" id="suRetry">Try again</button>':''}</div></div>`;$('#suSettings').onclick=openSettings;const r=$('#suRetry');if(r)r.onclick=loadAll;['flow','buckets','debts'].forEach(k=>$('#v-'+k).innerHTML='');}
 function renderGreen(){
   if(!LEDGER){renderSetup('Connect the vault to begin.');return;}
   const v=$('#v-green');const st=status();$('#dot').className='dot '+(st==='green'?'':st);$('#streakN').textContent=streakNow();
@@ -709,7 +724,7 @@ function renderGreen(){
   
   const ghosts=[];
   if(u.length-ghosts.length>0)flags.push({c:'blue',t:`${u.length-ghosts.length} charges to tag`,act:'Tag them',tag:true});
-  $('#title').textContent=st==='green'?'You’re green.':st==='amber'?'Thin, not red.':'Short before payday.';$('#title').setAttribute('data-t',$('#title').textContent);
+  {const sp=$('#stpill');sp.className='stpill '+(st==='green'?'':st);$('#stword').textContent=st==='green'?'green':st==='amber'?'thin':'short';}
   const daysToPay=days(TODAY,NEXTPAY);const isPayday=isPaydayDate(TODAY);
   const items=verdictItems({st,S,flags,u,ghosts,redB,ambB,daysToPay,streak:streakNow(),isPayday,freeBoth});const blue=flags.find(f=>f.c==='blue');const redLane=flags.find(f=>f.c==='red'&&f.lane);
   let html=`<div class="card quiet fadein"><div class="inbox">${items.map((it,i)=>`<div class="irow ${it.c||''} ${it.go?'go':''} ${it.ticker?'tick':''}" ${it.go?`data-go="${it.go}"`:''} style="animation-delay:${i*50}ms"><span class="ii">${it.i}</span><div class="it">${it.ticker?`<div class="tk"><div class="t">${it.ticker[0].t}</div><div class="s">${it.ticker[0].s}</div></div><div class="s tkh">${it.t} <span class="tkn">1/${it.ticker.length}</span></div>`:`<div class="t">${it.t}</div>${it.s?`<div class="s">${it.s}</div>`:''}`}</div>${it.act?`<span class="ia">${it.act} ›</span>`:''}</div>`).join('')}</div>
@@ -964,9 +979,9 @@ let neon='magenta',fx=['brackets','chroma'];try{neon=localStorage.getItem('aig-n
 const NEONS=[['magenta','Magenta · cyan'],['cyan','Cyan · violet'],['acid','Acid'],['blood','Blood'],['ice','Ice']];const FXS=[['grid','grid floor'],['glitch','glitch title'],['brackets','HUD brackets'],['pulse','card pulse'],['chroma','chroma numbers']];
 let iconPick='none';try{iconPick=localStorage.getItem('aig-icon')||'none';}catch(e){}
 function applyIcon(){const l=$('#touchIcon');if(l)l.href=`icons/vault-${iconPick}.png`;try{localStorage.setItem('aig-icon',iconPick);}catch(e){}}
-function applySkin(){applyIcon();const r=document.documentElement;r.setAttribute('data-skin','neon');if(skin==='none')r.removeAttribute('data-look');else r.setAttribute('data-look',skin);if(skin==='none'){r.setAttribute('data-neon',neon);r.setAttribute('data-fx',fx.join(' '));}else{r.removeAttribute('data-neon');r.removeAttribute('data-fx');}const h=$('#title');if(h)h.setAttribute('data-t',h.textContent);try{localStorage.setItem('aig-skin',skin);localStorage.setItem('aig-neon',neon);localStorage.setItem('aig-fx',JSON.stringify(fx));}catch(e){}}
+function applySkin(){applyIcon();const r=document.documentElement;r.setAttribute('data-skin','neon');if(skin==='none')r.removeAttribute('data-look');else r.setAttribute('data-look',skin);if(skin==='none'){r.setAttribute('data-neon',neon);r.setAttribute('data-fx',fx.join(' '));}else{r.removeAttribute('data-neon');r.removeAttribute('data-fx');}try{localStorage.setItem('aig-skin',skin);localStorage.setItem('aig-neon',neon);localStorage.setItem('aig-fx',JSON.stringify(fx));}catch(e){}}
 function openSkins(){sheet(`<h3>Look</h3><div class="skins">${SKINS.map(k=>`<button class="skin ${skin===k.id?'on':''}" data-skin="${k.id}" style="background:${k.bg};color:${k.fg}"><div class="sw">${k.sw.map(c=>`<i style="background:${c}"></i>`).join('')}</div><b>${k.n}</b><span>${k.s}</span></button>`).join('')}</div><div id="neonbox" ${skin==='none'?'':'hidden'}><div class="eyebrow" style="margin:6px 0">colorway</div><div class="fxrow">${NEONS.map(([id,n])=>`<button class="chip ${neon===id?'on':''}" data-neon="${id}">${n}</button>`).join('')}</div><div class="eyebrow" style="margin:10px 0 6px">effects</div><div class="fxrow">${FXS.map(([id,n])=>`<button class="chip ${fx.includes(id)?'on':''}" data-fx="${id}">${n}</button>`).join('')}</div></div><div class="eyebrow" style="margin:12px 0 6px">home-screen icon</div><div class="icons">${SKINS.map(k=>`<button class="ic ${iconPick===k.id?'on':''}" data-icon="${k.id}" aria-label="${k.n} icon"><img src="icons/vault-${k.id}.png" alt=""><span>${k.n}</span></button>`).join('')}</div><div class="muted" style="font-size:11px">iPhone copies the icon when you add to the Home Screen. Pick one, then Share → Add to Home Screen again; delete the old one.</div><div class="row" style="gap:8px"><button class="btn ghost" id="lkBack" style="flex:1">← Settings</button><button class="btn ghost" data-close style="flex:1">Close</button></div>`,sh=>{sh.querySelector('#lkBack').onclick=openSettings;const rerender=()=>{if(LEDGER)views[currentTab()]();};sh.querySelectorAll('[data-skin]').forEach(b=>b.onclick=()=>{skin=b.dataset.skin;applySkin();sh.querySelectorAll('[data-skin]').forEach(x=>x.classList.toggle('on',x.dataset.skin===skin));sh.querySelector('#neonbox').hidden=skin!=='none';rerender();});sh.querySelectorAll('[data-icon]').forEach(b=>b.onclick=()=>{iconPick=b.dataset.icon;applyIcon();sh.querySelectorAll('[data-icon]').forEach(x=>x.classList.toggle('on',x.dataset.icon===iconPick));});sh.querySelectorAll('[data-neon]').forEach(b=>b.onclick=()=>{neon=b.dataset.neon;applySkin();sh.querySelectorAll('[data-neon]').forEach(x=>x.classList.toggle('on',x.dataset.neon===neon));rerender();});sh.querySelectorAll('[data-fx]').forEach(b=>b.onclick=()=>{const id=b.dataset.fx;fx=fx.includes(id)?fx.filter(x=>x!==id):[...fx,id];applySkin();b.classList.toggle('on',fx.includes(id));});});}
-$('#skinBtn').onclick=openSettings;$('#lookBtn').onclick=openSkins;$('#syncPill').onclick=refreshNow;applySkin();$('#syncPill').textContent=BUILD;setTimeout(()=>{if(LEDGER)$('#syncPill').textContent='synced '+syncLabel();},4000);
+$('#skinBtn').onclick=openSettings;$('#syncPill').onclick=refreshNow;applySkin();$('#syncPill').textContent=BUILD;setTimeout(()=>{if(LEDGER)$('#syncPill').textContent='synced '+syncLabel();},4000);
 window.addEventListener('error',e=>{log('window',e.message,{at:e.filename+':'+e.lineno});});
 loadAll();
 // re-read on return to the app if the ledger is older than 20 minutes
