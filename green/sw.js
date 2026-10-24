@@ -1,5 +1,5 @@
 // Vault shell cache · network-first for the page, cache-first for icons & manifest
-const V='vault-shell-v1';const SHELL=['./','./index.html','./manifest.webmanifest','./icons/chase.png','./icons/ally.png','./icons/sofi.png','./icons/vault-line.png','./icons/vault-dawn.png','./icons/vault-dusk.png'];
+const V='vault-shell-v2';const SHELL=['./','./index.html','./manifest.webmanifest','./icons/chase.png','./icons/ally.png','./icons/sofi.png','./icons/chase-dark.png','./icons/ally-dark.png','./icons/chase-mark.png','./icons/ally-mark.png','./icons/sofi-mark.png','./icons/vault-v09.png','./icons/vault-v09light.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(V).then(c=>c.addAll(SHELL).catch(()=>{})));self.skipWaiting();});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==V).map(k=>caches.delete(k)))));self.clients.claim();});
 self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET'||u.origin!==location.origin)return;
