@@ -500,7 +500,7 @@ nav .badge{position:absolute;top:2px;right:18%;background:var(--bills);color:#ff
 // Am I Green — the app. Reads the vault through the GitHub API.
 // Data in: data/ledger.json (courier). Decisions out: config/*.json, data/tags.json, data/state.json.
 // ============================================================
-const BUILD='build 142';
+const BUILD='build 143';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const fmt=n=>(n<0?'−':'')+'$'+Math.abs(Math.round(n)).toLocaleString();
 const fmt2=n=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -617,6 +617,8 @@ function rebuild(){HIST=null;window.__logCushion=()=>{try{if(!LEDGER||OFFLINE)re
   const lines=[];BUCKETS.forEach(b=>(b.lines||[]).forEach(l=>lines.push({...l,b:b.id,lane:l.lane||b.lane})));
   const lineByKey=Object.fromEntries(lines.map(l=>[l.key,l]));
   const pendAdj={checking:0,bills:0,savings:0};const pendByAcct={};
+  // Plaid gives a posted charge a new id and points at the pending one it replaces; whatever was tagged on the pending id moves over
+  {let moved=0;(LEDGER.transactions||[]).forEach(p=>{const old=p.pending_transaction_id;if(!p.pending&&old&&TAGS[old]&&!TAGS[p.id]){TAGS[p.id]=TAGS[old];delete TAGS[old];moved++;}});if(moved){log('tags','carried pending → posted',{moved});persist('data/tags.json',TAGS,`tags carried pending → posted: ${moved}`);}}
   txns=[];
   (LEDGER.transactions||[]).forEach(p=>{const lane=acctLane[p.account_id];if(!['checking','bills','savings'].includes(lane))return;const date=parseISO(p.date);if(!date)return;const a=-(p.amount||0);const vkey=String(p.merchant_name||p.name||'').toLowerCase().replace(/\d{2}\/\d{2}/g,'').replace(/[^a-z]/g,'').slice(0,14);const tg0=TAGS[p.id]||{};const base={id:p.id,acct:p.account_id,date,n:(tg0.name&&tg0.name.trim())||p.merchant_name||p.name||'?',n0:p.merchant_name||p.name||'?',meta:Array.isArray(tg0.meta)?tg0.meta:[],raw:p.name,a,lane,st:'posted',pend:!!p.pending,pfc:p.pfc_primary,vkey};
     if(p.pending){pendAdj[lane]+=a;pendByAcct[p.account_id]=(pendByAcct[p.account_id]||0)+a;}
@@ -662,7 +664,7 @@ function rebuild(){HIST=null;window.__logCushion=()=>{try{if(!LEDGER||OFFLINE)re
   if(!qs.get('today')){const red=status()==='red';const gen=LEDGER.generated_at||'';if(red){if(!STATE.redSeen){STATE.redSeen={gen,day:iso(TODAY)};log('streak','red seen once · waiting for the next pull',{gen});persist('data/state.json',STATE,'state: red seen once');}else if(STATE.redSeen.gen!==gen&&STATE.lastRed!==iso(TODAY)){STATE.lastRed=iso(TODAY);STATE.streakSince=iso(TODAY);log('streak','red held across two pulls · streak reset',{first:STATE.redSeen.gen,second:gen});persist('data/state.json',STATE,'state: red day (held across two pulls)');}}else if(STATE.redSeen){log('streak','red cleared before a second pull · streak kept',STATE.redSeen);delete STATE.redSeen;persist('data/state.json',STATE,'state: red cleared');}}
   try{const sc=spokenFor('checking');const f=sc.free,pl=sc.ps.totalLeft;const d=days(TODAY,NEXTPAY);$('#nsStash').textContent=fmt(f+pl);$('#nsStash').className=f<0?'red':'';$('#navstat').className='navstat '+((f+pl)<0?'short':(f+pl)<50?'thin':'');$('#nsPetty').textContent=fmt(pl);$('#nsSt').textContent=fmt(f);$('#nsSt').className=f<0?'red':'';
     // one machine-readable seam for the watchman: what the nav and the top card say, as numbers
-    const u=untagged().sort((a,b)=>b.date-a.date);const since2=addDays(TODAY,-2);const lane_=t=>CONF.lanes[t.lane].n;const row=t=>({id:String(t.id),n:t.n,a:Math.round(t.a*100)/100,lane:lane_(t),date:iso(t.date)});
+    const u=untagged().sort((a,b)=>b.date-a.date);const since2=addDays(TODAY,-2);const lane_=t=>CONF.lanes[t.lane].n;const pidOf={};(LEDGER.transactions||[]).forEach(p=>{if(p.pending_transaction_id)pidOf[p.id]=p.pending_transaction_id;});const row=t=>({id:String(t.id),pid:pidOf[t.id]||null,n:t.n,a:Math.round(t.a*100)/100,lane:lane_(t),date:iso(t.date)});
     const payday=txns.filter(t=>t.st==='posted'&&t.t==='income'&&t.a>0&&same(t.date,TODAY)).map(row);
     const offPulls=txns.filter(t=>t.st==='posted'&&!t.split&&t.a<0&&t.date>=since2&&t.lane==='bills'&&t.exp&&Math.abs(Math.abs(t.a)-t.exp)>2).map(t=>({...row(t),exp:t.exp,b:bname(t.b)}));
     const late=txns.filter(t=>t.st==='planned'&&t.late&&days(t.dueWas,TODAY)>=3).map(t=>({key:t.t+'@'+iso(t.dueWas),n:t.n,a:Math.round(t.a*100)/100,due:iso(t.dueWas),lane:lane_(t)}));
