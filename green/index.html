@@ -7,7 +7,6 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ccircle cx=%2750%27 cy=%2750%27 r=%2740%27 fill=%27%233dffb0%27/%3E%3C/svg%3E">
 <title>Vault</title>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Vault"><link rel="apple-touch-icon" id="touchIcon" href="icons/vault-line.png"><link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
 /* Layout: one-screen phone app. Green (quiet detail + lines), Flow (the runway ledger four ways), Buckets (tiles with the tag queue), Debts (countdown), Plan (spend planner). */
 :root{
@@ -15,7 +14,7 @@
   --checking:#f5b942; --bills:#4f9dff; --savings:#2ee6a6; --red:#ff5c7a; --amber:#ffb34a; --green:#2ee6a6; --violet:#9b7bff;
   --g-free:linear-gradient(90deg,#2ee6a6,#7ff5cf); --g-amber:linear-gradient(90deg,#ffb34a,#ffd28a); --g-red:linear-gradient(90deg,#ff5c7a,#ff8da3);
   --shadow:0 10px 30px rgba(0,0,0,.35);
-  --display:"Manrope",system-ui,-apple-system,sans-serif; --body:"Manrope",system-ui,-apple-system,sans-serif; --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  --display:-apple-system,"SF Pro Display",system-ui,sans-serif; --body:-apple-system,"SF Pro Text",system-ui,sans-serif; --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
   --ease:cubic-bezier(.2,.8,.2,1); --spring:cubic-bezier(.3,1.4,.4,1);
   --r:22px; --r2:18px; --r3:14px; --border:0 solid transparent; --tileglass:none;
   color-scheme:dark;
@@ -498,7 +497,7 @@ nav .badge{position:absolute;top:2px;right:18%;background:var(--bills);color:#ff
 // Am I Green — the app. Reads the vault through the GitHub API.
 // Data in: data/ledger.json (courier). Decisions out: config/*.json, data/tags.json, data/state.json.
 // ============================================================
-const BUILD='build 120';
+const BUILD='build 121';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const fmt=n=>(n<0?'−':'')+'$'+Math.abs(Math.round(n)).toLocaleString();
 const fmt2=n=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -762,10 +761,10 @@ function renderGreen(){
     const labeled=moves.slice().sort((a,b)=>Math.abs(b.net)-Math.abs(a.net)).slice(0,4).map(m=>m.k);
     const fut=pts.slice(7);const minK=7+fut.indexOf(Math.min(...fut));
     let svg=`<svg class="linechart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${lane} 7 days back and 14 ahead"><defs><linearGradient id="g${lane}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${lc}" stop-opacity=".4"/><stop offset="1" stop-color="${lc}" stop-opacity="0"/></linearGradient></defs>`;
-    if(mn<0)svg+=`<line x1="0" y1="${Y(0)}" x2="${W}" y2="${Y(0)}" stroke="var(--red)" stroke-dasharray="3 3"/><text x="${W-2}" y="${Y(0)-3}" text-anchor="end" fill="var(--red)" font-size="10" font-family="JetBrains Mono">zero</text>`;
+    if(mn<0)svg+=`<line x1="0" y1="${Y(0)}" x2="${W}" y2="${Y(0)}" stroke="var(--red)" stroke-dasharray="3 3"/><text x="${W-2}" y="${Y(0)-3}" text-anchor="end" fill="var(--red)" font-size="10" font-family="var(--mono)">zero</text>`;
     svg+=`<polygon points="0,${H-B} ${line} ${W},${H-B}" fill="url(#g${lane})"/>`;
-    dates.forEach((d,k)=>{if(isPaydayDate(d)&&k!==7)svg+=`<line x1="${X(k)}" y1="${T-4}" x2="${X(k)}" y2="${H-B}" stroke="var(--green)" stroke-dasharray="3 3"/><text x="${X(k)}" y="${T-7}" text-anchor="${X(k)>W-60?'end':'middle'}" fill="var(--green)" font-size="10" font-weight="700" font-family="JetBrains Mono">PAYDAY</text>`;});
-    svg+=`<line x1="${X(7)}" y1="${T-4}" x2="${X(7)}" y2="${H-B}" stroke="var(--fg)" stroke-dasharray="3 3"/><text x="${X(7)}" y="${T-7}" text-anchor="middle" fill="var(--fg)" font-size="10" font-weight="700" font-family="JetBrains Mono">TODAY</text>`;
+    dates.forEach((d,k)=>{if(isPaydayDate(d)&&k!==7)svg+=`<line x1="${X(k)}" y1="${T-4}" x2="${X(k)}" y2="${H-B}" stroke="var(--green)" stroke-dasharray="3 3"/><text x="${X(k)}" y="${T-7}" text-anchor="${X(k)>W-60?'end':'middle'}" fill="var(--green)" font-size="10" font-weight="700" font-family="var(--mono)">PAYDAY</text>`;});
+    svg+=`<line x1="${X(7)}" y1="${T-4}" x2="${X(7)}" y2="${H-B}" stroke="var(--fg)" stroke-dasharray="3 3"/><text x="${X(7)}" y="${T-7}" text-anchor="middle" fill="var(--fg)" font-size="10" font-weight="700" font-family="var(--mono)">TODAY</text>`;
     svg+=`<polyline points="${line}" fill="none" stroke="${lc}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" style="stroke-dasharray:1200;stroke-dashoffset:1200;animation:draw 1.4s var(--ease) forwards"/>`;
     moves.forEach(m=>{const col=m.net<0?'var(--red)':'var(--green)';svg+=`<circle class="mv" data-day="${m.d.toDateString()}" cx="${X(m.k)}" cy="${Y(pts[m.k])}" r="6" fill="${col}" stroke="var(--surface)" stroke-width="2" style="cursor:pointer"/>`;});
     
@@ -988,7 +987,7 @@ function renderSpend(){const v=$('#v-spend');if(!LEDGER){v.innerHTML='';return;}
   // 1 · petty, usually
   const halves=[];for(let i=5;i>=0;i--)halves.push(halfBack(i));const hv=halves.map(h=>({h,p:pettyIn(h)}));const done=hv.slice(0,-1).map(x=>x.p.tot).sort((a,b)=>a-b);const typical=done.length?(done.length%2?done[(done.length-1)/2]:(done[done.length/2-1]+done[done.length/2])/2):0;const budget=Object.values(CONF.petty).reduce((a,b)=>a+b,0);const over=hv.filter(x=>x.p.tot>budget+0.5).length;
   const W=340,H=120,T=16,B=16,max=Math.max(budget,...hv.map(x=>x.p.tot))*1.08,gap=W/6,bw=gap*.62,Y=val=>H-B-(val/max)*(H-T-B);const hl=h=>`${MON[h.start.getMonth()]} ${h.start.getDate()<=15?'a':'b'}`;
-  let svg=`<svg class="pbars" viewBox="0 0 ${W} ${H}"><line x1="0" y1="${Y(budget)}" x2="${W}" y2="${Y(budget)}" stroke="var(--fg)" stroke-dasharray="3 3" opacity=".6"/><text x="${W}" y="${Y(budget)-3}" text-anchor="end" fill="var(--muted)" font-size="10" font-family="JetBrains Mono">${fmt(budget)}</text>`;hv.forEach((x,i)=>{const x0=i*gap+(gap-bw)/2;const cur=i===5;const ov=x.p.tot>budget+0.5;svg+=`<g data-half="${i}" style="cursor:pointer"><rect x="${x0}" y="${Y(x.p.tot)}" width="${bw}" height="${Math.max(1,H-B-Y(x.p.tot))}" rx="4" fill="${ov?'var(--red)':'var(--green)'}" opacity="${cur?1:.75}" ${cur?'stroke="var(--fg)" stroke-width="1.5"':''}/><text x="${x0+bw/2}" y="${Y(x.p.tot)-3}" text-anchor="middle" fill="var(--fg)" font-size="9" font-family="JetBrains Mono" font-weight="700">${fmt(x.p.tot)}</text><text x="${x0+bw/2}" y="${H-3}" text-anchor="middle" fill="var(--muted)" font-size="10" font-family="JetBrains Mono">${hl(x.h)}${cur?' ·':''}</text></g>`;});svg+='</svg>';
+  let svg=`<svg class="pbars" viewBox="0 0 ${W} ${H}"><line x1="0" y1="${Y(budget)}" x2="${W}" y2="${Y(budget)}" stroke="var(--fg)" stroke-dasharray="3 3" opacity=".6"/><text x="${W}" y="${Y(budget)-3}" text-anchor="end" fill="var(--muted)" font-size="10" font-family="var(--mono)">${fmt(budget)}</text>`;hv.forEach((x,i)=>{const x0=i*gap+(gap-bw)/2;const cur=i===5;const ov=x.p.tot>budget+0.5;svg+=`<g data-half="${i}" style="cursor:pointer"><rect x="${x0}" y="${Y(x.p.tot)}" width="${bw}" height="${Math.max(1,H-B-Y(x.p.tot))}" rx="4" fill="${ov?'var(--red)':'var(--green)'}" opacity="${cur?1:.75}" ${cur?'stroke="var(--fg)" stroke-width="1.5"':''}/><text x="${x0+bw/2}" y="${Y(x.p.tot)-3}" text-anchor="middle" fill="var(--fg)" font-size="9" font-family="var(--mono)" font-weight="700">${fmt(x.p.tot)}</text><text x="${x0+bw/2}" y="${H-3}" text-anchor="middle" fill="var(--muted)" font-size="10" font-family="var(--mono)">${hl(x.h)}${cur?' ·':''}</text></g>`;});svg+='</svg>';
   const TAGS=pettyTags().filter(k=>hv.some(x=>(x.p.spent[k]||0)>0.5)||(CONF.petty[k]||0)>0);const hl2=h=>`${MON[h.start.getMonth()]} ${h.start.getDate()<=15?'a':'b'}`;const fo=hv.map(x=>x.p.spent.foodout||0),rest=hv.map((x,i)=>x.p.tot-fo[i]);
   const cFrame=(W,H,L,R,T,Bm,max,xl)=>{const Y=v=>T+(1-v/max)*(H-T-Bm);let o='';niceTicks(max,3).forEach(t=>{o+=`<line x1="${L}" y1="${Y(t)}" x2="${W-R}" y2="${Y(t)}" stroke="var(--line)"/><text x="${L-3}" y="${Y(t)+3}" text-anchor="end" fill="var(--muted)" font-size="9">${fmtK(t)}</text>`;});(xl||[]).forEach(([x,l])=>o+=`<text x="${x}" y="${H-3}" text-anchor="middle" fill="var(--muted)" font-size="9">${l}</text>`);return {o,Y};};
   // C07 · heat matrix
