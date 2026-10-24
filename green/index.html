@@ -500,7 +500,7 @@ nav .badge{position:absolute;top:2px;right:18%;background:var(--bills);color:#ff
 // Am I Green — the app. Reads the vault through the GitHub API.
 // Data in: data/ledger.json (courier). Decisions out: config/*.json, data/tags.json, data/state.json.
 // ============================================================
-const BUILD='build 135';
+const BUILD='build 136';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const fmt=n=>(n<0?'−':'')+'$'+Math.abs(Math.round(n)).toLocaleString();
 const fmt2=n=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -616,10 +616,10 @@ function rebuild(){HIST=null;window.__logCushion=()=>{try{if(!LEDGER||OFFLINE)re
   // transactions
   const lines=[];BUCKETS.forEach(b=>(b.lines||[]).forEach(l=>lines.push({...l,b:b.id,lane:l.lane||b.lane})));
   const lineByKey=Object.fromEntries(lines.map(l=>[l.key,l]));
-  const pendAdj={checking:0,bills:0,savings:0};
+  const pendAdj={checking:0,bills:0,savings:0};const pendByAcct={};
   txns=[];
   (LEDGER.transactions||[]).forEach(p=>{const lane=acctLane[p.account_id];if(!['checking','bills','savings'].includes(lane))return;const date=parseISO(p.date);if(!date)return;const a=-(p.amount||0);const vkey=String(p.merchant_name||p.name||'').toLowerCase().replace(/\d{2}\/\d{2}/g,'').replace(/[^a-z]/g,'').slice(0,14);const tg0=TAGS[p.id]||{};const base={id:p.id,acct:p.account_id,date,n:(tg0.name&&tg0.name.trim())||p.merchant_name||p.name||'?',n0:p.merchant_name||p.name||'?',meta:Array.isArray(tg0.meta)?tg0.meta:[],raw:p.name,a,lane,st:'posted',pend:!!p.pending,pfc:p.pfc_primary,vkey};
-    if(p.pending)pendAdj[lane]+=a;
+    if(p.pending){pendAdj[lane]+=a;pendByAcct[p.account_id]=(pendByAcct[p.account_id]||0)+a;}
     const tg=TAGS[p.id];
     if(tg&&tg.split){tg.split.forEach((s,k)=>txns.push({...base,id:p.id+'#'+k,n:base.n+' · '+s.n,a:s.a,b:s.b,t:s.t||s.n.toLowerCase(),split:true,exp:lineByKey[s.t]?lineByKey[s.t].amount:undefined}));return;}
     let b=tg?tg.b:null,t=tg?tg.t:null;if(b==='petty'&&(t==='transportation'||t==='rides'))t='transit';
@@ -633,7 +633,8 @@ function rebuild(){HIST=null;window.__logCushion=()=>{try{if(!LEDGER||OFFLINE)re
     if(autoTagged)persist('data/tags.json',TAGS,`transfers paired: ${autoTagged}`);log('transfers','paired',{paired,autoTagged});}
   // earmarks: money set aside right now, until a matching charge posts or you release it
   {EARMARKS=(STATE.earmarks||[]).filter(e=>!e.done);let changed=false;EARMARKS.forEach(e=>{const since=parseISO(e.at)||TODAY;const hit=txns.find(t=>t.st==='posted'&&!t.split&&t.a<0&&t.lane===(e.lane||'checking')&&t.date>=addDays(since,-1)&&Math.abs(-t.a-e.amt)<=Math.max(2,e.amt*0.03)&&(!e.vendor||(t.n0||t.n).toLowerCase().includes(e.vendor.toLowerCase())));if(hit){e.done=iso(TODAY);e.hitId=hit.id;changed=true;}});if(changed){persist('data/state.json',STATE,'earmark released');EARMARKS=EARMARKS.filter(e=>!e.done);}}
-  BAL={checking:cur.checking+pendAdj.checking,bills:cur.bills+pendAdj.bills,savings:cur.savings+pendAdj.savings};
+  // the bank's available balance already nets its own pending holds; Plaid's pending flags lag the bank by a day or more (a posted payment can still say pending), so only subtract pending rows when the bank gave no available figure
+  {const b={checking:0,bills:0,savings:0};const rows=[];(LEDGER.accounts||[]).forEach(a=>{const l=acctLane[a.account_id];if(b[l]===undefined)return;const pend=pendByAcct[a.account_id]||0;const useAvail=a.available!=null;const v=useAvail?a.available:((a.current==null?0:a.current)+pend);b[l]+=v;rows.push({acct:a.mask||a.name,lane:l,current:a.current,available:a.available,pendingRows:Math.round(pend*100)/100,used:useAvail?'available':'current+pending',bal:Math.round(v*100)/100});});BAL=b;log('balances','per account',rows);}
   // planned: lines → due dates in (TODAY, WIN.to]
   const postedAll=txns.filter(t=>t.st==='posted'&&!t.split);
   const covered=(l,due)=>postedAll.some(t=>Math.abs(days(t.date,due))<=8&&(t.t===l.key||(!t.t&&t.lane===l.lane&&Math.sign(t.a)===-Math.sign(l.amount)&&Math.abs(Math.abs(t.a)-Math.abs(l.amount))<=Math.max(2,Math.abs(l.amount)*0.02))));
