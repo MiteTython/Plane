@@ -411,7 +411,7 @@ nav .badge{position:absolute;top:2px;right:18%;background:var(--bills);color:#ff
 :root[data-look] body{background:transparent}
 /* ── look: swiss ── rules, weight, one red */
 /* ── look: native ── inset groups, system face */
-:root[data-look="native"]{--bg:#000;--surface:#1c1c1e;--surface2:#2c2c2e;--fg:#fff;--muted:#8e8e93;--line:#38383a;--green:#30d158;--red:#ff453a;--amber:#ffd60a;--violet:#bf5af2;--g-free:linear-gradient(90deg,#30d158,#30d158);--g-amber:linear-gradient(90deg,#ffd60a,#ffd60a);--g-red:linear-gradient(90deg,#ff453a,#ff453a);--shadow:none;--r:12px;--r2:10px;--r3:8px;--display:-apple-system,"SF Pro Display",system-ui,sans-serif;--body:-apple-system,"SF Pro Text",system-ui,sans-serif;--mono:-apple-system,"SF Pro Text",system-ui,sans-serif;color-scheme:dark}
+:root[data-look="native"]{--bg:#000;--surface:#1c1c1e;--surface2:#2c2c2e;--fg:#fff;--muted:#8e8e93;--line:#38383a;--green:#30d158;--red:#ff453a;--amber:#ffd60a;--violet:#bf5af2;--g-free:linear-gradient(90deg,#30d158,#30d158);--g-amber:linear-gradient(90deg,#ffd60a,#ffd60a);--g-red:linear-gradient(90deg,#ff453a,#ff453a);--shadow:none;--r:12px;--r2:10px;--r3:8px;color-scheme:dark}
 :root[data-look="native"],:root[data-look="native"] body{background:#000}
 :root[data-look="native"] .card{border:0;padding:14px 16px}
 :root[data-look="native"] .amt,:root[data-look="native"] .big{text-shadow:none;letter-spacing:-.02em;font-weight:700}
@@ -498,7 +498,7 @@ nav .badge{position:absolute;top:2px;right:18%;background:var(--bills);color:#ff
 // Am I Green — the app. Reads the vault through the GitHub API.
 // Data in: data/ledger.json (courier). Decisions out: config/*.json, data/tags.json, data/state.json.
 // ============================================================
-const BUILD='build 119';
+const BUILD='build 120';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const fmt=n=>(n<0?'−':'')+'$'+Math.abs(Math.round(n)).toLocaleString();
 const fmt2=n=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
