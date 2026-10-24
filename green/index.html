@@ -500,7 +500,7 @@ nav .badge{position:absolute;top:2px;right:18%;background:var(--bills);color:#ff
 // Am I Green — the app. Reads the vault through the GitHub API.
 // Data in: data/ledger.json (courier). Decisions out: config/*.json, data/tags.json, data/state.json.
 // ============================================================
-const BUILD='build 137';
+const BUILD='build 138';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const fmt=n=>(n<0?'−':'')+'$'+Math.abs(Math.round(n)).toLocaleString();
 const fmt2=n=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -660,7 +660,9 @@ function rebuild(){HIST=null;window.__logCushion=()=>{try{if(!LEDGER||OFFLINE)re
   if(!STATE.streakSince)STATE.streakSince=CONF.streakSince||iso(TODAY);
   // a red day has to hold across two different ledger pulls before it counts — one bad pull (a stale pending flag, a bank mid-settlement) must not end a streak
   if(!qs.get('today')){const red=status()==='red';const gen=LEDGER.generated_at||'';if(red){if(!STATE.redSeen){STATE.redSeen={gen,day:iso(TODAY)};log('streak','red seen once · waiting for the next pull',{gen});persist('data/state.json',STATE,'state: red seen once');}else if(STATE.redSeen.gen!==gen&&STATE.lastRed!==iso(TODAY)){STATE.lastRed=iso(TODAY);STATE.streakSince=iso(TODAY);log('streak','red held across two pulls · streak reset',{first:STATE.redSeen.gen,second:gen});persist('data/state.json',STATE,'state: red day (held across two pulls)');}}else if(STATE.redSeen){log('streak','red cleared before a second pull · streak kept',STATE.redSeen);delete STATE.redSeen;persist('data/state.json',STATE,'state: red cleared');}}
-  try{const sc=spokenFor('checking');const f=sc.free,pl=sc.ps.totalLeft;const d=days(TODAY,NEXTPAY);$('#nsStash').textContent=fmt(f+pl);$('#nsStash').className=f<0?'red':'';$('#navstat').className='navstat '+((f+pl)<0?'short':(f+pl)<50?'thin':'');$('#nsPetty').textContent=fmt(pl);$('#nsSt').textContent=fmt(f);$('#nsSt').className=f<0?'red':'';}catch(e){}
+  try{const sc=spokenFor('checking');const f=sc.free,pl=sc.ps.totalLeft;const d=days(TODAY,NEXTPAY);$('#nsStash').textContent=fmt(f+pl);$('#nsStash').className=f<0?'red':'';$('#navstat').className='navstat '+((f+pl)<0?'short':(f+pl)<50?'thin':'');$('#nsPetty').textContent=fmt(pl);$('#nsSt').textContent=fmt(f);$('#nsSt').className=f<0?'red':'';
+    // one machine-readable seam for the watchman: what the nav and the top card say, as numbers
+    const u=untagged().sort((a,b)=>b.date-a.date);document.body.dataset.vault=JSON.stringify({status:status(),runway:Math.round(f+pl),petty:Math.round(pl),stash:Math.round(f),pettyDays:Math.max(1,days(TODAY,addDays(PETTY.end,1))),days:d,nextpay:iso(NEXTPAY),bal:{checking:Math.round(BAL.checking),bills:Math.round(BAL.bills),savings:Math.round(BAL.savings)},untagged:u.map(t=>({id:String(t.id),n:t.n,a:Math.round(t.a*100)/100,lane:CONF.lanes[t.lane].n,date:iso(t.date)})),streak:streakNow(),build:BUILD});}catch(e){}
   log('rebuild','ok',{ms:Math.round(performance.now()-t0),txns:txns.length,posted:txns.filter(t=>t.st==='posted').length,planned:txns.filter(t=>t.st==='planned').length,bal:BAL,nextpay:iso(NEXTPAY),window:[iso(WIN.from),iso(WIN.to)]});
 }
 
