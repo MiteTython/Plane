@@ -500,7 +500,7 @@ nav .badge{position:absolute;top:2px;right:18%;background:var(--bills);color:#ff
 // Am I Green — the app. Reads the vault through the GitHub API.
 // Data in: data/ledger.json (courier). Decisions out: config/*.json, data/tags.json, data/state.json.
 // ============================================================
-const BUILD='build 144';
+const BUILD='build 145';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const fmt=n=>(n<0?'−':'')+'$'+Math.abs(Math.round(n)).toLocaleString();
 const fmt2=n=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -1196,7 +1196,7 @@ async function refreshNow(){if(refreshing)return;if(!cfg.token){openSettings();r
 // ============================================================
 const views={green:renderGreen,flow:renderFlow,buckets:renderBuckets,debts:renderDebts,spend:renderSpend};
 function currentTab(){const cur=$$('nav [role=tab]').find(t=>t.getAttribute('aria-selected')==='true');return cur?cur.dataset.v:'green';}
-let JUST_SHOWN=null,CUR_VIEW=null,PUSH_T=null;function show(name){$('#deck').hidden=true;$('#acct').hidden=true;closeSheet();JUST_SHOWN=name;const prev=CUR_VIEW;CUR_VIEW=name;const order=Object.keys(views);const anim=prev&&prev!==name&&!reduced&&views[prev];if(PUSH_T){clearTimeout(PUSH_T);PUSH_T=null;$$('.view').forEach(x=>x.classList.remove('push-in-r','push-in-l','push-out-l','push-out-r','push-top'));}
+let JUST_SHOWN=null,CUR_VIEW=null,PUSH_T=null;function show(name){$('#deck').hidden=true;$('#acct').hidden=true;closeSheet();JUST_SHOWN=name;const prev=CUR_VIEW;CUR_VIEW=name;const order=$$('nav [role=tab]').map(b=>b.dataset.v);const anim=prev&&prev!==name&&!reduced&&views[prev];if(PUSH_T){clearTimeout(PUSH_T);PUSH_T=null;$$('.view').forEach(x=>x.classList.remove('push-in-r','push-in-l','push-out-l','push-out-r','push-top'));}
   Object.keys(views).forEach(k=>{$('#v-'+k).hidden=!(k===name||(anim&&k===prev));});
   $$('nav [role=tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.v===name)));views[name]();const v=$('#v-'+name);if(v&&name!=='flow')v.scrollTop=0;
   if(anim){const dir=order.indexOf(name)>order.indexOf(prev)?1:-1;const ov=$('#v-'+prev);ov.classList.add(dir>0?'push-out-l':'push-out-r');v.classList.add('push-top',dir>0?'push-in-r':'push-in-l');PUSH_T=setTimeout(()=>{ov.hidden=true;ov.classList.remove('push-out-l','push-out-r');v.classList.remove('push-top','push-in-r','push-in-l');PUSH_T=null;},300);}}
