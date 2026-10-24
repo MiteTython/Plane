@@ -500,7 +500,7 @@ nav .badge{position:absolute;top:2px;right:18%;background:var(--bills);color:#ff
 // Am I Green — the app. Reads the vault through the GitHub API.
 // Data in: data/ledger.json (courier). Decisions out: config/*.json, data/tags.json, data/state.json.
 // ============================================================
-const BUILD='build 138';
+const BUILD='build 139';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const fmt=n=>(n<0?'−':'')+'$'+Math.abs(Math.round(n)).toLocaleString();
 const fmt2=n=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -662,7 +662,13 @@ function rebuild(){HIST=null;window.__logCushion=()=>{try{if(!LEDGER||OFFLINE)re
   if(!qs.get('today')){const red=status()==='red';const gen=LEDGER.generated_at||'';if(red){if(!STATE.redSeen){STATE.redSeen={gen,day:iso(TODAY)};log('streak','red seen once · waiting for the next pull',{gen});persist('data/state.json',STATE,'state: red seen once');}else if(STATE.redSeen.gen!==gen&&STATE.lastRed!==iso(TODAY)){STATE.lastRed=iso(TODAY);STATE.streakSince=iso(TODAY);log('streak','red held across two pulls · streak reset',{first:STATE.redSeen.gen,second:gen});persist('data/state.json',STATE,'state: red day (held across two pulls)');}}else if(STATE.redSeen){log('streak','red cleared before a second pull · streak kept',STATE.redSeen);delete STATE.redSeen;persist('data/state.json',STATE,'state: red cleared');}}
   try{const sc=spokenFor('checking');const f=sc.free,pl=sc.ps.totalLeft;const d=days(TODAY,NEXTPAY);$('#nsStash').textContent=fmt(f+pl);$('#nsStash').className=f<0?'red':'';$('#navstat').className='navstat '+((f+pl)<0?'short':(f+pl)<50?'thin':'');$('#nsPetty').textContent=fmt(pl);$('#nsSt').textContent=fmt(f);$('#nsSt').className=f<0?'red':'';
     // one machine-readable seam for the watchman: what the nav and the top card say, as numbers
-    const u=untagged().sort((a,b)=>b.date-a.date);document.body.dataset.vault=JSON.stringify({status:status(),runway:Math.round(f+pl),petty:Math.round(pl),stash:Math.round(f),pettyDays:Math.max(1,days(TODAY,addDays(PETTY.end,1))),days:d,nextpay:iso(NEXTPAY),bal:{checking:Math.round(BAL.checking),bills:Math.round(BAL.bills),savings:Math.round(BAL.savings)},untagged:u.map(t=>({id:String(t.id),n:t.n,a:Math.round(t.a*100)/100,lane:CONF.lanes[t.lane].n,date:iso(t.date)})),streak:streakNow(),build:BUILD});}catch(e){}
+    const u=untagged().sort((a,b)=>b.date-a.date);const since2=addDays(TODAY,-2);const lane_=t=>CONF.lanes[t.lane].n;const row=t=>({id:String(t.id),n:t.n,a:Math.round(t.a*100)/100,lane:lane_(t),date:iso(t.date)});
+    const payday=txns.filter(t=>t.st==='posted'&&t.t==='income'&&t.a>0&&same(t.date,TODAY)).map(row);
+    const offPulls=txns.filter(t=>t.st==='posted'&&!t.split&&t.a<0&&t.date>=since2&&t.lane==='bills'&&t.exp&&Math.abs(Math.abs(t.a)-t.exp)>2).map(t=>({...row(t),exp:t.exp,b:bname(t.b)}));
+    const late=txns.filter(t=>t.st==='planned'&&t.late&&days(t.dueWas,TODAY)>=3).map(t=>({key:t.t+'@'+iso(t.dueWas),n:t.n,a:Math.round(t.a*100)/100,due:iso(t.dueWas),lane:lane_(t)}));
+    let recurring=[];try{recurring=recurringDetect(false).slice(0,5).map(x=>({vkey:x.vkey,n:x.n,amt:Math.round(x.amt*100)/100,months:x.months,n_:x.n_,lane:CONF.lanes[x.lane].n}));}catch(e){}
+    const large=txns.filter(t=>t.st==='posted'&&!t.split&&t.a<=-500&&t.date>=since2&&!t.pair&&!['transfer','lake','stash','float','capone'].includes(t.b)&&!(t.exp&&Math.abs(Math.abs(t.a)-t.exp)<=Math.max(5,t.exp*0.05))).map(t=>({...row(t),b:t.b?bname(t.b):null}));
+    document.body.dataset.vault=JSON.stringify({status:status(),runway:Math.round(f+pl),petty:Math.round(pl),stash:Math.round(f),pettyDays:Math.max(1,days(TODAY,addDays(PETTY.end,1))),days:d,nextpay:iso(NEXTPAY),bal:{checking:Math.round(BAL.checking),bills:Math.round(BAL.bills),savings:Math.round(BAL.savings)},untagged:u.map(row),streak:streakNow(),build:BUILD,generatedAt:LEDGER.generated_at||null,payday,fills:Object.values(FILLS||{}).filter(v=>v>0).length,cushion:Math.round(BAL.bills-fillSum()+(FILLS.cushion||0)),offPulls,late,recurring,large});}catch(e){}
   log('rebuild','ok',{ms:Math.round(performance.now()-t0),txns:txns.length,posted:txns.filter(t=>t.st==='posted').length,planned:txns.filter(t=>t.st==='planned').length,bal:BAL,nextpay:iso(NEXTPAY),window:[iso(WIN.from),iso(WIN.to)]});
 }
 
