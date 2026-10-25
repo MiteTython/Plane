@@ -500,7 +500,7 @@ nav .badge{position:absolute;top:2px;right:18%;background:var(--bills);color:#ff
 // Am I Green — the app. Reads the vault through the GitHub API.
 // Data in: data/ledger.json (courier). Decisions out: config/*.json, data/tags.json, data/state.json.
 // ============================================================
-const BUILD='build 154';
+const BUILD='build 155';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const fmt=n=>(n<0?'−':'')+'$'+Math.abs(Math.round(n)).toLocaleString();
 const fmt2=n=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -942,7 +942,7 @@ function openAcct(lane){const a=$('#acct');a.hidden=false;const s=spokenFor(lane
 // FLOW
 // ============================================================
 const SEEN_LATE=new Set();
-function daySep(d){const y=addDays(TODAY,-1);const l=same(d,TODAY)?'today':same(d,y)?'yesterday':null;return l?`<tr class="dsep"><td colspan="3"><span>${l}</span></td></tr>`:'';}
+function daySep(d){const n=days(d,TODAY);const l=n===0?'today':n===1?'yesterday':n>1&&n<7?dow(d):n>=7?ds(d):null;return l?`<tr class="dsep"><td colspan="3"><span>${l}</span></td></tr>`:'';}
 function tagText(t){return (t.b?tagLabel(t):'').replace(/^[^\p{L}\p{N}$←→]+/u,'').trim();}
 function flowRowHTML(t,b,isLow){const xfer=t.t!=='income'&&(!!t.pair||['transfer','float','lake'].includes(t.b));const cls=[t.st,xfer?'xfer':t.a>0?'pay':'',isLow?'low':'',!t.b&&t.st==='posted'?'untagged':''].join(' ');const tg=t.pair?'':tagText(t);return `<tr class="${cls}" data-tx="${t.st==='posted'?esc(t.id):''}" data-pl="${t.st==='planned'?esc(t.id):''}"><td>${dsh(t.date)}<br><span class="ln">${laneMarkSm(t.lane)}</span></td><td class="it"><span class="nm-edit" data-nm="${t.st==='posted'?esc(t.id):''}">${esc(t.n.length>44?t.n.slice(0,42).trim()+'…':t.n)}</span>${t.n0&&t.n0!==t.n?' <span class="muted" style="font-weight:500">✎</span>':''}${t.pair?` <span class="tag c-${t.pairLane}">${t.a<0?'→':'←'} ${laneMarkSm(t.pairLane)}</span>`:''}${t.pend?' <span class="tag">pending</span>':''}${t.late?` <span class="tag c-amber ${SEEN_LATE.has(t.id)?'':(SEEN_LATE.add(t.id),'pulse2')}">late · due ${ds(t.dueWas)}</span>`:''}${isLow?' <span class="tag low">low</span>':''}${!t.b&&t.st==='posted'?' <span class="tag c-bills">tag</span>':''}${tg||(t.meta&&t.meta.length)?`<span class="sub muted" style="font-weight:500">${esc(tg)}${t.meta&&t.meta.length?(tg?' · ':'')+esc(t.meta.join(' · ')):''}</span>`:''}</td><td class="n amt"><span class="${t.a>0&&!xfer?'c-green':''}">${t.a>0?'+':''}${fmt2(t.a)}</span><span class="aft" style="color:var(--${t.lane})">${fmt2(b[t.lane])}</span></td></tr>`;}
 function flowComp(from,to){to=to||WIN.to;const rows=txns.filter(t=>t.date>=from&&t.date<=to);const start={};['checking','bills','savings'].forEach(l=>{start[l]=BAL[l]-rows.filter(t=>t.lane===l&&t.st==='posted').reduce((s,t)=>s+t.a,0);});const run={...start};const lows={};['checking','bills','savings'].forEach(l=>lows[l]={v:Infinity,i:-1});const comp=rows.map((t,i)=>{run[t.lane]+=t.a;if(t.st==='planned'&&run[t.lane]<lows[t.lane].v)lows[t.lane]={v:run[t.lane],i};return {t,b:{...run}};});return {rows,start,comp,lows};}
