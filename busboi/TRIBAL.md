@@ -37,6 +37,8 @@ URL: https://mitetython.github.io/Plane/busboi/ · one file, `index.html`, no bu
 
 ## Log
 
+- 2026-10-26 · build 6 · via applies in both directions: leaving a via-place (at work → home) plans through MacArthur too, so the Hollis shows as a route from work; direct alternatives (any not touching the via) are merged in, tagged.
+
 - 2026-10-26 · build 5 · CARTO basemaps went key-only mid-morning ("API KEY REQUIRED" tiles) → OSM standard tiles, dark look = CSS invert/hue-rotate on `.leaflet-tile-pane`. `maxTransfers=1` on every plan (Transitous honors it; client filters too) after the router served a 36→57→6 three-bus trip. Routes A · B · C: itineraries grouped by line signature (72/72M/72L fold to one corridor), each route shown by its soonest makeable departure; main = soonest route or the picked one; picks are by signature so they survive refresh; `then` = later departures of the shown route. Pin labels auto-side.
 
 - 2026-10-26 · build 4 · the map: Leaflet 1.9.4 off cdnjs (loaded lazily), CARTO dark_all/light_all tiles following the look, leg geometry decoded from MOTIS `legGeometry` (encoded polyline, stated precision; straight line on mismatch), walk dotted, ride in the line's color, on/off pins with labels (tap → Apple Maps), green dot at the door, live blue dot via watchPosition while Home is visible. The Leaflet node is carried across the 30 s re-render (`#map-slot` swap + invalidateSize) and only redrawn when the itinerary key changes. `open in Apple Maps` pill = `maps.apple.com/?saddr=&daddr=&dirflg=r` (transit directions; Apple picks its own itinerary). Return trips: no map (his call).

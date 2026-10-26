@@ -130,7 +130,7 @@ html.looking,html.looking *{transition:background-color .3s ease,color .3s ease,
 /* =====================================================================
    SLOT 1 — APP
    ===================================================================== */
-const BUILD = 'build 5';
+const BUILD = 'build 6';
 const APP = { key:'busboi', name:'busboi', answer:'how many minutes until you walk out the door' };
 
 /* =====================================================================
@@ -264,10 +264,12 @@ function decodeGeom(g, a, b){
 
 /* a place with a `via` stop plans through it (his way); the fastest direct trip rides along, tagged, so it can be taken instead */
 async function planWay(from,to,when,n){
-  if(!to.via) return plan(from,to,when,false,n);
-  const [mine,direct]=await Promise.all([plan(from,to,when,false,n,to.via), plan(from,to,when,false,2).catch(e=>{log('plan direct',e.message);return [];})]);
-  const d=direct.find(it=>!it.legs.some(l=>!l.walk&&/macarthur/i.test(l.from)&&to.via.includes('macarthur')));
-  if(d){ d.direct=true; const dup=mine.some(m=>Math.abs(m.start-d.start)<60000&&firstVehicle(m)&&firstVehicle(d)&&firstVehicle(m).line===firstVehicle(d).line); if(!dup) mine.push(d); }
+  const via=to.via||from.via||null;                 // his way applies leaving a via-place as well as arriving at one
+  if(!via) return plan(from,to,when,false,n);
+  const [mine,direct]=await Promise.all([plan(from,to,when,false,n,via), plan(from,to,when,false,3).catch(e=>{log('plan direct',e.message);return [];})]);
+  const viaName=((to.via?to.viaName:from.viaName)||'').toLowerCase();
+  const throughVia=it=>it.legs.some(l=>!l.walk&&viaName&&(l.from.toLowerCase().includes(viaName)||l.to.toLowerCase().includes(viaName)));
+  for(const d of direct){ if(throughVia(d)) continue; d.direct=true; const dup=mine.some(m=>m.sig===d.sig&&Math.abs(m.start-d.start)<60000); if(!dup) mine.push(d); }
   return mine.sort((a,b)=>a.start-b.start);
 }
 async function planRound(from,to,when){
