@@ -1,0 +1,15 @@
+{
+ "name": "busboi",
+ "short_name": "busboi",
+ "id": "/Plane/busboi/",
+ "start_url": "/Plane/busboi/",
+ "scope": "/Plane/busboi/",
+ "display": "standalone",
+ "orientation": "portrait",
+ "background_color": "#000000",
+ "theme_color": "#000000",
+ "icons": [
+  { "src": "/Plane/busboi/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+  { "src": "/Plane/busboi/icons/icon-180.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
+ ]
+}
