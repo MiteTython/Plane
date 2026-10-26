@@ -36,6 +36,8 @@ URL: https://mitetython.github.io/Plane/busboi/ · one file, `index.html`, no bu
 
 ## Log
 
+- 2026-10-26 · build 3 · fixed return planning when standing at a known place (origin lost its kind/id → home→home → empty); vehicle legs read `on at X · off at Y`, both Apple Maps links (`maps.apple.com/?q=&ll=`); the then-list became tappable `rides` chips — tap one and the big number follows it, tap again for auto; picks reset on every fetch.
+
 - 2026-10-26 · build 2 · via stops (his way through MacArthur for work and Bay Street), direct alternative tagged, Emery Go-Round naming cleanup, via field on add-place.
 
 - 2026-10-26 · build 1 · scaffold, Transitous, five places, home number + comparison, legs, stacked return, place rows with their own minutes, settings/log/reload, add-place via Nominatim.

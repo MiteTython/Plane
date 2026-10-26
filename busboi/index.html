@@ -65,6 +65,10 @@ body{background:var(--bg);color:var(--fg);font:16px/1.4 var(--font);-webkit-text
 .ritin .l1{display:flex;justify-content:space-between;gap:8px;align-items:center}.ritin .l1>span:first-child{flex:1;min-width:0}.ritin .l1>span:last-child{white-space:nowrap}
 .ritin .l2{font:12px/1.5 var(--mono);color:var(--muted)}
 .strip{display:inline-block;width:3px;height:14px;border-radius:2px;vertical-align:-2px;margin-right:6px}
+a.ml{color:var(--fg);text-decoration:underline dotted var(--muted);text-underline-offset:3px}.leg .l2 a.ml{color:var(--fg)}
+.rides{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;align-items:center}.rides .eyebrow{margin-right:2px}
+.ride{font:11px/1 var(--mono);padding:7px 9px;border-radius:999px;border:1px solid var(--line);background:var(--surface2);color:var(--fg);min-height:28px;display:inline-flex;align-items:center;gap:5px}
+.ride.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}.ride.on .a{color:var(--bg)}
 /* places */
 .prow{display:flex;justify-content:space-between;align-items:center;min-height:48px;border-bottom:1px solid var(--line);gap:10px;-webkit-user-select:none;user-select:none}
 .prow:last-child{border-bottom:0}.prow.on .nm{color:var(--fg);font-weight:600}.prow .nm{color:var(--fg)}
@@ -116,7 +120,7 @@ html.looking,html.looking *{transition:background-color .3s ease,color .3s ease,
 /* =====================================================================
    SLOT 1 — APP
    ===================================================================== */
-const BUILD = 'build 2';
+const BUILD = 'build 3';
 const APP = { key:'busboi', name:'busboi', answer:'how many minutes until you walk out the door' };
 
 /* =====================================================================
@@ -223,7 +227,7 @@ function normItin(it){
     const hs=(l.headsign||'').trim(); const headsign=hs.toLowerCase()===line.toLowerCase()?'':hs;
     const clean=s=>(s||'').replace(/\s*\((Timepoint)\)\s*/i,'').replace(/\s+(NB|SB|EB|WB)$/,'');
     return { walk, mode:l.mode, line, headsign, color:l.routeColor?'#'+l.routeColor:null, bart:isBart, agency:l.agencyName||'',
-      from:clean(l.from.name), fromId:l.from.stopId||null, to:clean(l.to.name), toId:l.to.stopId||null,
+      from:clean(l.from.name), fromId:l.from.stopId||null, fromLL:[l.from.lat,l.from.lon], to:clean(l.to.name), toId:l.to.stopId||null, toLL:[l.to.lat,l.to.lon],
       start:new Date(l.startTime), end:new Date(l.endTime), live:!!l.realTime, dist:Math.round(l.distance||0), dur:Math.round(((new Date(l.endTime))-(new Date(l.startTime)))/60000),
       dir: walk?null:bound(bearing({lat:l.from.lat,lon:l.from.lon},{lat:l.to.lat,lon:l.to.lon})) };
   });
@@ -243,8 +247,8 @@ async function planRound(from,to,when){
   let backAt;
   if(to.kind==='work'){ backAt=clockToday(cfg.workReturn||CONF.workReturn); if(backAt<new Date()) backAt=new Date(); }
   else { const arr=there[0]?there[0].end:when; backAt=new Date(arr.getTime()+CONF.returnStay*60000); }
-  const dest=from.kind?from:place('home');
-  const back=await plan(to,dest,backAt,false,3,to.via||null);
+  const dest=from.id?place(from.id):place('home');            // back to where you started if that's a known place, else home
+  const back=await plan(to,dest,backAt,false,3,to.via||dest.via||null);
   return { there, back, backAt };
 }
 
@@ -254,13 +258,13 @@ async function rebuild(opts={}){
     const now=new Date();
     const here=await stageA('locate',()=>locate(),o=>o?{acc:o.acc}:'none');
     let origin, at=null;
-    if(here){ const n=nearest(here); if(n.d<=CONF.near){ at=n.place; } origin={...here,name:at?at.name:'here'}; }
+    if(here){ const n=nearest(here); if(n.d<=CONF.near){ at=n.place; } origin={...here,name:at?at.name:'here',kind:at?at.kind:null,id:at?at.id:null,via:at?at.via:null}; }
     else { origin={...place('home')}; flag('warn','location off · assuming home'); at=place('home'); }
     MODEL.here=here; MODEL.at=at; MODEL.origin=origin;
     const dest=opts.dest?place(opts.dest):guessDest(at);
     MODEL.dest=dest; MODEL.guessed=!opts.dest;
     const main=await stageA('plan main',()=>planRound(origin,dest,now),o=>({there:o.there.length,back:o.back.length}));
-    MODEL.trips={}; MODEL.trips[dest.id]=main; MODEL.fetched=new Date();
+    MODEL.trips={}; MODEL.trips[dest.id]=main; MODEL.fetched=new Date(); PICK={};   // a fresh fetch reorders the list; picks don't survive it
     try{ localStorage.setItem(APP.key+'-snap',JSON.stringify({at:MODEL.fetched,dest:dest.id,main})); }catch(e){}
     render();
     // the other places, one plan each, so every row carries its own minutes
@@ -287,11 +291,14 @@ const ampm=d=>d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}).toLowe
 function minsUntil(d){ return Math.round((d-new Date())/60000); }
 function timeAgo(d){ const m=Math.round((new Date()-d)/60000); return m<1?'just now':m<60?m+' min ago':Math.round(m/60)+'hr ago'; }
 
+function mapLink(name,ll){ if(!ll||ll[0]==null) return name; return `<a class="ml" href="https://maps.apple.com/?q=${encodeURIComponent(name)}&ll=${ll[0]},${ll[1]}" target="_blank" rel="noopener">${name}</a>`; }
 function legHTML(l){
-  if(l.walk) return `<div class="leg walk"><div><div class="l1">walk ${l.dur} min<span class="dim">· to ${l.to==='END'?'the door':l.to}</span></div><div class="l2">${l.dist} m</div></div></div>`;
+  if(l.walk) return `<div class="leg walk"><div><div class="l1">walk ${l.dur} min<span class="dim">· to ${l.to==='END'?'the door':mapLink(l.to,l.toLL)}</span></div><div class="l2">${l.dist} m</div></div></div>`;
   const col=l.color||'var(--blue)';
   const name=l.bart?`<span class="dot" style="background:${col}"></span><b>${lineName(l)}</b>`:`<b>${lineName(l)}</b>`;
-  return `<div class="leg" style="border-left-color:${col}"><div style="flex:1"><div class="l1">${name} <span class="tpill">${hhmm(l.start)}</span><span class="dim">→ ${hhmm(l.end)}</span></div><div class="l2">${l.from}${l.dir?' · '+l.dir:''} · ${l.live?'<span class="g">live</span>':'scheduled'}</div></div></div>`;
+  return `<div class="leg" style="border-left-color:${col}"><div style="flex:1"><div class="l1">${name} <span class="tpill">${hhmm(l.start)}</span><span class="dim">→ ${hhmm(l.end)}</span></div>
+    <div class="l2"><span class="dim">on at</span> ${mapLink(l.from,l.fromLL)}${l.dir?' · '+l.dir:''} · ${l.live?'<span class="g">live</span>':'scheduled'}</div>
+    <div class="l2"><span class="dim">off at</span> ${mapLink(l.to,l.toLL)} · ${hhmm(l.end)}</div></div></div>`;
 }
 function cap(s){ return s? s[0].toUpperCase()+s.slice(1).toLowerCase():s; }
 function lineName(l){ const ln=l.bart?cap(l.line):l.line; return l.headsign?`${ln} · ${l.headsign}`:ln; }
@@ -299,12 +306,15 @@ function firstVehicle(it){ return it.legs.find(l=>!l.walk); }
 function itinLine(it){ const v=firstVehicle(it); if(!v) return `walk ${it.min} min`; return `${v.bart?`<span class="dot" style="background:${v.color};width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:4px"></span>`:''}${lineName(v)} <span class="tpill mu">${hhmm(v.start)}</span>`; }
 function vehLabel(it){ const v=firstVehicle(it); return (v?`${v.bart?cap(v.line):v.line} ${hhmm(v.start)}`:hhmm(it.start))+(it.direct?' <span class="a">direct</span>':''); }
 
-function pickMakeable(its){
-  const list=(its||[]).map(it=>({it,lead:minsUntil(it.start)})).filter(x=>x.lead>=-1);
-  const main=list.find(x=>x.lead>=CONF.slack)||list[0]||null;
+let PICK={};                                   // dest id → index into its itineraries, when the user chose a ride
+function pickMakeable(its,destId){
+  const list=(its||[]).map((it,i)=>({it,i,lead:minsUntil(it.start)})).filter(x=>x.lead>=-1);
+  const auto=list.find(x=>x.lead>=CONF.slack)||list[0]||null;
+  const chosen=destId!=null&&PICK[destId]!=null?list.find(x=>x.i===PICK[destId]):null;
+  const main=chosen||auto;
   const next=main?list.find(x=>x.it!==main.it&&x.lead>main.lead):null;
   const later=list.filter(x=>x!==main&&x!==next&&x.lead>(main?main.lead:0)).slice(0,2);
-  return {main,next,later};
+  return {main,next,later,list,chosen:!!chosen};
 }
 
 const SCREENS={
@@ -314,7 +324,7 @@ const SCREENS={
     let top='';
     if(MODEL.loading&&!src){ top=`<div class="card"><div class="eyebrow">leave in</div><div class="big dim">…</div><div class="empty">finding the way to ${dest?dest.name:'…'}</div></div>`; }
     else if(src){
-      const {main,next,later}=pickMakeable(src.there);
+      const {main,next,later,list,chosen}=pickMakeable(src.there,dest.id);
       const stale=MODEL.fetched?Math.round((new Date()-MODEL.fetched)/60000):99;
       const dotc=MODEL.error?'c-red':stale>=CONF.staleMin?'c-amber':'';
       const verdict=MODEL.error?'offline':stale>=CONF.staleMin?'stale':'green';
@@ -325,13 +335,13 @@ const SCREENS={
         const sent=v?`for the <b>${v.bart?cap(v.line):v.line}</b> at ${hhmm(v.start)}${main.it.legs[0].walk?` · walk ${main.it.legs[0].dur} min`:''}${main.it.direct?' · direct':''}`:`walk the whole way, ${main.it.min} min`;
         const cmp=next?`or ${next.lead} min for the ${vehLabel(next.it)}.`:'';
         top=`<div class="card" data-go="trip">
-          <div class="eyebrow">leave in · to ${dest.name}${dest.viaName&&!main.it.direct?' · via '+dest.viaName:''}${MODEL.guessed?'':' · tapped'}</div>
+          <div class="eyebrow">leave in · to ${dest.name}${dest.viaName&&!main.it.direct?' · via '+dest.viaName:''}${chosen?' · your pick':''}</div>
           <div class="big ${cls}" id="bignum">${lead<=0?'now':lead}</div>
           ${capt(`${sent}, arrive ${ampm(main.it.end)}.`,cmp)}
           ${pillsHTML(dotc,verdict)}
         </div>
         <div class="card"><div class="eyebrow">there</div>${main.it.legs.map(legHTML).join('')}
-          ${(next||later.length)?`<div class="kv" style="margin-top:10px"><span>then</span>${[next,...later].filter(Boolean).map(x=>`<span>${vehLabel(x.it)}</span>`).join('')}</div>`:''}
+          ${list.length>1?`<div class="rides"><span class="eyebrow">rides</span>${list.map(x=>`<button class="ride ${x.it===main.it?'on':''}" data-ride="${x.i}">${vehLabel(x.it)} <span class="${x.it===main.it?'':'dim'}">· ${x.it.min}m</span></button>`).join('')}</div>`:''}
         </div>`;
         if(src.back){
           top+=`<div class="card"><div class="eyebrow">back · from ${ampm(new Date(src.backAt))}</div>${src.back.length?src.back.map(it=>{const w=it.legs[0].walk?it.legs[0].dur:0;const v=firstVehicle(it);return `<div class="ritin"><div class="l1"><span>${itinLine(it)}</span><span class="mono dim">${it.min} min</span></div><div class="l2">${w?`walk ${w} · `:''}${v?`${v.from}${v.dir?' · '+v.dir:''}`:''}${it.transfers?` · ${it.transfers} change${it.transfers>1?'s':''}`:''} · arrive ${ampm(it.end)}</div></div>`;}).join(''):'<div class="empty">no way back found from there</div>'}</div>`;
@@ -350,7 +360,7 @@ function placesHTML(){
   const rows=places().filter(p=>!(MODEL.at&&p.id===MODEL.at.id)).map(p=>{
     const t=MODEL.trips[p.id]; const on=MODEL.dest&&p.id===MODEL.dest.id;
     let m='<span class="dim">…</span>', sub='';
-    if(t&&t.there){ const {main}=pickMakeable(t.there); if(main){ m=`${main.lead<=0?'now':main.lead}<small>min</small>`; const v=firstVehicle(main.it); sub=v?`${lineName(v)} ${hhmm(v.start)} · ${main.it.min} min`:`walk ${main.it.min} min`; } else { m='<span class="dim">—</span>'; sub='nothing running'; } }
+    if(t&&t.there){ const {main}=pickMakeable(t.there,p.id); if(main){ m=`${main.lead<=0?'now':main.lead}<small>min</small>`; const v=firstVehicle(main.it); sub=v?`${lineName(v)} ${hhmm(v.start)} · ${main.it.min} min`:`walk ${main.it.min} min`; } else { m='<span class="dim">—</span>'; sub='nothing running'; } }
     else if(!MODEL.loading&&!t){ m='<span class="dim">—</span>'; }
     return `<div class="prow ${on?'on':''}" data-place="${p.id}"><div><div class="nm">${p.name}</div><div class="sub">${sub}</div></div><div class="mins">${m}</div></div>`;
   }).join('');
@@ -413,11 +423,12 @@ function render(){
   const v=document.getElementById('view');
   v.innerHTML=SCREENS[TAB]();
   v.querySelectorAll('[data-place]').forEach(el=>el.onclick=()=>{ rebuild({dest:el.dataset.place}); });
+  v.querySelectorAll('[data-ride]').forEach(el=>el.onclick=e=>{ e.stopPropagation(); const i=+el.dataset.ride; if(PICK[MODEL.dest.id]===i) delete PICK[MODEL.dest.id]; else PICK[MODEL.dest.id]=i; log('ride pick',{dest:MODEL.dest.id,i:PICK[MODEL.dest.id]??'auto'}); render(); });
   v.querySelectorAll('[data-refresh]').forEach(el=>el.onclick=e=>{ e.stopPropagation(); rebuild(MODEL.guessed?{}:{dest:MODEL.dest.id}); });
   v.querySelectorAll('[data-go=settings]').forEach(el=>el.onclick=e=>{ e.stopPropagation(); go('settings'); });
   const big=v.querySelector('#bignum'); if(big&&document.body.classList.contains('boot')&&!big.dataset.counted){ const n=parseInt(big.textContent); if(!isNaN(n)){ big.dataset.counted='1'; countTo(big,n); } }
   // nav
-  const dest=MODEL.dest, trip=dest?MODEL.trips[dest.id]:null; const pk=trip?pickMakeable(trip.there):null; const lead=pk&&pk.main?pk.main.lead:null;
+  const dest=MODEL.dest, trip=dest?MODEL.trips[dest.id]:null; const pk=trip?pickMakeable(trip.there,dest.id):null; const lead=pk&&pk.main?pk.main.lead:null;
   const cls=lead==null?'':lead<=0?'short':lead<=CONF.slack?'thin':'';
   document.getElementById('nav').innerHTML=NAV.map(k=>`<button class="${k===TAB?'on':''}" aria-label="${k}" onclick="go('${k}')">${I[k==='home'?'home':'gear']}</button>`).join('')+
     `<button class="navstat ${cls}" aria-label="status" onclick="go('home')"><div><span>leave</span><span>${lead==null?'~':lead<=0?'now':lead+'m'}</span></div><div><span>to</span><span>${dest?dest.name:'—'}</span></div><div><span>as of</span><span>${MODEL.fetched?hhmm(MODEL.fetched):'—'}</span></div></button>`;
