@@ -116,7 +116,7 @@ html.looking,html.looking *{transition:background-color .3s ease,color .3s ease,
 /* =====================================================================
    SLOT 1 — APP
    ===================================================================== */
-const BUILD = 'build 1';
+const BUILD = 'build 2';
 const APP = { key:'busboi', name:'busboi', answer:'how many minutes until you walk out the door' };
 
 /* =====================================================================
@@ -174,9 +174,9 @@ const CONF = {
   staleMin: 2,
   places: [
     { id:'home', name:'home',        lat:37.8170452, lon:-122.2668369, kind:'home' },
-    { id:'work', name:'work',        lat:37.8521029, lon:-122.2913494, kind:'work' },
+    { id:'work', name:'work',        lat:37.8521029, lon:-122.2913494, kind:'work', via:'us-ca-SF-bayarea_mtc:macarthur-bart', viaName:'MacArthur' },
     { id:'glk',  name:'grand lake',  lat:37.8115985, lon:-122.2473411, exit:15 },
-    { id:'bay',  name:'bay street',  lat:37.8396033, lon:-122.2935359, exit:30 },
+    { id:'bay',  name:'bay street',  lat:37.8396033, lon:-122.2935359, exit:30, via:'us-ca-SF-bayarea_mtc:macarthur-bart', viaName:'MacArthur' },
     { id:'pied', name:'piedmont',    lat:37.827341,  lon:-122.250797,  exit:15 },
   ],
 };
@@ -203,14 +203,14 @@ function nearest(pt){ let best=null,bd=1e9; for(const p of places()){ const d=ha
 function guessDest(at){ if(!at) return place('work'); if(at.kind==='home') return place('work'); return place('home'); }
 function clockToday(hhmm, dayOffset=0){ const [h,m]=hhmm.split(':').map(Number); const d=new Date(); d.setDate(d.getDate()+dayOffset); d.setHours(h,m,0,0); return d; }
 
-async function plan(from,to,when,arriveBy,n){
-  const u=`${CONF.router}/plan?fromPlace=${from.lat},${from.lon}&toPlace=${to.lat},${to.lon}&time=${when.toISOString()}&arriveBy=${!!arriveBy}&numItineraries=${n||CONF.nItin}&maxPreTransitTime=${CONF.walkMax}&maxPostTransitTime=${CONF.walkMax}`;
+async function plan(from,to,when,arriveBy,n,via){
+  const u=`${CONF.router}/plan?fromPlace=${from.lat},${from.lon}&toPlace=${to.lat},${to.lon}&time=${when.toISOString()}&arriveBy=${!!arriveBy}&numItineraries=${n||CONF.nItin}&maxPreTransitTime=${CONF.walkMax}&maxPostTransitTime=${CONF.walkMax}${via?'&via='+encodeURIComponent(via):''}`;
   const t0=performance.now();
   const r=await fetch(u,{cache:'no-store'});
   if(!r.ok) fail('plan',`2xx`,`${r.status} ${(await r.text()).slice(0,120)}`);
   const j=await r.json();
   const its=(j.itineraries||[]).map(normItin).sort((a,b)=>a.start-b.start);
-  log('plan',{from:from.name||'here',to:to.name,when:when.toISOString().slice(11,16),arriveBy:!!arriveBy,n:its.length,ms:Math.round(performance.now()-t0)});
+  log('plan',{from:from.name||'here',to:to.name,via:via||null,when:when.toISOString().slice(11,16),arriveBy:!!arriveBy,n:its.length,ms:Math.round(performance.now()-t0)});
   if(!its.length) flag('warn',`no route ${from.name||'from here'} → ${to.name} right now`);
   return its;
 }
@@ -220,20 +220,31 @@ function normItin(it){
     const rt=l.routeShortName||'';
     const isBart=/bart/i.test(l.agencyName||'')||l.mode==='SUBWAY';
     const line=isBart?rt.replace(/-(N|S)$/,''):rt;
-    return { walk, mode:l.mode, line, headsign:l.headsign||'', color:l.routeColor?'#'+l.routeColor:null, bart:isBart, agency:l.agencyName||'',
-      from:l.from.name, fromId:l.from.stopId||null, to:l.to.name, toId:l.to.stopId||null,
+    const hs=(l.headsign||'').trim(); const headsign=hs.toLowerCase()===line.toLowerCase()?'':hs;
+    const clean=s=>(s||'').replace(/\s*\((Timepoint)\)\s*/i,'').replace(/\s+(NB|SB|EB|WB)$/,'');
+    return { walk, mode:l.mode, line, headsign, color:l.routeColor?'#'+l.routeColor:null, bart:isBart, agency:l.agencyName||'',
+      from:clean(l.from.name), fromId:l.from.stopId||null, to:clean(l.to.name), toId:l.to.stopId||null,
       start:new Date(l.startTime), end:new Date(l.endTime), live:!!l.realTime, dist:Math.round(l.distance||0), dur:Math.round(((new Date(l.endTime))-(new Date(l.startTime)))/60000),
       dir: walk?null:bound(bearing({lat:l.from.lat,lon:l.from.lon},{lat:l.to.lat,lon:l.to.lon})) };
   });
   return { start:new Date(it.startTime), end:new Date(it.endTime), min:Math.round(it.duration/60), transfers:it.transfers, legs, live:legs.some(l=>l.live) };
 }
+/* a place with a `via` stop plans through it (his way); the fastest direct trip rides along, tagged, so it can be taken instead */
+async function planWay(from,to,when,n){
+  if(!to.via) return plan(from,to,when,false,n);
+  const [mine,direct]=await Promise.all([plan(from,to,when,false,n,to.via), plan(from,to,when,false,2).catch(e=>{log('plan direct',e.message);return [];})]);
+  const d=direct.find(it=>!it.legs.some(l=>!l.walk&&/macarthur/i.test(l.from)&&to.via.includes('macarthur')));
+  if(d){ d.direct=true; const dup=mine.some(m=>Math.abs(m.start-d.start)<60000&&firstVehicle(m)&&firstVehicle(d)&&firstVehicle(m).line===firstVehicle(d).line); if(!dup) mine.push(d); }
+  return mine.sort((a,b)=>a.start-b.start);
+}
 async function planRound(from,to,when){
-  const there=await plan(from,to,when,false);
+  const there=await planWay(from,to,when);
   // return list: work → fixed clock; else arrival + stay
   let backAt;
   if(to.kind==='work'){ backAt=clockToday(cfg.workReturn||CONF.workReturn); if(backAt<new Date()) backAt=new Date(); }
   else { const arr=there[0]?there[0].end:when; backAt=new Date(arr.getTime()+CONF.returnStay*60000); }
-  const back=await plan(to,from.kind?from:place('home'),backAt,false,3);
+  const dest=from.kind?from:place('home');
+  const back=await plan(to,dest,backAt,false,3,to.via||null);
   return { there, back, backAt };
 }
 
@@ -253,7 +264,7 @@ async function rebuild(opts={}){
     try{ localStorage.setItem(APP.key+'-snap',JSON.stringify({at:MODEL.fetched,dest:dest.id,main})); }catch(e){}
     render();
     // the other places, one plan each, so every row carries its own minutes
-    await stageA('plan others',async()=>{ let k=0; for(const p of places()){ if(p.id===dest.id||(at&&p.id===at.id)) continue; try{ const its=await plan(origin,p,new Date(),false,2); MODEL.trips[p.id]={there:its,back:null}; k++; }catch(e){ log('plan others',p.id+' '+e.message); } render(); } return {planned:k}; });
+    await stageA('plan others',async()=>{ let k=0; for(const p of places()){ if(p.id===dest.id||(at&&p.id===at.id)) continue; try{ const its=await planWay(origin,p,new Date(),2); MODEL.trips[p.id]={there:its,back:null}; k++; }catch(e){ log('plan others',p.id+' '+e.message); } render(); } return {planned:k}; });
   }catch(e){
     MODEL.error=e.message;
     try{ const s=JSON.parse(localStorage.getItem(APP.key+'-snap')||'null'); if(s){ MODEL.snap=s; flag('bad',`offline · showing ${timeAgo(new Date(s.at))}`); } }catch(x){}
@@ -279,13 +290,14 @@ function timeAgo(d){ const m=Math.round((new Date()-d)/60000); return m<1?'just 
 function legHTML(l){
   if(l.walk) return `<div class="leg walk"><div><div class="l1">walk ${l.dur} min<span class="dim">· to ${l.to==='END'?'the door':l.to}</span></div><div class="l2">${l.dist} m</div></div></div>`;
   const col=l.color||'var(--blue)';
-  const name=l.bart?`<span class="dot" style="background:${col}"></span><b>${cap(l.line)} · ${l.headsign}</b>`:`<b>${l.line} · ${l.headsign}</b>`;
+  const name=l.bart?`<span class="dot" style="background:${col}"></span><b>${lineName(l)}</b>`:`<b>${lineName(l)}</b>`;
   return `<div class="leg" style="border-left-color:${col}"><div style="flex:1"><div class="l1">${name} <span class="tpill">${hhmm(l.start)}</span><span class="dim">→ ${hhmm(l.end)}</span></div><div class="l2">${l.from}${l.dir?' · '+l.dir:''} · ${l.live?'<span class="g">live</span>':'scheduled'}</div></div></div>`;
 }
 function cap(s){ return s? s[0].toUpperCase()+s.slice(1).toLowerCase():s; }
+function lineName(l){ const ln=l.bart?cap(l.line):l.line; return l.headsign?`${ln} · ${l.headsign}`:ln; }
 function firstVehicle(it){ return it.legs.find(l=>!l.walk); }
-function itinLine(it){ const v=firstVehicle(it); if(!v) return `walk ${it.min} min`; return `${v.bart?`<span class="dot" style="background:${v.color};width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:4px"></span>`:''}${v.bart?cap(v.line):v.line} · ${v.headsign} <span class="tpill mu">${hhmm(v.start)}</span>`; }
-function vehLabel(it){ const v=firstVehicle(it); return v?`${v.bart?cap(v.line):v.line} ${hhmm(v.start)}`:hhmm(it.start); }
+function itinLine(it){ const v=firstVehicle(it); if(!v) return `walk ${it.min} min`; return `${v.bart?`<span class="dot" style="background:${v.color};width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:4px"></span>`:''}${lineName(v)} <span class="tpill mu">${hhmm(v.start)}</span>`; }
+function vehLabel(it){ const v=firstVehicle(it); return (v?`${v.bart?cap(v.line):v.line} ${hhmm(v.start)}`:hhmm(it.start))+(it.direct?' <span class="a">direct</span>':''); }
 
 function pickMakeable(its){
   const list=(its||[]).map(it=>({it,lead:minsUntil(it.start)})).filter(x=>x.lead>=-1);
@@ -310,10 +322,10 @@ const SCREENS={
       else{
         const lead=main.lead; const cls=lead<=0?'now':lead<=CONF.slack?'thin':'';
         const v=firstVehicle(main.it);
-        const sent=v?`for the <b>${v.bart?cap(v.line):v.line}</b> at ${hhmm(v.start)}${main.it.legs[0].walk?` · walk ${main.it.legs[0].dur} min`:''}`:`walk the whole way, ${main.it.min} min`;
+        const sent=v?`for the <b>${v.bart?cap(v.line):v.line}</b> at ${hhmm(v.start)}${main.it.legs[0].walk?` · walk ${main.it.legs[0].dur} min`:''}${main.it.direct?' · direct':''}`:`walk the whole way, ${main.it.min} min`;
         const cmp=next?`or ${next.lead} min for the ${vehLabel(next.it)}.`:'';
         top=`<div class="card" data-go="trip">
-          <div class="eyebrow">leave in · to ${dest.name}${MODEL.guessed?'':' · tapped'}</div>
+          <div class="eyebrow">leave in · to ${dest.name}${dest.viaName&&!main.it.direct?' · via '+dest.viaName:''}${MODEL.guessed?'':' · tapped'}</div>
           <div class="big ${cls}" id="bignum">${lead<=0?'now':lead}</div>
           ${capt(`${sent}, arrive ${ampm(main.it.end)}.`,cmp)}
           ${pillsHTML(dotc,verdict)}
@@ -338,7 +350,7 @@ function placesHTML(){
   const rows=places().filter(p=>!(MODEL.at&&p.id===MODEL.at.id)).map(p=>{
     const t=MODEL.trips[p.id]; const on=MODEL.dest&&p.id===MODEL.dest.id;
     let m='<span class="dim">…</span>', sub='';
-    if(t&&t.there){ const {main}=pickMakeable(t.there); if(main){ m=`${main.lead<=0?'now':main.lead}<small>min</small>`; const v=firstVehicle(main.it); sub=v?`${v.bart?cap(v.line):v.line} · ${v.headsign} ${hhmm(v.start)} · ${main.it.min} min`:`walk ${main.it.min} min`; } else { m='<span class="dim">—</span>'; sub='nothing running'; } }
+    if(t&&t.there){ const {main}=pickMakeable(t.there); if(main){ m=`${main.lead<=0?'now':main.lead}<small>min</small>`; const v=firstVehicle(main.it); sub=v?`${lineName(v)} ${hhmm(v.start)} · ${main.it.min} min`:`walk ${main.it.min} min`; } else { m='<span class="dim">—</span>'; sub='nothing running'; } }
     else if(!MODEL.loading&&!t){ m='<span class="dim">—</span>'; }
     return `<div class="prow ${on?'on':''}" data-place="${p.id}"><div><div class="nm">${p.name}</div><div class="sub">${sub}</div></div><div class="mins">${m}</div></div>`;
   }).join('');
@@ -360,7 +372,7 @@ function settingsHTML(){
     <div class="row"><span>Work → home list starts</span><input type="time" style="width:auto" value="${cfg.workReturn||CONF.workReturn}" onchange="cfg.workReturn=this.value;saveCfg();toast('saved')"></div>
   </div>
   <div class="card"><div class="eyebrow">places</div>
-    ${places().map(p=>`<div class="row"><span>${p.name} <span class="dim mono" style="font-size:11px">${p.kind||('exit +'+(p.exit||0))}</span></span><span>${p.kind?'':`<button class="act" onclick="rmPlace('${p.id}')">×</button>`}</span></div>`).join('')}
+    ${places().map(p=>`<div class="row"><span>${p.name} <span class="dim mono" style="font-size:11px">${p.kind||('exit +'+(p.exit||0))}${p.viaName?' · via '+p.viaName:''}</span></span><span>${p.kind?'':`<button class="act" onclick="rmPlace('${p.id}')">×</button>`}</span></div>`).join('')}
     <div class="row"><span>Add a place</span><button class="act" onclick="addPlaceSheet()">+</button></div>
   </div>
   <div class="card">
@@ -369,7 +381,7 @@ function settingsHTML(){
   </div>`;
 }
 function addPlaceSheet(){
-  sheet(`<div class="eyebrow">new place</div><label class="f">name</label><input id="np-name" placeholder="grand lake"><label class="f">address or place</label><input id="np-addr" placeholder="3200 Grand Ave, Oakland"><label class="f">minutes to get out after a movie ends (0 if not a theater)</label><input id="np-exit" type="number" value="0"><div style="margin-top:14px"><button class="act p" style="width:100%" onclick="addPlace()">find it</button></div>`);
+  sheet(`<div class="eyebrow">new place</div><label class="f">name</label><input id="np-name" placeholder="grand lake"><label class="f">address or place</label><input id="np-addr" placeholder="3200 Grand Ave, Oakland"><label class="f">minutes to get out after a movie ends (0 if not a theater)</label><input id="np-exit" type="number" value="0"><label class="f">always go through this stop (optional, e.g. MacArthur BART)</label><input id="np-via" placeholder="leave blank to let the router pick"><div style="margin-top:14px"><button class="act p" style="width:100%" onclick="addPlace()">find it</button></div>`);
 }
 async function addPlace(){
   const name=document.getElementById('np-name').value.trim().toLowerCase(), addr=document.getElementById('np-addr').value.trim(), exit=+document.getElementById('np-exit').value||0;
@@ -379,6 +391,8 @@ async function addPlace(){
     const r=await fetch(u,{headers:{Accept:'application/json'}}); if(!r.ok) fail('geocode','2xx',r.status);
     const j=await r.json(); if(!j[0]) fail('geocode','a match for '+addr,'none');
     const p={id:name.replace(/[^a-z0-9]+/g,'-').slice(0,16)+'-'+Date.now().toString(36).slice(-3),name,lat:+j[0].lat,lon:+j[0].lon,exit,addr:j[0].display_name};
+    const viaQ=document.getElementById('np-via').value.trim();
+    if(viaQ){ const vr=await fetch(`${CONF.router}/geocode?text=${encodeURIComponent(viaQ)}&type=STOP&place=${p.lat},${p.lon}`); const vj=vr.ok?await vr.json():[]; if(!vj[0]) fail('geocode via','a stop matching '+viaQ,'none'); p.via=vj[0].id; p.viaName=vj[0].name.replace(/\s*\(Timepoint\)/i,''); log('place via',{q:viaQ,id:p.via,name:p.viaName}); }
     cfg.places=places().slice(); cfg.places.push(p); saveCfg(); log('place add',{name,lat:p.lat,lon:p.lon,match:j[0].display_name.slice(0,60)});
     closeSheet(); toast(`added ${name} · ${j[0].display_name.split(',').slice(0,2).join(',')}`); render();
   }catch(e){ toast(e.message); }

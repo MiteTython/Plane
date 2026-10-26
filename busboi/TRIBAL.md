@@ -18,6 +18,9 @@ URL: https://mitetython.github.io/Plane/busboi/ · one file, `index.html`, no bu
 - Last good main trip snapshots to `localStorage` (`busboi-snap`) and renders on a failed fetch with an offline flag. No service worker (ios-pwa.md: don't by default).
 - Look: system by default; Dawn/Native follow the OS; brand colors come from the feed's `routeColor`.
 
+- **Emery Go-Round is in Transitous** (agency "Emery Go-Round", real-time true) — Hollis and Shellmound. No tripshot scraping, no PDF timetables. A place can carry `via` (a Transitous stop id) + `viaName`: the plan runs through that stop (his way), and the fastest direct trip is fetched alongside and tagged `direct` in amber in the then-list. Work and Bay Street go via `us-ca-SF-bayarea_mtc:macarthur-bart`. The return from a via-place also goes via it (the loops come back to MacArthur).
+- Headsign equal to the line name is dropped (Hollis, not "Hollis · Hollis"); "(Timepoint)" and trailing NB/SB are stripped from stop names — direction comes from the computed bound.
+
 ## Gotchas
 
 - `/Plane/` is capitalized in the Pages path; manifest scope and start_url match that.
@@ -32,5 +35,7 @@ URL: https://mitetython.github.io/Plane/busboi/ · one file, `index.html`, no bu
 3. Morning job: arrive work 9:00, weekdays minus US federal holidays, ntfy push at leave-by − 10, 9pm preview the night before. GitHub Action or the Pi.
 
 ## Log
+
+- 2026-10-26 · build 2 · via stops (his way through MacArthur for work and Bay Street), direct alternative tagged, Emery Go-Round naming cleanup, via field on add-place.
 
 - 2026-10-26 · build 1 · scaffold, Transitous, five places, home number + comparison, legs, stacked return, place rows with their own minutes, settings/log/reload, add-place via Nominatim.
