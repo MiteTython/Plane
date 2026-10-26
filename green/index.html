@@ -58,7 +58,7 @@ header h1{font-family:var(--display);font-weight:800;font-size:24px;margin:0;let
 .streak svg{width:12px;height:14px;animation:flick 1.6s ease-in-out infinite}
 @keyframes flick{50%{transform:scale(1.12) rotate(-4deg)}}
 main{flex:1;min-height:0;position:relative}.view{padding-top:calc(env(safe-area-inset-top,0px) + 12px)!important}
-.plabel{position:sticky;top:0;z-index:4;background:var(--bg);margin-top:calc(-1*(env(safe-area-inset-top,0px) + 12px));padding:calc(env(safe-area-inset-top,0px) + 10px) 0 6px;flex:none}.plabel .eyebrow{display:flex;align-items:center;gap:6px;color:var(--fg);font-weight:800}.plabel .eyebrow svg{width:13px;height:13px}.plabel .ps{font-size:12px;color:var(--muted);margin-top:2px}
+.plabel{position:relative;z-index:4;background:var(--bg);margin-top:calc(-1*(env(safe-area-inset-top,0px) + 12px));padding:calc(env(safe-area-inset-top,0px) + 10px) 0 6px;flex:none}.plabel .eyebrow{display:flex;align-items:center;gap:6px;color:var(--fg);font-weight:800}.plabel .eyebrow svg{width:13px;height:13px}.plabel .ps{font-size:12px;color:var(--muted);margin-top:2px}
 .view{position:absolute;inset:0;overflow:auto;-webkit-overflow-scrolling:touch;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:4px 24px;display:flex;flex-direction:column;gap:14px}
 .view[hidden]{display:none}
 h2{font-family:var(--display);font-weight:800;font-size:20px;margin:0;letter-spacing:-.02em;text-wrap:balance}
@@ -503,7 +503,7 @@ nav .badge{position:absolute;top:2px;right:18%;background:var(--bills);color:#ff
 // Am I Green — the app. Reads the vault through the GitHub API.
 // Data in: data/ledger.json (courier). Decisions out: config/*.json, data/tags.json, data/state.json.
 // ============================================================
-const BUILD='build 159';
+const BUILD='build 160';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const fmt=n=>(n<0?'−':'')+'$'+Math.abs(Math.round(n)).toLocaleString();
 const fmt2=n=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
