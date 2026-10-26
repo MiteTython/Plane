@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<!-- no apple-mobile-web-app-status-bar-style: see app-builder references/ios-pwa.md -->
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<title>busboi</title>
+<script>
+/* apply saved look before first paint */
+try{var _c=JSON.parse(localStorage.getItem('busboi-cfg')||'{}');var _l=_c.look||'system';var _d=_l==='system'?(matchMedia('(prefers-color-scheme:dark)').matches?'native':'dawn'):_l;document.documentElement.dataset.look=_d;}catch(e){}
+</script>
+<style>
+/* ---------- tokens: Dawn (light) · Native (dark, OLED black) ---------- */
+:root, :root[data-look=native] {
+  --bg:#000; --surface:#111; --surface2:#1b1b1b; --fg:#f2f2f2; --muted:#8a8a8a; --line:#262626;
+  --green:#30d158; --amber:#ffd60a; --red:#ff453a; --blue:#0a84ff;
+  --font:-apple-system,system-ui,sans-serif; --mono:ui-monospace,Menlo,monospace;
+  --radius:12px; --pad:14px;
+  --spring:cubic-bezier(.2,.9,.25,1.2); --ease:cubic-bezier(.2,.7,.2,1);
+}
+:root[data-look=dawn] {
+  --bg:#f4f5f7; --surface:#fff; --surface2:#eef0f3; --fg:#111; --muted:#6b7280; --line:#e5e7eb;
+  --green:#15803d; --amber:#b45309; --red:#dc2626; --blue:#2563eb;
+}
+/* ---------- shell ---------- */
+html,body{margin:0;height:100%;overscroll-behavior:none}
+body{background:var(--bg);color:var(--fg);font:16px/1.4 var(--font);-webkit-text-size-adjust:100%}
+#app{position:fixed;inset:0;height:100dvh;display:flex;flex-direction:column}
+#screen{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 16px 24px;position:relative}
+#nav{flex:none;display:flex;align-items:stretch;border-top:1px solid var(--line);background:var(--bg);padding-bottom:env(safe-area-inset-bottom)}
+#nav button{flex:1;min-height:52px;background:none;border:0;color:var(--muted);touch-action:manipulation;display:flex;align-items:center;justify-content:center}
+#nav button.on{color:var(--fg)}
+#nav svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.navstat{flex:1.4!important;font:11px/1.5 var(--mono);display:flex!important;flex-direction:column;align-items:stretch!important;justify-content:center!important;padding:0 12px;color:var(--fg)!important;border-left:1px solid var(--line)}
+.navstat div{display:flex;justify-content:space-between;gap:8px}.navstat span:first-child{color:var(--muted)}
+.card{background:var(--surface);border-radius:var(--radius);padding:var(--pad);margin-bottom:12px;border:1px solid var(--line)}
+.eyebrow{font:11px/1.2 var(--mono);text-transform:lowercase;letter-spacing:.04em;color:var(--muted)}
+.plabel{display:flex;gap:10px;align-items:flex-start;margin:4px 0 14px}
+.plabel svg{width:22px;height:22px;stroke:var(--muted);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none;margin-top:2px}
+.plabel p{margin:2px 0 0;color:var(--muted);font-size:14px}
+.big{font-size:64px;font-weight:700;letter-spacing:-.03em;line-height:1;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.big.now{color:var(--green)}.big.short{color:var(--red)}.big.thin{color:var(--amber)}
+.mono{font-family:var(--mono)}.dim{color:var(--muted)}.g{color:var(--green)}.a{color:var(--amber)}.r{color:var(--red)}
+.row{display:flex;justify-content:space-between;align-items:center;min-height:44px;border-bottom:1px solid var(--line);gap:10px}
+.row:last-child{border-bottom:0}
+.kv{display:flex;flex-wrap:wrap;gap:4px 12px;font:12px/1.5 var(--mono);color:var(--muted);margin-top:6px}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;align-items:center}
+.pill{display:inline-flex;align-items:center;gap:5px;font:11px/1 var(--mono);padding:5px 8px;border-radius:999px;border:1px solid var(--line);background:var(--surface2);color:var(--fg);min-height:24px}
+.pill.g{border-color:var(--green)}.pill.a{border-color:var(--amber);color:var(--amber)}.pill.r{border-color:var(--red);color:var(--red)}
+.tcdot{width:8px;height:8px;border-radius:50%;background:var(--green);color:var(--green);display:inline-block}
+.tcdot.c-amber{background:var(--amber);color:var(--amber)}.tcdot.c-red{background:var(--red);color:var(--red)}.tcdot.muted{background:var(--muted);color:var(--muted)}
+.tpill{display:inline-block;font:12px/1 var(--mono);font-weight:700;padding:3px 6px;border-radius:5px;background:var(--fg);color:var(--bg)}
+.tpill.mu{background:var(--surface2);color:var(--fg);border:1px solid var(--line);font-weight:600}
+/* legs */
+.leg{display:flex;gap:10px;padding:8px 0;border-left:3px solid var(--line);padding-left:10px;margin:4px 0}
+.leg .l1{font-weight:600;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.leg .l2{font:12px/1.5 var(--mono);color:var(--muted)}
+.leg.walk{border-left-style:dashed;color:var(--muted)}.leg.walk .l1{font-weight:500}
+.leg .dot{width:11px;height:11px;border-radius:50%;display:inline-block;flex:none}
+.ritin{padding:8px 0;border-bottom:1px solid var(--line)}.ritin:last-child{border-bottom:0}
+.ritin .l1{display:flex;justify-content:space-between;gap:8px;align-items:center}.ritin .l1>span:first-child{flex:1;min-width:0}.ritin .l1>span:last-child{white-space:nowrap}
+.ritin .l2{font:12px/1.5 var(--mono);color:var(--muted)}
+.strip{display:inline-block;width:3px;height:14px;border-radius:2px;vertical-align:-2px;margin-right:6px}
+a.ml{color:var(--fg);text-decoration:underline dotted var(--muted);text-underline-offset:3px}.leg .l2 a.ml{color:var(--fg)}
+.rides{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;align-items:center}.rides .eyebrow{margin-right:2px}
+.ride{font:11px/1 var(--mono);padding:7px 9px;border-radius:999px;border:1px solid var(--line);background:var(--surface2);color:var(--fg);min-height:28px;display:inline-flex;align-items:center;gap:5px}
+.ride.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}.ride.on .a{color:var(--bg)}
+/* places */
+.prow{display:flex;justify-content:space-between;align-items:center;min-height:48px;border-bottom:1px solid var(--line);gap:10px;-webkit-user-select:none;user-select:none}
+.prow:last-child{border-bottom:0}.prow.on .nm{color:var(--fg);font-weight:600}.prow .nm{color:var(--fg)}
+.prow .mins{font-family:var(--mono);font-weight:700;font-size:18px;min-width:52px;text-align:right;font-variant-numeric:tabular-nums}
+.prow .mins small{font-weight:400;color:var(--muted);font-size:11px;margin-left:3px}
+.prow .sub{font:11px/1.3 var(--mono);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70vw}
+button.act{min-height:44px;padding:0 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface2);color:var(--fg);font:15px var(--font);touch-action:manipulation}
+button.act.p{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+input,select{font-size:16px;color:var(--fg);background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:10px;width:100%}
+label.f{display:block;margin:10px 0 4px;font:11px var(--mono);color:var(--muted)}
+pre.log{font:11px/1.35 var(--mono);white-space:pre-wrap;word-break:break-all;max-height:50vh;overflow:auto;margin:8px 0 0}
+.cap{font-size:14px;color:var(--fg);margin-top:8px}.cap .cmp{color:var(--muted)}
+.empty{color:var(--muted);padding:12px 0;font-size:14px}
+.err{font:12px/1.4 var(--mono);color:var(--red);padding:8px;border:1px solid var(--red);border-radius:8px;margin-bottom:12px;white-space:pre-wrap}
+.inbox .row{border-left:3px solid var(--amber);padding-left:8px;font-size:14px}.inbox .row.bad{border-left-color:var(--red)}
+#ptr{position:absolute;left:0;right:0;top:-40px;text-align:center;font:11px var(--mono);color:var(--muted);transition:top .2s var(--ease)}#ptr.show{top:2px}
+#map{height:230px;border-radius:8px;margin-top:10px;background:var(--surface2);overflow:hidden}
+.leaflet-container{font-family:var(--font);background:var(--surface2)}
+:root:not([data-look=dawn]) .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.85) contrast(.9) saturate(.6)}.leaflet-control-attribution{font-size:9px!important;background:rgba(0,0,0,.4)!important;color:#aaa!important}:root[data-look=dawn] .leaflet-control-attribution{background:rgba(255,255,255,.6)!important;color:#555!important}
+.leaflet-control-attribution a{color:inherit!important}
+.stoplbl{background:var(--fg);color:var(--bg);font:10px/1 var(--mono);font-weight:700;padding:3px 6px;border-radius:4px;white-space:nowrap;border:0;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.stoplbl:before{display:none}
+.youdot{width:14px;height:14px;border-radius:50%;background:#0a84ff;border:2.5px solid #fff;box-shadow:0 0 0 6px rgba(10,132,255,.25)}
+.mapfoot{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+a.pill{text-decoration:none}
+#sheets .scrim{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:8;animation:scrimin .3s both}
+#sheets .sheet{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-radius:16px 16px 0 0;padding:8px 16px calc(16px + env(safe-area-inset-bottom));z-index:9;max-height:85dvh;overflow:auto;border-top:1px solid var(--line)}
+#sheets .grab{display:flex;justify-content:center;padding:6px 0 10px}#sheets .grab i{width:36px;height:4px;border-radius:2px;background:var(--line)}
+@keyframes scrimin{from{opacity:0}to{opacity:1}}@keyframes scrimout{to{opacity:0}}
+@keyframes sheetdown{to{transform:translateY(100%)}}
+.toast{position:fixed;left:16px;right:16px;bottom:calc(72px + env(safe-area-inset-bottom));background:var(--fg);color:var(--bg);padding:12px 14px;border-radius:10px;font-weight:600;z-index:20;text-align:center}
+/* ---------- motion contract (the parts this app has) ---------- */
+button,.act,.pill,.prow,.leg,.ritin,[data-go]{transition:transform .15s var(--spring)}
+button:active,.act:active,.pill:active,[data-go]:active{transform:scale(.96)}
+.prow:active,.ritin:active{transform:scale(.985)}
+.toast{animation:toastin .42s var(--spring) both,toastout .3s ease-in 2.2s forwards;box-shadow:0 8px 24px rgba(0,0,0,.45),0 2px 6px rgba(0,0,0,.3)}
+@keyframes toastin{from{transform:translateY(40px) scale(.96);opacity:0}to{transform:none;opacity:1}}@keyframes toastout{to{transform:translateY(-6px);opacity:0}}
+.sheet{animation:sheetup .35s var(--spring) both}@keyframes sheetup{from{transform:translateY(100%)}to{transform:none}}
+@keyframes rowin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.boot .prow,.boot .leg,.boot .ritin{animation:rowin .4s var(--ease) both}
+.boot .prow:nth-child(2),.boot .leg:nth-child(2){animation-delay:55ms}.boot .prow:nth-child(3),.boot .leg:nth-child(3){animation-delay:110ms}.boot .prow:nth-child(4),.boot .leg:nth-child(4){animation-delay:165ms}.boot .prow:nth-child(5),.boot .leg:nth-child(5){animation-delay:220ms}.boot .prow:nth-child(n+6),.boot .leg:nth-child(n+6){animation-delay:275ms}
+@keyframes dotbreathe{0%,100%{box-shadow:0 0 0 0 currentColor}70%{box-shadow:0 0 0 7px transparent}}.tcdot{animation:dotbreathe 2.6s ease-out infinite}.tcdot.c-amber{animation-duration:1.8s}.tcdot.c-red{animation-duration:1.2s}.tcdot.muted{animation:none}
+@keyframes nsamber{0%,100%{box-shadow:0 0 0 0 rgba(255,214,10,0)}50%{box-shadow:0 0 0 3px rgba(255,214,10,.4)}}@keyframes nsred{0%,100%{box-shadow:0 0 0 0 rgba(255,69,58,0)}50%{box-shadow:0 0 0 3px rgba(255,69,58,.5)}}.navstat.thin{animation:nsamber 2.4s ease-in-out infinite}.navstat.short{animation:nsred 1.3s ease-in-out infinite}
+.rededge{position:fixed;left:0;right:0;top:0;height:36px;pointer-events:none;z-index:50;background:linear-gradient(rgba(255,69,58,.55),transparent);animation:edgepulse 1.7s ease 1 forwards}@keyframes edgepulse{0%,100%{opacity:0}20%,30%{opacity:1}50%{opacity:.1}65%,75%{opacity:1}}
+@keyframes emptybreathe{0%,100%{opacity:.55}50%{opacity:1}}.empty{animation:emptybreathe 3.2s ease-in-out infinite}
+html.looking,html.looking *{transition:background-color .3s ease,color .3s ease,border-color .3s ease!important}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="screen"><div id="ptr">release to refresh</div><div id="view"></div></div>
+  <div id="nav"></div>
+</div>
+<div id="sheets"></div>
+<script>
+'use strict';
+/* =====================================================================
+   SLOT 1 — APP
+   ===================================================================== */
+const BUILD = 'build 7';
+const APP = { key:'busboi', name:'busboi', answer:'how many minutes until you walk out the door' };
+
+/* =====================================================================
+   ENGINE — log, fail, cfg, stages. Domain-free.
+   ===================================================================== */
+const LOG = [];
+function log(stg, data){
+  const line = `${new Date().toISOString().slice(11,23)} ${stg} ${data==null?'':typeof data==='string'?data:JSON.stringify(data)}`;
+  LOG.push(line); if (LOG.length > 500) LOG.shift(); console.log(line);
+}
+class StageError extends Error { constructor(stg,expected,got){ super(`[${stg}] expected ${expected}, got ${got}`); this.stage=stg; this.expected=expected; this.got=got; } }
+function fail(stg, expected, got){ const e=new StageError(stg,expected,got); log(stg,'FAIL '+e.message); try{localStorage.setItem(APP.key+'-lastfail', e.message);}catch(x){} redEdge(); throw e; }
+const STAGES = {};
+async function stageA(name, fn, summarize){
+  const t0=performance.now();
+  try { const out=await fn(); const ms=+(performance.now()-t0).toFixed(1);
+    const summ=summarize?summarize(out):(out&&typeof out==='object'?Object.keys(out).length+' keys':out);
+    STAGES[name]={ok:true,ms,out:summ}; log(name,`PASS ${ms} ms | ${JSON.stringify(summ)}`); return out;
+  } catch(e){ const ms=+(performance.now()-t0).toFixed(1);
+    const err=e instanceof StageError?e:new StageError(name,'clean run',`${e.name}: ${e.message}`);
+    STAGES[name]={ok:false,ms,error:err.message}; log(name,'FAIL '+err.message); throw err; }
+}
+function dumpJSON(){ return JSON.stringify({app:APP.key,build:BUILD,at:new Date().toISOString(),stages:STAGES,flags:FLAGS,cfg:{...cfg,key511:cfg.key511?'<set>':null},model:MODEL,log:LOG},null,2); }
+function download(name,text){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type:'application/json'})); a.download=name; a.click(); }
+let cfg={}; try{ cfg=JSON.parse(localStorage.getItem(APP.key+'-cfg')||'{}'); }catch(e){ log('cfg','read failed: '+e.message); }
+function saveCfg(){ try{ localStorage.setItem(APP.key+'-cfg',JSON.stringify(cfg)); }catch(e){ log('cfg','write failed: '+e.message); } }
+let FLAGS=[]; function flag(level,text){ FLAGS.push({level,text}); }
+function envViewport(){
+  const nav=document.getElementById('nav').getBoundingClientRect();
+  log('env viewport',{standalone:!!(navigator.standalone||matchMedia('(display-mode: standalone)').matches),vh:innerHeight,app:document.getElementById('app').offsetHeight,navBottom:Math.round(nav.bottom),inner:`${innerWidth}x${innerHeight}`,screen:`${screen.width}x${screen.height}`,ua:navigator.userAgent});
+}
+/* ---- motion helpers ---- */
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+document.body.classList.add('boot'); setTimeout(()=>document.body.classList.remove('boot'),4000);
+function capt(a,b){ return `<div class="cap">${a}${b?` <span class="cmp">${b}</span>`:''}</div>`; }
+function redEdge(){ if(reduced)return; const d=document.createElement('div'); d.className='rededge'; document.body.appendChild(d); setTimeout(()=>d.remove(),1800); }
+function toast(t){ const d=document.createElement('div'); d.className='toast'; d.textContent=t; document.body.appendChild(d); setTimeout(()=>d.remove(),2600); }
+function sheet(html,onReady){ const host=document.getElementById('sheets'); host.innerHTML=`<div class="scrim" data-close></div><div class="sheet"><div class="grab" data-close><i></i></div>${html}</div>`; host.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeSheet); if(onReady)onReady(host.querySelector('.sheet')); }
+function closeSheet(){ const host=document.getElementById('sheets'); const s=host.querySelector('.sheet'), sc=host.querySelector('.scrim'); if(!s){host.innerHTML='';return;} if(reduced){host.innerHTML='';return;} s.style.animation='sheetdown .3s ease-in forwards'; sc.style.animation='scrimout .3s forwards'; setTimeout(()=>host.innerHTML='',300); }
+function countTo(el,n,ms=700){ if(reduced||n<=0){el.textContent=n;return;} const t0=performance.now(); const tick=t=>{const p=Math.min(1,(t-t0)/ms); el.textContent=Math.round(n*(1-Math.pow(1-p,3))); if(p<1)requestAnimationFrame(tick);}; requestAnimationFrame(tick); }
+
+/* =====================================================================
+   SLOT 2 — CONF
+   ===================================================================== */
+const CONF = {
+  router: 'https://api.transitous.org/api/v1',
+  geocoder: 'https://nominatim.openstreetmap.org/search',
+  bbox: '-122.6,37.6,-121.9,38.1',           // bay area, for geocoding bias
+  walkMax: 1200,                               // seconds of walking either end (~1 mile)
+  slack: 2,                                    // minutes of slack to call a departure makeable
+  cheapWithin: 15,                             // a cheaper route wins by default if it's within this many minutes of the fastest
+  fares: { 'emery go-round':0, 'ac transit':2.5, 'bay area rapid transit':2.4 },   // per boarding; BART is a floor (distance-priced)
+  fareTransfer: { 'ac transit':0.5 },          // second boarding on the same agency within the trip (Clipper)
+  near: 250,                                   // meters: "you are at <place>"
+  nItin: 8,
+  maxTransfers: 1,                             // two vehicles, never three
+  maxRoutes: 3,                                // A · B · C
+  returnStay: 120,                             // minutes after arriving somewhere before the return list starts
+  workReturn: '17:30',                         // clock time the work→home return list starts
+  staleMin: 2,
+  places: [
+    { id:'home', name:'home',        lat:37.8170452, lon:-122.2668369, kind:'home' },
+    { id:'work', name:'work',        lat:37.8521029, lon:-122.2913494, kind:'work', via:'us-ca-SF-bayarea_mtc:macarthur-bart', viaName:'MacArthur' },
+    { id:'glk',  name:'grand lake',  lat:37.8115985, lon:-122.2473411, exit:15 },
+    { id:'bay',  name:'bay street',  lat:37.8396033, lon:-122.2935359, exit:30, via:'us-ca-SF-bayarea_mtc:macarthur-bart', viaName:'MacArthur' },
+    { id:'pied', name:'piedmont',    lat:37.827341,  lon:-122.250797,  exit:15 },
+  ],
+};
+function places(){ return (cfg.places && cfg.places.length) ? cfg.places : CONF.places; }
+function place(id){ return places().find(p=>p.id===id); }
+
+/* =====================================================================
+   SLOT 3 — rebuild(): locate → guess → plan there → plan back → others
+   ===================================================================== */
+let MODEL = { trips:{}, at:null, origin:null, dest:null, fetched:null, error:null, loading:false };
+let TICK=null;
+
+function hav(a,b){ const R=6371000,toR=x=>x*Math.PI/180; const dLat=toR(b.lat-a.lat),dLon=toR(b.lon-a.lon); const s=Math.sin(dLat/2)**2+Math.cos(toR(a.lat))*Math.cos(toR(b.lat))*Math.sin(dLon/2)**2; return 2*R*Math.asin(Math.sqrt(s)); }
+function bearing(a,b){ const toR=x=>x*Math.PI/180,toD=x=>x*180/Math.PI; const y=Math.sin(toR(b.lon-a.lon))*Math.cos(toR(b.lat)); const x=Math.cos(toR(a.lat))*Math.sin(toR(b.lat))-Math.sin(toR(a.lat))*Math.cos(toR(b.lat))*Math.cos(toR(b.lon-a.lon)); return (toD(Math.atan2(y,x))+360)%360; }
+function bound(deg){ return ['northbound','eastbound','southbound','westbound'][Math.round(deg/90)%4]; }
+function locate(){
+  return new Promise(res=>{
+    if(!navigator.geolocation){ res(null); return; }
+    const t=setTimeout(()=>res(null),6000);
+    navigator.geolocation.getCurrentPosition(p=>{ clearTimeout(t); res({lat:p.coords.latitude,lon:p.coords.longitude,acc:Math.round(p.coords.accuracy)}); },e=>{ clearTimeout(t); log('locate','denied/failed: '+e.message); res(null); },{maximumAge:60000,timeout:6000,enableHighAccuracy:false});
+  });
+}
+function nearest(pt){ let best=null,bd=1e9; for(const p of places()){ const d=hav(pt,p); if(d<bd){bd=d;best=p;} } return {place:best,d:Math.round(bd)}; }
+function guessDest(at){ if(!at) return place('work'); if(at.kind==='home') return place('work'); return place('home'); }
+function clockToday(hhmm, dayOffset=0){ const [h,m]=hhmm.split(':').map(Number); const d=new Date(); d.setDate(d.getDate()+dayOffset); d.setHours(h,m,0,0); return d; }
+
+async function plan(from,to,when,arriveBy,n,via){
+  const u=`${CONF.router}/plan?fromPlace=${from.lat},${from.lon}&toPlace=${to.lat},${to.lon}&time=${when.toISOString()}&arriveBy=${!!arriveBy}&numItineraries=${n||CONF.nItin}&maxTransfers=${CONF.maxTransfers}&maxPreTransitTime=${CONF.walkMax}&maxPostTransitTime=${CONF.walkMax}${via?'&via='+encodeURIComponent(via):''}`;
+  const t0=performance.now();
+  const r=await fetch(u,{cache:'no-store'});
+  if(!r.ok) fail('plan',`2xx`,`${r.status} ${(await r.text()).slice(0,120)}`);
+  const j=await r.json();
+  const its=(j.itineraries||[]).map(normItin).filter(it=>it.transfers<=CONF.maxTransfers).sort((a,b)=>a.start-b.start);
+  log('plan',{from:from.name||'here',to:to.name,via:via||null,when:when.toISOString().slice(11,16),arriveBy:!!arriveBy,n:its.length,ms:Math.round(performance.now()-t0)});
+  if(!its.length) flag('warn',`no route ${from.name||'from here'} → ${to.name} right now`);
+  return its;
+}
+function normItin(it){
+  const legs=it.legs.map(l=>{
+    const walk=l.mode==='WALK';
+    const rt=l.routeShortName||'';
+    const isBart=/bart/i.test(l.agencyName||'')||l.mode==='SUBWAY';
+    const line=isBart?rt.replace(/-(N|S)$/,''):rt;
+    const hs=(l.headsign||'').trim(); const headsign=hs.toLowerCase()===line.toLowerCase()?'':hs;
+    const clean=s=>(s||'').replace(/\s*\((Timepoint)\)\s*/i,'').replace(/\s+(NB|SB|EB|WB)$/,'');
+    return { walk, mode:l.mode, line, headsign, color:l.routeColor?'#'+l.routeColor:null, bart:isBart, agency:l.agencyName||'',
+      from:clean(l.from.name), fromId:l.from.stopId||null, fromLL:[l.from.lat,l.from.lon], to:clean(l.to.name), toId:l.to.stopId||null, toLL:[l.to.lat,l.to.lon],
+      start:new Date(l.startTime), end:new Date(l.endTime), live:!!l.realTime, dist:Math.round(l.distance||0), dur:Math.round(((new Date(l.endTime))-(new Date(l.startTime)))/60000),
+      geom: decodeGeom(l.legGeometry, [l.from.lat,l.from.lon], [l.to.lat,l.to.lon]),
+      dir: walk?null:bound(bearing({lat:l.from.lat,lon:l.from.lon},{lat:l.to.lat,lon:l.to.lon})) };
+  });
+  // 72 / 72M / 72L are one corridor to a human: the signature folds letter variants so they're one route with many departures
+  const sig=legs.filter(l=>!l.walk).map(l=>l.bart?cap(l.line):l.line.replace(/^(\d+)[A-Z]{1,2}$/,'$1')).join('→')||'walk';
+  const fare=fareFor(legs);
+  return { start:new Date(it.startTime), end:new Date(it.endTime), min:Math.round(it.duration/60), transfers:legs.filter(l=>!l.walk).length-1, legs, live:legs.some(l=>l.live), sig, fare:fare.total, fareNote:fare.note };
+}
+function fareFor(legs){
+  let total=0, note='', seen={};
+  for(const l of legs){ if(l.walk) continue; const a=(l.agency||'').toLowerCase(); let f=CONF.fares[a]; if(f==null){ f=2.5; note='~'; }
+    if(seen[a]&&CONF.fareTransfer[a]!=null) f=CONF.fareTransfer[a]; seen[a]=1; if(a.includes('rapid transit')) note='+'; total+=f; }
+  return {total:+total.toFixed(2), note};
+}
+/* MOTIS legGeometry is an encoded polyline with a stated precision (6 or 7). Straight line if missing or broken. */
+function decodeGeom(g, a, b){
+  try{
+    if(!g||!g.points) return [a,b];
+    const f=Math.pow(10, g.precision||7); const s=g.points; let i=0,lat=0,lon=0; const out=[];
+    while(i<s.length){ let r=0,sh=0,by; do{ by=s.charCodeAt(i++)-63; r|=(by&31)<<sh; sh+=5; }while(by>=32); lat+=(r&1)?~(r>>1):(r>>1);
+      r=0;sh=0; do{ by=s.charCodeAt(i++)-63; r|=(by&31)<<sh; sh+=5; }while(by>=32); lon+=(r&1)?~(r>>1):(r>>1); out.push([lat/f,lon/f]); }
+    if(out.length<2) return [a,b];
+    // sanity: first point near `a`; if the precision guess is off the points land in the ocean
+    if(Math.abs(out[0][0]-a[0])>0.05||Math.abs(out[0][1]-a[1])>0.05){ log('geom',`precision mismatch (${g.precision}); falling back to straight line`); return [a,b]; }
+    return out;
+  }catch(e){ log('geom','decode failed: '+e.message); return [a,b]; }
+}
+
+/* a place with a `via` stop plans through it (his way); the fastest direct trip rides along, tagged, so it can be taken instead */
+async function planWay(from,to,when,n){
+  const via=to.via||from.via||null;                 // his way applies leaving a via-place as well as arriving at one
+  if(!via) return plan(from,to,when,false,n);
+  const [mine,direct]=await Promise.all([plan(from,to,when,false,n,via), plan(from,to,when,false,3).catch(e=>{log('plan direct',e.message);return [];})]);
+  const viaName=((to.via?to.viaName:from.viaName)||'').toLowerCase();
+  const throughVia=it=>it.legs.some(l=>!l.walk&&viaName&&(l.from.toLowerCase().includes(viaName)||l.to.toLowerCase().includes(viaName)));
+  for(const d of direct){ if(throughVia(d)) continue; d.direct=true; const dup=mine.some(m=>m.sig===d.sig&&Math.abs(m.start-d.start)<60000); if(!dup) mine.push(d); }
+  return mine.sort((a,b)=>a.start-b.start);
+}
+async function planRound(from,to,when){
+  const there=await planWay(from,to,when);
+  // return list: work → fixed clock; else arrival + stay
+  let backAt;
+  if(to.kind==='work'){ backAt=clockToday(cfg.workReturn||CONF.workReturn); if(backAt<new Date()) backAt=new Date(); }
+  else { const arr=there[0]?there[0].end:when; backAt=new Date(arr.getTime()+CONF.returnStay*60000); }
+  const dest=from.id?place(from.id):place('home');            // back to where you started if that's a known place, else home
+  const back=await plan(to,dest,backAt,false,3,to.via||dest.via||null);
+  return { there, back, backAt };
+}
+
+async function rebuild(opts={}){
+  FLAGS=[]; MODEL.error=null; MODEL.loading=true; render();
+  try{
+    const now=new Date();
+    const here=await stageA('locate',()=>locate(),o=>o?{acc:o.acc}:'none');
+    let origin, at=null;
+    if(here){ const n=nearest(here); if(n.d<=CONF.near){ at=n.place; } origin={...here,name:at?at.name:'here',kind:at?at.kind:null,id:at?at.id:null,via:at?at.via:null}; }
+    else { origin={...place('home')}; flag('warn','location off · assuming home'); at=place('home'); }
+    MODEL.here=here; MODEL.at=at; MODEL.origin=origin;
+    const dest=opts.dest?place(opts.dest):guessDest(at);
+    MODEL.dest=dest; MODEL.guessed=!opts.dest;
+    const main=await stageA('plan main',()=>planRound(origin,dest,now),o=>({there:o.there.length,back:o.back.length}));
+    MODEL.trips={}; MODEL.trips[dest.id]=main; MODEL.fetched=new Date();   // route picks are by signature, so they survive a refresh
+    try{ localStorage.setItem(APP.key+'-snap',JSON.stringify({at:MODEL.fetched,dest:dest.id,main})); }catch(e){}
+    render();
+    // the other places, one plan each, so every row carries its own minutes
+    await stageA('plan others',async()=>{ let k=0; for(const p of places()){ if(p.id===dest.id||(at&&p.id===at.id)) continue; try{ const its=await planWay(origin,p,new Date(),2); MODEL.trips[p.id]={there:its,back:null}; k++; }catch(e){ log('plan others',p.id+' '+e.message); } render(); } return {planned:k}; });
+  }catch(e){
+    MODEL.error=e.message;
+    try{ const s=JSON.parse(localStorage.getItem(APP.key+'-snap')||'null'); if(s){ MODEL.snap=s; flag('bad',`offline · showing ${timeAgo(new Date(s.at))}`); } }catch(x){}
+  }
+  MODEL.loading=false; render();
+  clearInterval(TICK); TICK=setInterval(()=>{ if(TAB==='home') render(); },30000);
+}
+
+/* =====================================================================
+   SLOT 4 — SCREENS
+   ===================================================================== */
+const I={ home:'<svg viewBox="0 0 24 24"><path d="M4 10l8-6 8 6v10a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z"/></svg>',
+  gear:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+  bus:'<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="15" rx="3"/><path d="M4 11h16M8 18v2M16 18v2M8 15h.01M16 15h.01"/></svg>' };
+const PAGE_TXT={ home:'minutes until you walk out the door, for wherever you tapped.', settings:'build, look, places, the log.' };
+function plabel(k){ return `<div class="plabel">${I[k==='home'?'bus':'gear']}<div><div class="eyebrow">${k}</div><p>${PAGE_TXT[k]}</p></div></div>`; }
+
+const hhmm=d=>d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}).replace(/\s?[AP]M/i,'').trim();
+const ampm=d=>d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}).toLowerCase().replace(' ','');
+function minsUntil(d){ return Math.round((d-new Date())/60000); }
+function timeAgo(d){ const m=Math.round((new Date()-d)/60000); return m<1?'just now':m<60?m+' min ago':Math.round(m/60)+'hr ago'; }
+
+function mapLink(name,ll){ if(!ll||ll[0]==null) return name; return `<a class="ml" href="https://maps.apple.com/?q=${encodeURIComponent(name)}&ll=${ll[0]},${ll[1]}" target="_blank" rel="noopener">${name}</a>`; }
+function legHTML(l){
+  if(l.walk) return `<div class="leg walk"><div><div class="l1">walk ${l.dur} min<span class="dim">· to ${l.to==='END'?'the door':mapLink(l.to,l.toLL)}</span></div><div class="l2">${l.dist} m</div></div></div>`;
+  const col=l.color||'var(--blue)';
+  const name=l.bart?`<span class="dot" style="background:${col}"></span><b>${lineName(l)}</b>`:`<b>${lineName(l)}</b>`;
+  return `<div class="leg" style="border-left-color:${col}"><div style="flex:1"><div class="l1">${name} <span class="tpill">${hhmm(l.start)}</span><span class="dim">→ ${hhmm(l.end)}</span></div>
+    <div class="l2"><span class="dim">on at</span> ${mapLink(l.from,l.fromLL)}${l.dir?' · '+l.dir:''} · ${l.live?'<span class="g">live</span>':'scheduled'}</div>
+    <div class="l2"><span class="dim">off at</span> ${mapLink(l.to,l.toLL)} · ${hhmm(l.end)}</div></div></div>`;
+}
+function cap(s){ return s? s[0].toUpperCase()+s.slice(1).toLowerCase():s; }
+function lineName(l){ const ln=l.bart?cap(l.line):l.line; return l.headsign?`${ln} · ${l.headsign}`:ln; }
+function firstVehicle(it){ return it.legs.find(l=>!l.walk); }
+function itinLine(it){ const v=firstVehicle(it); if(!v) return `walk ${it.min} min`; return `${v.bart?`<span class="dot" style="background:${v.color};width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:4px"></span>`:''}${lineName(v)} <span class="tpill mu">${hhmm(v.start)}</span>`; }
+function vehLabel(it){ const v=firstVehicle(it); return (v?`${v.bart?cap(v.line):v.line} ${hhmm(v.start)}`:hhmm(it.start))+(it.direct?' <span class="a">direct</span>':''); }
+
+let PICK={};                                   // dest id → route signature the user chose
+/* routes: distinct line sequences (A · B · C), each represented by its soonest makeable departure.
+   main = the chosen route, else the route that leaves soonest with ≥slack. then = later departures of main's route. */
+function pickMakeable(its,destId){
+  const list=(its||[]).map((it,i)=>({it,i,lead:minsUntil(it.start)})).filter(x=>x.lead>=-1);
+  const routes=[]; for(const x of list){ let r=routes.find(r=>r.sig===x.it.sig); if(!r){ if(routes.length>=CONF.maxRoutes) continue; r={sig:x.it.sig,deps:[]}; routes.push(r); } r.deps.push(x); }
+  routes.forEach((r,k)=>{ r.letter='ABC'[k]; r.first=r.deps.find(d=>d.lead>=CONF.slack)||r.deps[0]; });
+  const chosenR=destId!=null&&PICK[destId]?routes.find(r=>r.sig===PICK[destId]):null;
+  // default: the cheapest route that doesn't cost more than `cheapWithin` minutes over the fastest; ties go to the one leaving soonest
+  const fastest=routes.length?Math.min(...routes.map(r=>r.first.it.min)):0;
+  const autoR=routes.slice().filter(r=>r.first.it.min-fastest<=CONF.cheapWithin).sort((a,b)=>(a.first.it.fare-b.first.it.fare)||(a.first.lead-b.first.lead))[0]||routes[0]||null;
+  const route=chosenR||autoR; const main=route?route.first:null;
+  const then=route?route.deps.filter(d=>d!==main&&d.lead>main.lead).slice(0,3):[];
+  const next=then[0]||null; const later=then.slice(1);
+  const others=routes.filter(r=>r!==route);
+  return {main,next,later,list,routes,route,others,chosen:!!chosenR};
+}
+function fareTxt(it){ return it.fare===0?'free':'$'+it.fare.toFixed(2).replace(/\.00$/,'')+(it.fareNote||''); }
+function routeLabel(r){ return r.sig.replace(/→/g,' → '); }
+
+const SCREENS={
+  home: ()=>{
+    const dest=MODEL.dest, trip=dest?MODEL.trips[dest.id]:null;
+    const src=trip||(MODEL.snap?MODEL.snap.main:null);
+    let top='';
+    if(MODEL.loading&&!src){ top=`<div class="card"><div class="eyebrow">leave in</div><div class="big dim">…</div><div class="empty">finding the way to ${dest?dest.name:'…'}</div></div>`; }
+    else if(src){
+      const {main,next,later,list,routes,route,chosen}=pickMakeable(src.there,dest.id); const then=[next,...later].filter(Boolean);
+      const stale=MODEL.fetched?Math.round((new Date()-MODEL.fetched)/60000):99;
+      const dotc=MODEL.error?'c-red':stale>=CONF.staleMin?'c-amber':'';
+      const verdict=MODEL.error?'offline':stale>=CONF.staleMin?'stale':'green';
+      if(!main){ top=`<div class="card"><div class="eyebrow">leave in</div><div class="big dim">—</div><div class="empty">nothing running to ${dest.name} right now</div>${pillsHTML(dotc,verdict)}</div>`; }
+      else{
+        const lead=main.lead; const cls=lead<=0?'now':lead<=CONF.slack?'thin':'';
+        const v=firstVehicle(main.it);
+        const sent=v?`for the <b>${v.bart?cap(v.line):v.line}</b> at ${hhmm(v.start)}${main.it.legs[0].walk?` · walk ${main.it.legs[0].dur} min`:''}${main.it.direct?' · direct':''} · ${fareTxt(main.it)}`:`walk the whole way, ${main.it.min} min`;
+        const cmp=next?`or ${next.lead} min for the ${vehLabel(next.it)}.`:'';
+        top=`<div class="card" data-go="trip">
+          <div class="eyebrow">leave in · to ${dest.name} · route <span style="text-transform:uppercase">${route.letter}</span>${dest.viaName&&!main.it.direct?' · via '+dest.viaName:''}${chosen?' · your pick':''}</div>
+          <div class="big ${cls}" id="bignum">${lead<=0?'now':lead}</div>
+          ${capt(`${sent}, arrive ${ampm(main.it.end)}.`,cmp)}
+          ${pillsHTML(dotc,verdict)}
+        </div>
+        <div class="card"><div class="eyebrow">there</div>${main.it.legs.map(legHTML).join('')}
+          <div id="map-slot"><div id="map"></div></div>
+          <div class="mapfoot"><a class="pill" href="${appleRoute()}" target="_blank" rel="noopener">open in Apple Maps ↗</a><span class="pill" style="color:var(--muted)">tap a pin for that stop</span></div>
+          ${routes.length>1?`<div class="rides"><span class="eyebrow">routes</span>${routes.map(r=>`<button class="ride ${r===route?'on':''}" data-route="${r.sig.replace(/"/g,'&quot;')}"><b>${r.letter}</b> ${routeLabel(r)} · ${hhmm(firstVehicle(r.first.it)?firstVehicle(r.first.it).start:r.first.it.start)} <span class="${r===route?'':'dim'}">· ${r.first.it.min}m · ${fareTxt(r.first.it)}</span></button>`).join('')}</div>`:''}
+          ${then.length?`<div class="kv" style="margin-top:8px"><span>then</span>${then.map(x=>`<span>${vehLabel(x.it)}</span>`).join('')}</div>`:''}
+        </div>`;
+        if(src.back){
+          top+=`<div class="card"><div class="eyebrow">back · from ${ampm(new Date(src.backAt))}</div>${src.back.length?src.back.map(it=>{const w=it.legs[0].walk?it.legs[0].dur:0;const v=firstVehicle(it);return `<div class="ritin"><div class="l1"><span>${itinLine(it)}</span><span class="mono dim">${it.min} min</span></div><div class="l2">${w?`walk ${w} · `:''}${v?`${v.from}${v.dir?' · '+v.dir:''}`:''}${it.transfers?` · ${it.transfers} change${it.transfers>1?'s':''}`:''} · arrive ${ampm(it.end)}</div></div>`;}).join(''):'<div class="empty">no way back found from there</div>'}</div>`;
+        }
+      }
+    } else if(MODEL.error){ top=`<div class="err">${MODEL.error}</div>`; }
+    return plabel('home')+inboxHTML()+top+placesHTML();
+  },
+  settings: ()=>plabel('settings')+settingsHTML(),
+};
+function pillsHTML(dotc,verdict){
+  const age=MODEL.fetched?timeAgo(MODEL.fetched):'—';
+  return `<div class="pills"><span class="pill ${dotc==='c-red'?'r':dotc==='c-amber'?'a':''}" data-refresh><i class="tcdot ${dotc}"></i>${verdict} · ${age}</span>${MODEL.at?`<span class="pill">at ${MODEL.at.name}</span>`:MODEL.here?`<span class="pill">±${MODEL.here.acc} m</span>`:''}<span class="pill">v${BUILD.replace('build ','')}</span><span class="pill" data-go="settings">⚙</span></div>`;
+}
+function placesHTML(){
+  const rows=places().filter(p=>!(MODEL.at&&p.id===MODEL.at.id)).map(p=>{
+    const t=MODEL.trips[p.id]; const on=MODEL.dest&&p.id===MODEL.dest.id;
+    let m='<span class="dim">…</span>', sub='';
+    if(t&&t.there){ const {main}=pickMakeable(t.there,p.id); if(main){ m=`${main.lead<=0?'now':main.lead}<small>min</small>`; const v=firstVehicle(main.it); sub=v?`${lineName(v)} ${hhmm(v.start)} · ${main.it.min} min · ${fareTxt(main.it)}`:`walk ${main.it.min} min`; } else { m='<span class="dim">—</span>'; sub='nothing running'; } }
+    else if(!MODEL.loading&&!t){ m='<span class="dim">—</span>'; }
+    return `<div class="prow ${on?'on':''}" data-place="${p.id}"><div><div class="nm">${p.name}</div><div class="sub">${sub}</div></div><div class="mins">${m}</div></div>`;
+  }).join('');
+  return `<div class="card"><div class="eyebrow" style="margin-bottom:4px">places · tap one</div>${rows||'<div class="empty">add a place in settings</div>'}</div>`;
+}
+function inboxHTML(){
+  const dismissed=cfg.dismissed||{}; const rows=FLAGS.filter(f=>!dismissed[f.text]); if(!rows.length) return '';
+  return `<div class="card inbox">`+rows.map(f=>`<div class="row ${f.level}"><span>${f.text}</span><button class="act" onclick="dismiss('${encodeURIComponent(f.text)}')">×</button></div>`).join('')+`</div>`;
+}
+function dismiss(enc){ cfg.dismissed=cfg.dismissed||{}; cfg.dismissed[decodeURIComponent(enc)]=Date.now(); saveCfg(); render(); }
+
+function settingsHTML(){
+  const look=cfg.look||'system';
+  return `
+  <div class="card">
+    <div class="row"><span>Build</span><span class="mono dim">${BUILD}</span></div>
+    <div class="row"><span>Look</span><select style="width:auto" onchange="setLook(this.value)">${['system','dawn','native'].map(l=>`<option ${look===l?'selected':''}>${l}</option>`).join('')}</select></div>
+    <div class="row"><span>Reload app</span><button class="act" onclick="reloadApp()">Reload</button></div>
+    <div class="row"><span>Work → home list starts</span><input type="time" style="width:auto" value="${cfg.workReturn||CONF.workReturn}" onchange="cfg.workReturn=this.value;saveCfg();toast('saved')"></div>
+  </div>
+  <div class="card"><div class="eyebrow">places</div>
+    ${places().map(p=>`<div class="row"><span>${p.name} <span class="dim mono" style="font-size:11px">${p.kind||('exit +'+(p.exit||0))}${p.viaName?' · via '+p.viaName:''}</span></span><span>${p.kind?'':`<button class="act" onclick="rmPlace('${p.id}')">×</button>`}</span></div>`).join('')}
+    <div class="row"><span>Add a place</span><button class="act" onclick="addPlaceSheet()">+</button></div>
+  </div>
+  <div class="card">
+    <div class="row"><span>Log</span><span><button class="act" onclick="navigator.clipboard.writeText(LOG.join('\\n')).then(()=>toast('copied'))">Copy</button> <button class="act" onclick="download('${APP.key}-dump.json',dumpJSON())">Dump</button></span></div>
+    <pre class="log">${LOG.slice(-200).join('\n').replace(/</g,'&lt;')}</pre>
+  </div>`;
+}
+function addPlaceSheet(){
+  sheet(`<div class="eyebrow">new place</div><label class="f">name</label><input id="np-name" placeholder="grand lake"><label class="f">address or place</label><input id="np-addr" placeholder="3200 Grand Ave, Oakland"><label class="f">minutes to get out after a movie ends (0 if not a theater)</label><input id="np-exit" type="number" value="0"><label class="f">always go through this stop (optional, e.g. MacArthur BART)</label><input id="np-via" placeholder="leave blank to let the router pick"><div style="margin-top:14px"><button class="act p" style="width:100%" onclick="addPlace()">find it</button></div>`);
+}
+async function addPlace(){
+  const name=document.getElementById('np-name').value.trim().toLowerCase(), addr=document.getElementById('np-addr').value.trim(), exit=+document.getElementById('np-exit').value||0;
+  if(!name||!addr){ toast('need a name and an address'); return; }
+  try{
+    const u=`${CONF.geocoder}?format=json&limit=1&countrycodes=us&viewbox=${CONF.bbox}&bounded=1&q=${encodeURIComponent(addr)}`;
+    const r=await fetch(u,{headers:{Accept:'application/json'}}); if(!r.ok) fail('geocode','2xx',r.status);
+    const j=await r.json(); if(!j[0]) fail('geocode','a match for '+addr,'none');
+    const p={id:name.replace(/[^a-z0-9]+/g,'-').slice(0,16)+'-'+Date.now().toString(36).slice(-3),name,lat:+j[0].lat,lon:+j[0].lon,exit,addr:j[0].display_name};
+    const viaQ=document.getElementById('np-via').value.trim();
+    if(viaQ){ const vr=await fetch(`${CONF.router}/geocode?text=${encodeURIComponent(viaQ)}&type=STOP&place=${p.lat},${p.lon}`); const vj=vr.ok?await vr.json():[]; if(!vj[0]) fail('geocode via','a stop matching '+viaQ,'none'); p.via=vj[0].id; p.viaName=vj[0].name.replace(/\s*\(Timepoint\)/i,''); log('place via',{q:viaQ,id:p.via,name:p.viaName}); }
+    cfg.places=places().slice(); cfg.places.push(p); saveCfg(); log('place add',{name,lat:p.lat,lon:p.lon,match:j[0].display_name.slice(0,60)});
+    closeSheet(); toast(`added ${name} · ${j[0].display_name.split(',').slice(0,2).join(',')}`); render();
+  }catch(e){ toast(e.message); }
+}
+function rmPlace(id){ cfg.places=places().filter(p=>p.id!==id); saveCfg(); render(); toast('removed'); }
+function setLook(l){
+  cfg.look=l; saveCfg(); const r=document.documentElement; const want=l==='system'?(matchMedia('(prefers-color-scheme:dark)').matches?'native':'dawn'):l;
+  if(r.dataset.look&&r.dataset.look!==want&&!reduced){ r.classList.add('looking'); setTimeout(()=>r.classList.remove('looking'),500); }
+  r.dataset.look=want; document.querySelector('meta[name=theme-color]').content=getComputedStyle(r).getPropertyValue('--bg').trim(); retile(); render();
+}
+matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{ if((cfg.look||'system')==='system') setLook('system'); });
+async function reloadApp(){ try{ if(window.caches) for(const k of await caches.keys()) await caches.delete(k); }catch(e){} location.href=location.pathname+'?r='+Date.now(); }
+
+/* =====================================================================
+   MAP — Leaflet + CARTO tiles, loaded once; the map node survives re-renders
+   ===================================================================== */
+let MAP=null, MAPKEY=null, TILES=null, YOU=null, WATCH=null, LEAF=null;
+function ensureLeaflet(){
+  if(window.L) return Promise.resolve(window.L);
+  if(LEAF) return LEAF;
+  LEAF=new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js'; s.onload=()=>{ log('map','leaflet loaded'); res(window.L); }; s.onerror=()=>{ LEAF=null; log('map','leaflet failed to load'); rej(new Error('leaflet')); }; document.head.appendChild(s); });
+  return LEAF;
+}
+function tileUrl(){ return 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'; }   // OSM standard; dark look inverts the tile pane in CSS
+function itinKey(it){ return it.legs.map(l=>`${l.line}|${l.start.getTime()}|${l.from}`).join(';'); }
+async function drawMap(it){
+  const el=document.getElementById('map'); if(!el||!it) return;
+  let L; try{ L=await ensureLeaflet(); }catch(e){ el.innerHTML='<div class="empty" style="padding:12px">map didn\'t load</div>'; return; }
+  if(!document.getElementById('map')) return;                       // re-rendered away while loading
+  if(MAP&&MAP.getContainer()!==el){ MAP.remove(); MAP=null; }
+  const key=itinKey(it);
+  if(!MAP){
+    MAP=L.map(el,{zoomControl:false,attributionControl:true,tap:false});
+    MAP.attributionControl.setPrefix('');
+    TILES=L.tileLayer(tileUrl(),{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(MAP);
+    MAP.on('load',()=>log('map','tiles on'));
+    MAPKEY=null;
+  }
+  if(MAPKEY===key){ return; }
+  MAPKEY=key;
+  if(MAP._route){ MAP._route.remove(); }
+  const g=L.layerGroup();
+  const pts=[];
+  for(const l of it.legs){
+    pts.push(...l.geom);
+    if(l.walk){ L.polyline(l.geom,{color:document.documentElement.dataset.look==='dawn'?'#444':'#ddd',weight:3,dashArray:'2 7',lineCap:'round'}).addTo(g); }
+    else{
+      const c=l.color||'#0a84ff';
+      L.polyline(l.geom,{color:'#000',weight:8,opacity:.35,lineCap:'round',lineJoin:'round'}).addTo(g);
+      L.polyline(l.geom,{color:c,weight:5,lineCap:'round',lineJoin:'round'}).addTo(g);
+      const mk=(ll,txt,name)=>{ const m=L.circleMarker(ll,{radius:6,color:'#fff',weight:2,fillColor:c,fillOpacity:1}).addTo(g); m.bindTooltip(txt,{permanent:true,direction:'auto',offset:[8,0],className:'stoplbl'}); m.on('click',()=>open(`https://maps.apple.com/?q=${encodeURIComponent(name)}&ll=${ll[0]},${ll[1]}`,'_blank')); };
+      mk(l.fromLL,`on · ${shortStop(l.from)}`,l.from); mk(l.toLL,`off · ${shortStop(l.to)}`,l.to);
+    }
+  }
+  const last=it.legs[it.legs.length-1]; L.circleMarker(last.toLL,{radius:5,color:'#fff',weight:2,fillColor:'#30d158',fillOpacity:1}).addTo(g);
+  g.addTo(MAP); MAP._route=g;
+  MAP.fitBounds(L.latLngBounds(pts),{padding:[28,28]});
+  log('map',{legs:it.legs.length,pts:pts.length});
+  youDot(L);
+}
+function shortStop(s){ return s.replace(/\bStation\b/,'').replace(/\bAvenue\b/g,'Av').replace(/\bStreet\b/g,'St').replace(/\bMartin Luther King Jr\b/,'MLK').replace(/\s+/g,' ').trim().slice(0,26); }
+function youDot(L){
+  if(!MAP) return;
+  const icon=L.divIcon({className:'',html:'<div class="youdot"></div>',iconSize:[14,14],iconAnchor:[7,7]});
+  const put=p=>{ const ll=[p.coords.latitude,p.coords.longitude]; if(!YOU){ YOU=L.marker(ll,{icon,interactive:false,zIndexOffset:1000}).addTo(MAP); } else YOU.setLatLng(ll); };
+  if(MODEL.here) put({coords:{latitude:MODEL.here.lat,longitude:MODEL.here.lon}});
+  if(WATCH==null&&navigator.geolocation){ WATCH=navigator.geolocation.watchPosition(put,e=>log('you',e.message),{enableHighAccuracy:true,maximumAge:5000}); log('you','watching'); }
+}
+function stopWatch(){ if(WATCH!=null&&navigator.geolocation){ navigator.geolocation.clearWatch(WATCH); WATCH=null; log('you','stopped'); } }
+function retile(){ if(MAP&&TILES){ TILES.setUrl(tileUrl()); } }
+function appleRoute(){ const o=MODEL.origin, d=MODEL.dest; if(!o||!d) return '#'; return `https://maps.apple.com/?saddr=${o.lat},${o.lon}&daddr=${d.lat},${d.lon}&dirflg=r`; }
+
+/* ---- router + nav ---- */
+let TAB='home';
+const NAV=['home','settings'];
+function render(){
+  const v=document.getElementById('view');
+  const keep=document.getElementById('map');                       // the live Leaflet node, carried across re-renders
+  v.innerHTML=SCREENS[TAB]();
+  const slot=document.getElementById('map-slot');
+  if(slot&&keep&&MAP){ slot.replaceChildren(keep); requestAnimationFrame(()=>MAP.invalidateSize()); }
+  if(TAB==='home'){ const dest=MODEL.dest, trip=dest?MODEL.trips[dest.id]:null; const src=trip||(MODEL.snap?MODEL.snap.main:null); if(src){ const pk=pickMakeable(src.there,dest.id); if(pk.main) drawMap(pk.main.it); } }
+  else { stopWatch(); if(MAP){ MAP.remove(); MAP=null; YOU=null; MAPKEY=null; } }
+  v.querySelectorAll('[data-place]').forEach(el=>el.onclick=()=>{ rebuild({dest:el.dataset.place}); });
+  v.querySelectorAll('[data-route]').forEach(el=>el.onclick=e=>{ e.stopPropagation(); const s=el.dataset.route; if(PICK[MODEL.dest.id]===s) delete PICK[MODEL.dest.id]; else PICK[MODEL.dest.id]=s; log('route pick',{dest:MODEL.dest.id,route:PICK[MODEL.dest.id]||'auto'}); render(); });
+  v.querySelectorAll('[data-refresh]').forEach(el=>el.onclick=e=>{ e.stopPropagation(); rebuild(MODEL.guessed?{}:{dest:MODEL.dest.id}); });
+  v.querySelectorAll('[data-go=settings]').forEach(el=>el.onclick=e=>{ e.stopPropagation(); go('settings'); });
+  const big=v.querySelector('#bignum'); if(big&&document.body.classList.contains('boot')&&!big.dataset.counted){ const n=parseInt(big.textContent); if(!isNaN(n)){ big.dataset.counted='1'; countTo(big,n); } }
+  // nav
+  const dest=MODEL.dest, trip=dest?MODEL.trips[dest.id]:null; const pk=trip?pickMakeable(trip.there,dest.id):null; const lead=pk&&pk.main?pk.main.lead:null;
+  const cls=lead==null?'':lead<=0?'short':lead<=CONF.slack?'thin':'';
+  document.getElementById('nav').innerHTML=NAV.map(k=>`<button class="${k===TAB?'on':''}" aria-label="${k}" onclick="go('${k}')">${I[k==='home'?'home':'gear']}</button>`).join('')+
+    `<button class="navstat ${cls}" aria-label="status" onclick="go('home')"><div><span>leave</span><span>${lead==null?'~':lead<=0?'now':lead+'m'}</span></div><div><span>to</span><span>${dest?dest.name:'—'}</span></div><div><span>as of</span><span>${MODEL.fetched?hhmm(MODEL.fetched):'—'}</span></div></button>`;
+}
+function go(t){ TAB=t; render(); document.getElementById('screen').scrollTop=0; }
+
+/* ---- pull to refresh ---- */
+(function(){ const s=document.getElementById('screen'), p=document.getElementById('ptr'); let y0=null,armed=false;
+  s.addEventListener('touchstart',e=>{ y0=s.scrollTop<=0?e.touches[0].clientY:null; armed=false; },{passive:true});
+  s.addEventListener('touchmove',e=>{ if(y0==null) return; const dy=e.touches[0].clientY-y0; armed=dy>70; p.classList.toggle('show',armed); },{passive:true});
+  s.addEventListener('touchend',()=>{ p.classList.remove('show'); if(armed&&TAB==='home'){ rebuild(MODEL.guessed?{}:{dest:MODEL.dest.id}); } y0=null; armed=false; });
+})();
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'){ if(MODEL.fetched&&(new Date()-MODEL.fetched)>5*60000) rebuild(MODEL.guessed?{}:{dest:MODEL.dest.id}); else if(TAB==='home'&&MAP&&window.L) youDot(window.L); }
+  else stopWatch();
+});
+
+/* ---- boot ---- */
+log('boot',`${APP.name} ${BUILD}`);
+try{ const lf=localStorage.getItem(APP.key+'-lastfail'); if(lf) log('lastfail',lf); }catch(e){}
+rebuild();
+requestAnimationFrame(envViewport);
+</script>
+</body>
+</html>

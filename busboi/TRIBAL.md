@@ -29,6 +29,17 @@ URL: https://mitetython.github.io/Plane/busboi/ · one file, `index.html`, no bu
 - The "then" list and comparison are itineraries sorted by *start* (when you'd leave), which can put a later-arriving BART option before a bus; that's intentional — it's about when you leave.
 - Workspace can't reach api.transitous.org (allowlist), so the Playwright pass mocks `/plan` from a fixture shaped like the real response. Real-world check happened through Chrome on 2026-10-26: home→work gave 72M · Point Richmond, 38 min, 0 transfers.
 
+## Build 8 — the map-first rewrite (screens only; engine unchanged)
+
+- Layout: `#map` fills the screen (z-index:1 so Leaflet panes stay under everything); place chips in a top bar (the place you're at is dimmed "here"); a draggable sheet (`peek` 214px / `half` 56dvh / `full` 88dvh, pointer-drag on the grab or the sheet body, snaps ±40px) holds the tab's content; nav `go · stops · places · ⚙`. Settings is a full overlay.
+- **go**: recommended route as a card in the line's color (badge, headsign, route letter, fare, big leave-in), step strip + proportional timeline, other routes as rows (tap to pick, keyed by signature), status pill + Apple Maps pill, then the spine (times, board/get-off with Apple Maps links), a `go · guide me` button, and the return list. Tapping the card toggles peek/full.
+- **stops**: `map/stops?min&max` in a ~500 m box around you (8 nearest, lines filled in from `stoptimes n=8` for the first 6), or type a stop code (digits → `us-ca-SF-bayarea_<code>`) / name (`geocode type=STOP`). Opening a stop: `stoptimes n=10`; for the first 6 departures `trip?tripId=` gives every stop on that bus; closeness = nearest subsequent stop to the current destination; bar = 1 − d_after/d_before; `walk N left` at 80 m/min; wrong-way buses get no bar. Map draws the stop, the destination, and a spoke to each alight point.
+- **places**: list with each place's minutes; planned lazily on tab open, cached 10 min (keeps `/plan` well under 720/day).
+- **Go mode**: hides the sheet, follows the blue dot, shows either `walk to <stop> · N min to bus` or `get off at <stop> · N stops to go` using the plan leg's `intermediateStops` and the nearest-stop index to your position. `done` returns. No buzz: iOS Safari has no vibration API; a push from the morning job is the honest way to do that later.
+- Tiles: Mapbox `dark-v11`/`light-v11` raster (512 @2x) when `cfg.mapbox` (pk.… public token, Settings) is set; OSM + CSS invert otherwise. Attribution moved top-right so the sheet doesn't cover it.
+- Snapshot revives Dates (`reviveTrip`) — JSON round-trips them as strings.
+- `rollback.html` = build 7, kept beside it.
+
 ## Not built yet (scoped, answered, in order)
 
 1. 511 live StopMonitoring per leg stop (key in Settings/localStorage; verify browser CORS first) + amber as-of chip.
@@ -36,6 +47,8 @@ URL: https://mitetython.github.io/Plane/busboi/ · one file, `index.html`, no bu
 3. Morning job: arrive work 9:00, weekdays minus US federal holidays, ntfy push at leave-by − 10, 9pm preview the night before. GitHub Action or the Pi.
 
 ## Log
+
+- 2026-10-26 · build 8 · map-first home with bottom sheet, stops mode with closeness bars, Go mode, Mapbox token in Settings. Picked from round 5: #4 home, #9+#10 stop mode, #13 spine, #16 go.
 
 - 2026-10-26 · build 7 · fares: per-boarding table in CONF (Emery Go-Round $0, AC Transit $2.50 / $0.50 second boarding, BART $2.40 floor shown with `+`, unknown agency $2.50 with `~`). Route chips, the caption and place rows show it (`free` when $0). Default route = cheapest within 15 min of the fastest, ties to soonest. Reason: the router optimizes minutes and would never surface the free shuttle on its own.
 
