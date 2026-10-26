@@ -8,6 +8,7 @@
 <meta name="theme-color" content="#000000">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <title>busboi</title>
 <script>
 /* apply saved look before first paint */
@@ -85,6 +86,14 @@ pre.log{font:11px/1.35 var(--mono);white-space:pre-wrap;word-break:break-all;max
 .err{font:12px/1.4 var(--mono);color:var(--red);padding:8px;border:1px solid var(--red);border-radius:8px;margin-bottom:12px;white-space:pre-wrap}
 .inbox .row{border-left:3px solid var(--amber);padding-left:8px;font-size:14px}.inbox .row.bad{border-left-color:var(--red)}
 #ptr{position:absolute;left:0;right:0;top:-40px;text-align:center;font:11px var(--mono);color:var(--muted);transition:top .2s var(--ease)}#ptr.show{top:2px}
+#map{height:230px;border-radius:8px;margin-top:10px;background:var(--surface2);overflow:hidden}
+.leaflet-container{font-family:var(--font)}.leaflet-control-attribution{font-size:9px!important;background:rgba(0,0,0,.4)!important;color:#aaa!important}:root[data-look=dawn] .leaflet-control-attribution{background:rgba(255,255,255,.6)!important;color:#555!important}
+.leaflet-control-attribution a{color:inherit!important}
+.stoplbl{background:var(--fg);color:var(--bg);font:10px/1 var(--mono);font-weight:700;padding:3px 6px;border-radius:4px;white-space:nowrap;border:0;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.stoplbl:before{display:none}
+.youdot{width:14px;height:14px;border-radius:50%;background:#0a84ff;border:2.5px solid #fff;box-shadow:0 0 0 6px rgba(10,132,255,.25)}
+.mapfoot{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+a.pill{text-decoration:none}
 #sheets .scrim{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:8;animation:scrimin .3s both}
 #sheets .sheet{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-radius:16px 16px 0 0;padding:8px 16px calc(16px + env(safe-area-inset-bottom));z-index:9;max-height:85dvh;overflow:auto;border-top:1px solid var(--line)}
 #sheets .grab{display:flex;justify-content:center;padding:6px 0 10px}#sheets .grab i{width:36px;height:4px;border-radius:2px;background:var(--line)}
@@ -120,7 +129,7 @@ html.looking,html.looking *{transition:background-color .3s ease,color .3s ease,
 /* =====================================================================
    SLOT 1 — APP
    ===================================================================== */
-const BUILD = 'build 3';
+const BUILD = 'build 4';
 const APP = { key:'busboi', name:'busboi', answer:'how many minutes until you walk out the door' };
 
 /* =====================================================================
@@ -229,10 +238,25 @@ function normItin(it){
     return { walk, mode:l.mode, line, headsign, color:l.routeColor?'#'+l.routeColor:null, bart:isBart, agency:l.agencyName||'',
       from:clean(l.from.name), fromId:l.from.stopId||null, fromLL:[l.from.lat,l.from.lon], to:clean(l.to.name), toId:l.to.stopId||null, toLL:[l.to.lat,l.to.lon],
       start:new Date(l.startTime), end:new Date(l.endTime), live:!!l.realTime, dist:Math.round(l.distance||0), dur:Math.round(((new Date(l.endTime))-(new Date(l.startTime)))/60000),
+      geom: decodeGeom(l.legGeometry, [l.from.lat,l.from.lon], [l.to.lat,l.to.lon]),
       dir: walk?null:bound(bearing({lat:l.from.lat,lon:l.from.lon},{lat:l.to.lat,lon:l.to.lon})) };
   });
   return { start:new Date(it.startTime), end:new Date(it.endTime), min:Math.round(it.duration/60), transfers:it.transfers, legs, live:legs.some(l=>l.live) };
 }
+/* MOTIS legGeometry is an encoded polyline with a stated precision (6 or 7). Straight line if missing or broken. */
+function decodeGeom(g, a, b){
+  try{
+    if(!g||!g.points) return [a,b];
+    const f=Math.pow(10, g.precision||7); const s=g.points; let i=0,lat=0,lon=0; const out=[];
+    while(i<s.length){ let r=0,sh=0,by; do{ by=s.charCodeAt(i++)-63; r|=(by&31)<<sh; sh+=5; }while(by>=32); lat+=(r&1)?~(r>>1):(r>>1);
+      r=0;sh=0; do{ by=s.charCodeAt(i++)-63; r|=(by&31)<<sh; sh+=5; }while(by>=32); lon+=(r&1)?~(r>>1):(r>>1); out.push([lat/f,lon/f]); }
+    if(out.length<2) return [a,b];
+    // sanity: first point near `a`; if the precision guess is off the points land in the ocean
+    if(Math.abs(out[0][0]-a[0])>0.05||Math.abs(out[0][1]-a[1])>0.05){ log('geom',`precision mismatch (${g.precision}); falling back to straight line`); return [a,b]; }
+    return out;
+  }catch(e){ log('geom','decode failed: '+e.message); return [a,b]; }
+}
+
 /* a place with a `via` stop plans through it (his way); the fastest direct trip rides along, tagged, so it can be taken instead */
 async function planWay(from,to,when,n){
   if(!to.via) return plan(from,to,when,false,n);
@@ -341,6 +365,8 @@ const SCREENS={
           ${pillsHTML(dotc,verdict)}
         </div>
         <div class="card"><div class="eyebrow">there</div>${main.it.legs.map(legHTML).join('')}
+          <div id="map-slot"><div id="map"></div></div>
+          <div class="mapfoot"><a class="pill" href="${appleRoute()}" target="_blank" rel="noopener">open in Apple Maps ↗</a><span class="pill" style="color:var(--muted)">tap a pin for that stop</span></div>
           ${list.length>1?`<div class="rides"><span class="eyebrow">rides</span>${list.map(x=>`<button class="ride ${x.it===main.it?'on':''}" data-ride="${x.i}">${vehLabel(x.it)} <span class="${x.it===main.it?'':'dim'}">· ${x.it.min}m</span></button>`).join('')}</div>`:''}
         </div>`;
         if(src.back){
@@ -411,17 +437,81 @@ function rmPlace(id){ cfg.places=places().filter(p=>p.id!==id); saveCfg(); rende
 function setLook(l){
   cfg.look=l; saveCfg(); const r=document.documentElement; const want=l==='system'?(matchMedia('(prefers-color-scheme:dark)').matches?'native':'dawn'):l;
   if(r.dataset.look&&r.dataset.look!==want&&!reduced){ r.classList.add('looking'); setTimeout(()=>r.classList.remove('looking'),500); }
-  r.dataset.look=want; document.querySelector('meta[name=theme-color]').content=getComputedStyle(r).getPropertyValue('--bg').trim(); render();
+  r.dataset.look=want; document.querySelector('meta[name=theme-color]').content=getComputedStyle(r).getPropertyValue('--bg').trim(); retile(); render();
 }
 matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{ if((cfg.look||'system')==='system') setLook('system'); });
 async function reloadApp(){ try{ if(window.caches) for(const k of await caches.keys()) await caches.delete(k); }catch(e){} location.href=location.pathname+'?r='+Date.now(); }
+
+/* =====================================================================
+   MAP — Leaflet + CARTO tiles, loaded once; the map node survives re-renders
+   ===================================================================== */
+let MAP=null, MAPKEY=null, TILES=null, YOU=null, WATCH=null, LEAF=null;
+function ensureLeaflet(){
+  if(window.L) return Promise.resolve(window.L);
+  if(LEAF) return LEAF;
+  LEAF=new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js'; s.onload=()=>{ log('map','leaflet loaded'); res(window.L); }; s.onerror=()=>{ LEAF=null; log('map','leaflet failed to load'); rej(new Error('leaflet')); }; document.head.appendChild(s); });
+  return LEAF;
+}
+function tileUrl(){ const dark=document.documentElement.dataset.look!=='dawn'; return `https://{s}.basemaps.cartocdn.com/${dark?'dark_all':'light_all'}/{z}/{x}/{y}{r}.png`; }
+function itinKey(it){ return it.legs.map(l=>`${l.line}|${l.start.getTime()}|${l.from}`).join(';'); }
+async function drawMap(it){
+  const el=document.getElementById('map'); if(!el||!it) return;
+  let L; try{ L=await ensureLeaflet(); }catch(e){ el.innerHTML='<div class="empty" style="padding:12px">map didn\'t load</div>'; return; }
+  if(!document.getElementById('map')) return;                       // re-rendered away while loading
+  if(MAP&&MAP.getContainer()!==el){ MAP.remove(); MAP=null; }
+  const key=itinKey(it);
+  if(!MAP){
+    MAP=L.map(el,{zoomControl:false,attributionControl:true,tap:false});
+    MAP.attributionControl.setPrefix('');
+    TILES=L.tileLayer(tileUrl(),{maxZoom:19,attribution:'© OpenStreetMap · © CARTO',subdomains:'abcd'}).addTo(MAP);
+    MAP.on('load',()=>log('map','tiles on'));
+    MAPKEY=null;
+  }
+  if(MAPKEY===key){ return; }
+  MAPKEY=key;
+  if(MAP._route){ MAP._route.remove(); }
+  const g=L.layerGroup();
+  const pts=[];
+  for(const l of it.legs){
+    pts.push(...l.geom);
+    if(l.walk){ L.polyline(l.geom,{color:document.documentElement.dataset.look==='dawn'?'#444':'#ddd',weight:3,dashArray:'2 7',lineCap:'round'}).addTo(g); }
+    else{
+      const c=l.color||'#0a84ff';
+      L.polyline(l.geom,{color:'#000',weight:8,opacity:.35,lineCap:'round',lineJoin:'round'}).addTo(g);
+      L.polyline(l.geom,{color:c,weight:5,lineCap:'round',lineJoin:'round'}).addTo(g);
+      const mk=(ll,txt,name)=>{ const m=L.circleMarker(ll,{radius:6,color:'#fff',weight:2,fillColor:c,fillOpacity:1}).addTo(g); m.bindTooltip(txt,{permanent:true,direction:'right',offset:[8,0],className:'stoplbl'}); m.on('click',()=>open(`https://maps.apple.com/?q=${encodeURIComponent(name)}&ll=${ll[0]},${ll[1]}`,'_blank')); };
+      mk(l.fromLL,`on · ${shortStop(l.from)}`,l.from); mk(l.toLL,`off · ${shortStop(l.to)}`,l.to);
+    }
+  }
+  const last=it.legs[it.legs.length-1]; L.circleMarker(last.toLL,{radius:5,color:'#fff',weight:2,fillColor:'#30d158',fillOpacity:1}).addTo(g);
+  g.addTo(MAP); MAP._route=g;
+  MAP.fitBounds(L.latLngBounds(pts),{padding:[28,28]});
+  log('map',{legs:it.legs.length,pts:pts.length});
+  youDot(L);
+}
+function shortStop(s){ return s.replace(/\bStation\b/,'').replace(/\bAvenue\b/g,'Av').replace(/\bStreet\b/g,'St').replace(/\bMartin Luther King Jr\b/,'MLK').replace(/\s+/g,' ').trim().slice(0,26); }
+function youDot(L){
+  if(!MAP) return;
+  const icon=L.divIcon({className:'',html:'<div class="youdot"></div>',iconSize:[14,14],iconAnchor:[7,7]});
+  const put=p=>{ const ll=[p.coords.latitude,p.coords.longitude]; if(!YOU){ YOU=L.marker(ll,{icon,interactive:false,zIndexOffset:1000}).addTo(MAP); } else YOU.setLatLng(ll); };
+  if(MODEL.here) put({coords:{latitude:MODEL.here.lat,longitude:MODEL.here.lon}});
+  if(WATCH==null&&navigator.geolocation){ WATCH=navigator.geolocation.watchPosition(put,e=>log('you',e.message),{enableHighAccuracy:true,maximumAge:5000}); log('you','watching'); }
+}
+function stopWatch(){ if(WATCH!=null&&navigator.geolocation){ navigator.geolocation.clearWatch(WATCH); WATCH=null; log('you','stopped'); } }
+function retile(){ if(MAP&&TILES){ TILES.setUrl(tileUrl()); } }
+function appleRoute(){ const o=MODEL.origin, d=MODEL.dest; if(!o||!d) return '#'; return `https://maps.apple.com/?saddr=${o.lat},${o.lon}&daddr=${d.lat},${d.lon}&dirflg=r`; }
 
 /* ---- router + nav ---- */
 let TAB='home';
 const NAV=['home','settings'];
 function render(){
   const v=document.getElementById('view');
+  const keep=document.getElementById('map');                       // the live Leaflet node, carried across re-renders
   v.innerHTML=SCREENS[TAB]();
+  const slot=document.getElementById('map-slot');
+  if(slot&&keep&&MAP){ slot.replaceChildren(keep); requestAnimationFrame(()=>MAP.invalidateSize()); }
+  if(TAB==='home'){ const dest=MODEL.dest, trip=dest?MODEL.trips[dest.id]:null; const src=trip||(MODEL.snap?MODEL.snap.main:null); if(src){ const pk=pickMakeable(src.there,dest.id); if(pk.main) drawMap(pk.main.it); } }
+  else { stopWatch(); if(MAP){ MAP.remove(); MAP=null; YOU=null; MAPKEY=null; } }
   v.querySelectorAll('[data-place]').forEach(el=>el.onclick=()=>{ rebuild({dest:el.dataset.place}); });
   v.querySelectorAll('[data-ride]').forEach(el=>el.onclick=e=>{ e.stopPropagation(); const i=+el.dataset.ride; if(PICK[MODEL.dest.id]===i) delete PICK[MODEL.dest.id]; else PICK[MODEL.dest.id]=i; log('ride pick',{dest:MODEL.dest.id,i:PICK[MODEL.dest.id]??'auto'}); render(); });
   v.querySelectorAll('[data-refresh]').forEach(el=>el.onclick=e=>{ e.stopPropagation(); rebuild(MODEL.guessed?{}:{dest:MODEL.dest.id}); });
@@ -441,7 +531,10 @@ function go(t){ TAB=t; render(); document.getElementById('screen').scrollTop=0; 
   s.addEventListener('touchmove',e=>{ if(y0==null) return; const dy=e.touches[0].clientY-y0; armed=dy>70; p.classList.toggle('show',armed); },{passive:true});
   s.addEventListener('touchend',()=>{ p.classList.remove('show'); if(armed&&TAB==='home'){ rebuild(MODEL.guessed?{}:{dest:MODEL.dest.id}); } y0=null; armed=false; });
 })();
-document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'&&MODEL.fetched&&(new Date()-MODEL.fetched)>5*60000) rebuild(MODEL.guessed?{}:{dest:MODEL.dest.id}); });
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'){ if(MODEL.fetched&&(new Date()-MODEL.fetched)>5*60000) rebuild(MODEL.guessed?{}:{dest:MODEL.dest.id}); else if(TAB==='home'&&MAP&&window.L) youDot(window.L); }
+  else stopWatch();
+});
 
 /* ---- boot ---- */
 log('boot',`${APP.name} ${BUILD}`);

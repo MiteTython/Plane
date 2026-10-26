@@ -23,6 +23,7 @@ URL: https://mitetython.github.io/Plane/busboi/ · one file, `index.html`, no bu
 
 ## Gotchas
 
+- Harness: cdnjs and cartocdn are blocked from the workspace; shot.js serves Leaflet from `node_modules` and tiles as a 1px PNG. Tile `<img>` loads still show as REQFAIL in the log — ignore.
 - `/Plane/` is capitalized in the Pages path; manifest scope and start_url match that.
 - Transitous returns times as UTC ISO; everything is converted through `new Date()` and rendered local.
 - The "then" list and comparison are itineraries sorted by *start* (when you'd leave), which can put a later-arriving BART option before a bus; that's intentional — it's about when you leave.
@@ -35,6 +36,8 @@ URL: https://mitetython.github.io/Plane/busboi/ · one file, `index.html`, no bu
 3. Morning job: arrive work 9:00, weekdays minus US federal holidays, ntfy push at leave-by − 10, 9pm preview the night before. GitHub Action or the Pi.
 
 ## Log
+
+- 2026-10-26 · build 4 · the map: Leaflet 1.9.4 off cdnjs (loaded lazily), CARTO dark_all/light_all tiles following the look, leg geometry decoded from MOTIS `legGeometry` (encoded polyline, stated precision; straight line on mismatch), walk dotted, ride in the line's color, on/off pins with labels (tap → Apple Maps), green dot at the door, live blue dot via watchPosition while Home is visible. The Leaflet node is carried across the 30 s re-render (`#map-slot` swap + invalidateSize) and only redrawn when the itinerary key changes. `open in Apple Maps` pill = `maps.apple.com/?saddr=&daddr=&dirflg=r` (transit directions; Apple picks its own itinerary). Return trips: no map (his call).
 
 - 2026-10-26 · build 3 · fixed return planning when standing at a known place (origin lost its kind/id → home→home → empty); vehicle legs read `on at X · off at Y`, both Apple Maps links (`maps.apple.com/?q=&ll=`); the then-list became tappable `rides` chips — tap one and the big number follows it, tap again for auto; picks reset on every fetch.
 
