@@ -322,6 +322,7 @@ input[type=range]{accent-color:var(--bills);padding:0;background:transparent;bor
 .plan .bar{height:10px;border-radius:999px;background:var(--surface2);overflow:hidden}.plan .bar i{display:block;height:100%;background:var(--g-free);width:0;transition:width .8s var(--ease)}
 
 nav{display:flex;align-items:stretch;background:var(--surface);box-shadow:0 -1px 0 var(--line),0 -10px 30px rgba(0,0,0,.18);padding-bottom:max(8px,calc(env(safe-area-inset-bottom,0px) - 10px));border-top:1px solid var(--line);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+nav [role=tab]>span:not(.badge){position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}nav [role=tab]{justify-content:center;min-height:44px}
 nav button{flex:1;padding-block:6px 0;font-size:10px;letter-spacing:.04em;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px;position:relative;font-weight:700;min-height:48px;transition:color .2s,transform .2s}nav button svg{transition:transform .25s var(--spring)}nav button[aria-selected="true"] svg{transform:translateY(-2px) scale(1.08);color:var(--bills)}nav button:active svg{transform:scale(.9)}
 nav button[aria-selected="true"]{color:var(--fg)}nav button[aria-selected="true"] svg{background:var(--surface2);border-radius:10px;padding:4px;box-sizing:content-box;color:var(--bills)}nav button{color:color-mix(in srgb,var(--fg) 62%,transparent)}
 .navstat{flex:0 0 auto;min-width:104px;margin:6px 0 6px 4px;padding:6px 10px;border-radius:12px;background:var(--surface2);display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:0;font-family:var(--mono);color:var(--fg);animation:none}.navstat .nsr{display:flex;justify-content:space-between;gap:10px;font-size:11px;line-height:1.45}.navstat .nsr>span{color:var(--muted);font-weight:500}.navstat .nsr>b{font-size:11px;font-weight:800;color:var(--fg)}.navstat #nsStash{color:var(--green)}.navstat b.red{color:var(--red)}.navstat b{font-size:11px;font-weight:800}.navstat b.amber{color:var(--amber)}.navstat b.red{color:var(--red)}.navstat span{font-size:10px;color:var(--muted);letter-spacing:.04em;line-height:1.25;text-align:right}.navstat span b{font-size:10px;color:var(--fg);font-weight:800}.navstat span b.c-red{color:var(--red)}
@@ -508,7 +509,7 @@ nav .badge{position:absolute;top:2px;right:18%;background:var(--bills);color:#ff
 // Am I Green — the app. Reads the vault through the GitHub API.
 // Data in: data/ledger.json (courier). Decisions out: config/*.json, data/tags.json, data/state.json.
 // ============================================================
-const BUILD='build 169';
+const BUILD='build 170';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const fmt=n=>(n<0?'−':'')+'$'+Math.abs(Math.round(n)).toLocaleString();
 const fmt2=n=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -1136,7 +1137,7 @@ function openRunway(){sheet(`<div class="row"><h3 style="margin:0">Runway</h3><b
 // ============================================================
 // SANKEY · where the check went, paycheck to paycheck
 // ============================================================
-let SANK={cur:false,fan:false};
+let SANK={cur:true,fan:false};
 // a check that lands the day before payday belongs to the period it pays for, so windows run payday−1 → next payday−2
 function sankPeriod(){const p1=payOnOrBefore(addDays(TODAY,1));if(SANK.cur)return {from:addDays(p1,-1),to:addDays(NEXTPAY,-2),label:`${ds(p1)} → ${ds(NEXTPAY)}`,cur:true};const p0=payOnOrBefore(addDays(p1,-1));return {from:addDays(p0,-1),to:addDays(p1,-2),label:`${ds(p0)} → ${ds(p1)}`,cur:false};}
 function sankLayout(nodes,links,W,H,cols){const PAD=8,GAP=6,NW=10;const byCol=cols.map(()=>[]);nodes.forEach(n=>{n.in=0;n.out=0;byCol[n.col].push(n);});links.forEach(l=>{const a=nodes.find(n=>n.id===l.s),b=nodes.find(n=>n.id===l.t);if(!a||!b||l.v<=0){l.skip=true;return;}a.out+=l.v;b.in+=l.v;});nodes.forEach(n=>{n.v=Math.max(n.in,n.out,0);});const colSum=byCol.map(l=>l.filter(n=>n.v>0).reduce((x,n)=>x+n.v,0));const colN=byCol.map(l=>l.filter(n=>n.v>0).length);const avail=H-PAD*2;const scale=Math.min(...byCol.map((l,i)=>colSum[i]>0?(avail-GAP*Math.max(0,colN[i]-1))/colSum[i]:Infinity).filter(x=>isFinite(x)));const xs=cols.length===5?[PAD,PAD+66,PAD+134,PAD+200,PAD+268]:cols.map((c,i)=>PAD+i/(cols.length-1)*(W-PAD*2-NW));byCol.forEach((l,i)=>{const live=l.filter(n=>n.v>0);const tot=live.reduce((x,n)=>x+n.v*scale,0)+GAP*Math.max(0,live.length-1);let y=PAD+(avail-tot)/2;live.forEach(n=>{n.x=xs[i];n.y=y;n.h=Math.max(2,n.v*scale);n.w=NW;y+=n.h+GAP;n.oy=0;n.iy=0;});});
