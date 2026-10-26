@@ -48,6 +48,8 @@ URL: https://mitetython.github.io/Plane/busboi/ · one file, `index.html`, no bu
 
 ## Log
 
+- 2026-10-26 · build 10 · **the straight-line bug**: polyline decoder used 32-bit bitwise ops; −122° × 1e7 overflows, so every longitude came back as +92° and the sanity check threw the shape away. Decoder is arithmetic now and verified against a live leg (232 points, exact at both ends). Fallback order: stated precision → 6 → 5 → a line through the intermediate stops (never a bare straight line again). Places got a real editor (name, address re-geocoded only if changed, kind: place / movie (runtime + get-out offset) / stay (minutes), return-by-default, via). Home and work: no return list. Return time = arrival + runtime+exit for movies, + stay otherwise; if the via makes the return impossible it retries plainly. Old saved places migrate once (`cfg.placesV2`). `rollback.html` = build 9.
+
 - 2026-10-26 · build 8 · map-first home with bottom sheet, stops mode with closeness bars, Go mode, Mapbox token in Settings. Picked from round 5: #4 home, #9+#10 stop mode, #13 spine, #16 go.
 
 - 2026-10-26 · build 7 · fares: per-boarding table in CONF (Emery Go-Round $0, AC Transit $2.50 / $0.50 second boarding, BART $2.40 floor shown with `+`, unknown agency $2.50 with `~`). Route chips, the caption and place rows show it (`free` when $0). Default route = cheapest within 15 min of the fastest, ties to soonest. Reason: the router optimizes minutes and would never surface the free shuttle on its own.

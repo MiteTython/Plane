@@ -115,7 +115,7 @@ html.looking,html.looking *{transition:background-color .3s ease,color .3s ease,
 /* =====================================================================
    SLOT 1 — APP
    ===================================================================== */
-const BUILD = 'build 9';
+const BUILD = 'build 10';
 const APP = { key:'busboi', name:'busboi', answer:'how many minutes until you walk out the door' };
 
 /* =====================================================================
@@ -159,14 +159,14 @@ const CONF = {
   stopRadius: 0.0045,                          // degrees: the box for "stops near you" (~500 m)
   depN: 10, closeN: 6,                         // departures per stop; how many get the closeness lookup
   places: [
-    { id:'home', name:'home',        lat:37.8170452, lon:-122.2668369, kind:'home' },
-    { id:'work', name:'work',        lat:37.8521029, lon:-122.2913494, kind:'work', via:'us-ca-SF-bayarea_mtc:macarthur-bart', viaName:'MacArthur' },
-    { id:'glk',  name:'grand lake',  lat:37.8115985, lon:-122.2473411, exit:15 },
-    { id:'bay',  name:'bay street',  lat:37.8396033, lon:-122.2935359, exit:30, via:'us-ca-SF-bayarea_mtc:macarthur-bart', viaName:'MacArthur' },
-    { id:'pied', name:'piedmont',    lat:37.827341,  lon:-122.250797,  exit:15 },
+    { id:'home', name:'home',        lat:37.8170452, lon:-122.2668369, kind:'home', ret:false },
+    { id:'work', name:'work',        lat:37.8521029, lon:-122.2913494, kind:'work', via:'us-ca-SF-bayarea_mtc:macarthur-bart', viaName:'MacArthur', ret:false },
+    { id:'glk',  name:'grand lake',  lat:37.8115985, lon:-122.2473411, mode:'movie', runtime:110, exit:15, ret:true },
+    { id:'bay',  name:'bay street',  lat:37.8396033, lon:-122.2935359, mode:'movie', runtime:110, exit:30, ret:true, via:'us-ca-SF-bayarea_mtc:macarthur-bart', viaName:'MacArthur' },
+    { id:'pied', name:'piedmont',    lat:37.827341,  lon:-122.250797,  mode:'movie', runtime:110, exit:15, ret:true },
   ],
 };
-function places(){ return (cfg.places && cfg.places.length) ? cfg.places : CONF.places; }
+function places(){ if(cfg.places&&cfg.places.length){ if(!cfg.placesV2){ cfg.places=cfg.places.map(p=>{ const d=CONF.places.find(x=>x.id===p.id); return {...p, ret:p.ret!=null?p.ret:(d?!!d.ret:!p.kind), mode:p.mode||(d?d.mode:(p.exit?'movie':'none'))||'none', runtime:p.runtime||110}; }); cfg.placesV2=1; saveCfg(); log('cfg','migrated places to v2'); } return cfg.places; } return CONF.places; }
 function place(id){ return places().find(p=>p.id===id); }
 
 /* =====================================================================
@@ -199,8 +199,8 @@ function normItin(it){
     return { walk, mode:l.mode, line, headsign, color:l.routeColor?'#'+l.routeColor:null, bart:isBart, agency:l.agencyName||'',
       from:clean(l.from.name), fromId:l.from.stopId||null, fromLL:[l.from.lat,l.from.lon], to:clean(l.to.name), toId:l.to.stopId||null, toLL:[l.to.lat,l.to.lon],
       start:new Date(l.startTime), end:new Date(l.endTime), live:!!l.realTime, dist:Math.round(l.distance||0), dur:Math.round(((new Date(l.endTime))-(new Date(l.startTime)))/60000),
-      geom:decodeGeom(l.legGeometry,[l.from.lat,l.from.lon],[l.to.lat,l.to.lon]),
       stops:(l.intermediateStops||[]).map(s=>({name:clean(s.name),lat:s.lat,lon:s.lon,at:s.arrival?new Date(s.arrival):null})),
+      geom:decodeGeom(l.legGeometry,[l.from.lat,l.from.lon],[l.to.lat,l.to.lon],l.intermediateStops||[]),
       dir: walk?null:bound(bearing({lat:l.from.lat,lon:l.from.lon},{lat:l.to.lat,lon:l.to.lon})) };
   });
   const sig=legs.filter(l=>!l.walk).map(l=>l.bart?cap(l.line):l.line.replace(/^(\d+)[A-Z]{1,2}$/,'$1')).join('→')||'walk';
@@ -208,7 +208,17 @@ function normItin(it){
   return { start:new Date(it.startTime), end:new Date(it.endTime), min:Math.round(it.duration/60), transfers:legs.filter(l=>!l.walk).length-1, legs, live:legs.some(l=>l.live), sig, fare:fare.total, fareNote:fare.note };
 }
 function fareFor(legs){ let total=0,note='',seen={}; for(const l of legs){ if(l.walk) continue; const a=(l.agency||'').toLowerCase(); let f=CONF.fares[a]; if(f==null){ f=2.5; note='~'; } if(seen[a]&&CONF.fareTransfer[a]!=null) f=CONF.fareTransfer[a]; seen[a]=1; if(a.includes('rapid transit')) note='+'; total+=f; } return {total:+total.toFixed(2),note}; }
-function decodeGeom(g,a,b){ try{ if(!g||!g.points) return [a,b]; const f=Math.pow(10,g.precision||7); const s=g.points; let i=0,lat=0,lon=0; const out=[]; while(i<s.length){ let r=0,sh=0,by; do{ by=s.charCodeAt(i++)-63; r|=(by&31)<<sh; sh+=5; }while(by>=32); lat+=(r&1)?~(r>>1):(r>>1); r=0;sh=0; do{ by=s.charCodeAt(i++)-63; r|=(by&31)<<sh; sh+=5; }while(by>=32); lon+=(r&1)?~(r>>1):(r>>1); out.push([lat/f,lon/f]); } if(out.length<2) return [a,b]; if(Math.abs(out[0][0]-a[0])>0.05||Math.abs(out[0][1]-a[1])>0.05){ log('geom',`precision mismatch (${g.precision})`); return [a,b]; } return out; }catch(e){ log('geom','decode failed: '+e.message); return [a,b]; } }
+function decodePoly(str,f){ let i=0,lat=0,lon=0; const out=[]; const rd=()=>{ let r=0,m=1,by; do{ by=str.charCodeAt(i++)-63; r+=(by&31)*m; m*=32; }while(by>=32); return (r%2)?-((r+1)/2):r/2; }; while(i<str.length){ lat+=rd(); lon+=rd(); out.push([lat/f,lon/f]); } return out; }   // arithmetic, not bitwise: −122° at 1e7 overflows 32-bit shifts
+function decodeGeom(g,a,b,stops){
+  const viaStops=()=>[a,...(stops||[]).map(s=>[s.lat,s.lon]),b];
+  try{
+    if(!g||!g.points) return viaStops();
+    const tried=[g.precision||7,6,5,7].filter((v,i,arr)=>arr.indexOf(v)===i);
+    for(const pr of tried){ let out; try{ out=decodePoly(g.points,Math.pow(10,pr)); }catch(e){ continue; }
+      if(out.length>=2&&Math.abs(out[0][0]-a[0])<0.01&&Math.abs(out[0][1]-a[1])<0.01&&Math.abs(out[out.length-1][0]-b[0])<0.01&&Math.abs(out[out.length-1][1]-b[1])<0.01){ if(pr!==(g.precision||7)) log('geom',`precision ${g.precision} wrong, ${pr} fits`); return out; } }
+    log('geom',`no precision fits (stated ${g.precision}, ${g.points.length} chars); drawing through stops`); return viaStops();
+  }catch(e){ log('geom','decode failed: '+e.message); return viaStops(); }
+}
 async function planWay(from,to,when,n){
   const via=to.via||from.via||null;
   if(!via) return plan(from,to,when,false,n);
@@ -220,9 +230,13 @@ async function planWay(from,to,when,n){
 }
 async function planRound(from,to,when){
   const there=await planWay(from,to,when);
-  let backAt; if(to.kind==='work'){ backAt=clockToday(cfg.workReturn||CONF.workReturn); if(backAt<new Date()) backAt=new Date(); } else { const arr=there[0]?there[0].end:when; backAt=new Date(arr.getTime()+CONF.returnStay*60000); }
+  if(!to.ret) return { there, back:null, backAt:null };            // this place doesn't want a return list
+  const arr=there[0]?there[0].end:when;
+  const stay=to.mode==='movie'?((to.runtime||120)+(to.exit||0)):(to.stay||CONF.returnStay);   // movie: runtime + time to get out; else how long you're there
+  const backAt=new Date(arr.getTime()+stay*60000);
   const dest=from.id?place(from.id):place('home');
-  const back=await plan(to,dest,backAt,false,3,to.via||dest.via||null).catch(e=>{log('plan back',e.message);return [];});
+  let back=await plan(to,dest,backAt,false,3,to.via||dest.via||null).catch(e=>{log('plan back',e.message);return [];});
+  if(!back.length&&(to.via||dest.via)) back=await plan(to,dest,backAt,false,3).catch(()=>[]);   // the via made it impossible: ask plainly
   return { there, back, backAt };
 }
 async function rebuild(opts={}){
@@ -235,7 +249,7 @@ async function rebuild(opts={}){
     else { origin={...place('home')}; flag('warn','location off · assuming home'); at=place('home'); }
     MODEL.here=here; MODEL.at=at; MODEL.origin=origin;
     const dest=opts.dest?place(opts.dest):guessDest(at); MODEL.dest=dest; MODEL.guessed=!opts.dest;
-    const main=await stageA('plan main',()=>planRound(origin,dest,now),o=>({there:o.there.length,back:o.back.length}));
+    const main=await stageA('plan main',()=>planRound(origin,dest,now),o=>({there:o.there.length,back:o.back?o.back.length:'none'}));
     MODEL.trips={}; MODEL.trips[dest.id]=main; MODEL.fetched=new Date(); MODEL.othersAt=null;
     try{ localStorage.setItem(APP.key+'-snap',JSON.stringify({at:MODEL.fetched,dest:dest.id,main})); }catch(e){}
   }catch(e){ MODEL.error=e.message; try{ const s=JSON.parse(localStorage.getItem(APP.key+'-snap')||'null'); if(s&&s.dest===(MODEL.dest&&MODEL.dest.id)){ MODEL.trips[s.dest]=reviveTrip(s.main); flag('bad',`offline · showing ${timeAgo(new Date(s.at))}`); } }catch(x){} }
@@ -383,11 +397,10 @@ function settingsHTML(){
   <div class="srow"><span>Build</span><span class="mono mu">${BUILD}</span></div>
   <div class="srow"><span>Look</span><select style="width:auto" onchange="setLook(this.value)">${['system','dawn','native'].map(l=>`<option ${look===l?'selected':''}>${l}</option>`).join('')}</select></div>
   <div class="srow"><span>Reload app</span><button class="btn" onclick="reloadApp()">Reload</button></div>
-  <div class="srow"><span>Work → home list starts</span><input type="time" style="width:auto" value="${cfg.workReturn||CONF.workReturn}" onchange="cfg.workReturn=this.value;saveCfg();toast('saved')"></div>
   <div class="eb">map</div>
   <label class="f">mapbox public token (pk.…) — leave empty for OpenStreetMap</label><input id="mbtok" placeholder="pk.eyJ…" value="${esc(cfg.mapbox||'')}" onchange="setMapbox(this.value)">
   <div class="eb">places</div>
-  ${places().map(p=>`<div class="srow"><span>${esc(p.name)} <span class="mu mono" style="font-size:11px">${p.kind||('exit +'+(p.exit||0))}${p.viaName?' · via '+esc(p.viaName):''}</span></span><span>${p.kind?'':`<button class="btn" onclick="rmPlace('${p.id}')">×</button>`}</span></div>`).join('')}
+  ${places().map(p=>`<div class="srow"><span>${esc(p.name)} <span class="mu mono" style="font-size:11px">${p.mode==='movie'?`movie · +${p.exit||0} out`:p.mode==='stay'?`stay ${p.stay||120}`:(p.kind||'place')}${p.ret?' · return':''}${p.viaName?' · via '+esc(p.viaName):''}</span></span><button class="btn" onclick="editPlace('${p.id}')">edit</button></div>`).join('')}
   <div class="srow"><span>Add a place</span><button class="btn" onclick="addPlaceForm()">+</button></div>
   <div id="npf"></div>
   <div class="eb">log</div>
@@ -396,19 +409,36 @@ function settingsHTML(){
 }
 function openSettings(){ const el=document.getElementById('settings'); el.innerHTML=settingsHTML(); el.hidden=false; el.querySelector('[data-close-settings]').onclick=()=>{ el.hidden=true; }; }
 function setMapbox(v){ v=(v||'').trim(); if(v&&!/^pk\./.test(v)){ toast('that is not a public token (pk.…)'); return; } cfg.mapbox=v; saveCfg(); retile(); toast(v?'mapbox on':'mapbox off · using OSM'); }
-function addPlaceForm(){ document.getElementById('npf').innerHTML=`<label class="f">name</label><input id="np-name" placeholder="grand lake"><label class="f">address or place</label><input id="np-addr" placeholder="3200 Grand Ave, Oakland"><label class="f">minutes to get out after a movie ends (0 if not a theater)</label><input id="np-exit" type="number" value="0"><label class="f">always go through this stop (optional, e.g. MacArthur BART)</label><input id="np-via" placeholder="leave blank to let the router pick"><div style="margin-top:12px"><button class="btn p w" onclick="addPlace()">find it</button></div>`; }
-async function addPlace(){
-  const name=document.getElementById('np-name').value.trim().toLowerCase(), addr=document.getElementById('np-addr').value.trim(), exit=+document.getElementById('np-exit').value||0, viaQ=document.getElementById('np-via').value.trim();
-  if(!name||!addr){ toast('need a name and an address'); return; }
+function placeForm(p){
+  p=p||{name:'',addr:'',exit:0,mode:'none',stay:120,ret:true,runtime:110};
+  const sel=(v,o)=>v===o?'selected':'';
+  return `<div class="eb">${p.id?'edit '+esc(p.name):'new place'}</div>
+  <label class="f">name</label><input id="np-name" value="${esc(p.name)}" placeholder="grand lake">
+  <label class="f">address${p.id?' · leave as is to keep the pin':''}</label><input id="np-addr" value="${esc(p.addr||'')}" placeholder="3200 Grand Ave, Oakland">
+  <label class="f">what is it</label><select id="np-mode" onchange="document.getElementById('np-movie').hidden=this.value!=='movie';document.getElementById('np-stay').hidden=this.value!=='stay'"><option value="none" ${sel(p.mode||'none','none')}>just a place</option><option value="movie" ${sel(p.mode,'movie')}>a movie theater — I'll give a runtime</option><option value="stay" ${sel(p.mode,'stay')}>somewhere I stay a while — store, gym, dinner</option></select>
+  <div id="np-movie" ${p.mode==='movie'?'':'hidden'}><label class="f">usual runtime, minutes (changeable per movie later)</label><input id="np-runtime" type="number" value="${p.runtime||110}"><label class="f">minutes to get out after the credits (timeline offset)</label><input id="np-exit" type="number" value="${p.exit||0}"></div>
+  <div id="np-stay" ${p.mode==='stay'?'':'hidden'}><label class="f">how long I'm usually there, minutes</label><input id="np-stayv" type="number" value="${p.stay||120}"></div>
+  <label class="f">return trip by default</label><select id="np-ret"><option value="1" ${p.ret?'selected':''}>yes — show the way back under the trip</option><option value="0" ${p.ret?'':'selected'}>no</option></select>
+  <label class="f">always go through this stop (optional)</label><input id="np-via" value="${esc(p.viaName||'')}" placeholder="e.g. MacArthur BART · blank lets the router pick">
+  <div style="display:flex;gap:8px;margin-top:12px"><button class="btn p" style="flex:1" onclick="savePlace('${p.id||''}')">${p.id?'save':'find it & save'}</button>${p.id&&!p.kind?`<button class="btn" onclick="rmPlace('${p.id}')">delete</button>`:''}<button class="btn" onclick="document.getElementById('npf').innerHTML=''">cancel</button></div>`;
+}
+function addPlaceForm(){ document.getElementById('npf').innerHTML=placeForm(null); document.getElementById('npf').scrollIntoView({behavior:'smooth'}); }
+function editPlace(id){ document.getElementById('npf').innerHTML=placeForm(place(id)); document.getElementById('npf').scrollIntoView({behavior:'smooth'}); }
+async function savePlace(id){
+  const g=k=>document.getElementById(k); const name=g('np-name').value.trim().toLowerCase(), addr=g('np-addr').value.trim(), mode=g('np-mode').value, viaQ=g('np-via').value.trim();
+  if(!name){ toast('needs a name'); return; }
+  const old=id?place(id):null; const p=old?{...old}:{id:name.replace(/[^a-z0-9]+/g,'-').slice(0,16)+'-'+Date.now().toString(36).slice(-3)};
+  p.name=name; p.mode=mode; p.ret=g('np-ret').value==='1'; p.exit=+g('np-exit').value||0; p.runtime=+g('np-runtime').value||110; p.stay=+g('np-stayv').value||120;
   try{
-    const r=await fetch(`${CONF.geocoder}?format=json&limit=1&countrycodes=us&viewbox=${CONF.bbox}&bounded=1&q=${encodeURIComponent(addr)}`,{headers:{Accept:'application/json'}}); if(!r.ok) fail('geocode','2xx',r.status);
-    const j=await r.json(); if(!j[0]) fail('geocode','a match for '+addr,'none');
-    const p={id:name.replace(/[^a-z0-9]+/g,'-').slice(0,16)+'-'+Date.now().toString(36).slice(-3),name,lat:+j[0].lat,lon:+j[0].lon,exit,addr:j[0].display_name};
-    if(viaQ){ const vj=await getJSON(`${CONF.router}/geocode?text=${encodeURIComponent(viaQ)}&type=STOP&place=${p.lat},${p.lon}`,'geocode via'); if(!vj[0]) fail('geocode via','a stop matching '+viaQ,'none'); p.via=vj[0].id; p.viaName=clean(vj[0].name); }
-    cfg.places=places().slice(); cfg.places.push(p); saveCfg(); log('place add',{name,lat:p.lat,lon:p.lon,via:p.via||null}); toast(`added ${name}`); openSettings(); renderTop();
+    if(!old||addr!==(old.addr||'')){ if(!addr){ toast('needs an address'); return; }
+      const r=await fetch(`${CONF.geocoder}?format=json&limit=1&countrycodes=us&viewbox=${CONF.bbox}&bounded=1&q=${encodeURIComponent(addr)}`,{headers:{Accept:'application/json'}}); if(!r.ok) fail('geocode','2xx',r.status);
+      const j=await r.json(); if(!j[0]) fail('geocode','a match for '+addr,'none'); p.lat=+j[0].lat; p.lon=+j[0].lon; p.addr=addr; p.match=j[0].display_name; log('geocode',{addr,match:j[0].display_name.slice(0,60)}); }
+    if(viaQ!==(old?old.viaName||'':'')){ if(!viaQ){ delete p.via; delete p.viaName; } else { const vj=await getJSON(`${CONF.router}/geocode?text=${encodeURIComponent(viaQ)}&type=STOP&place=${p.lat},${p.lon}`,'geocode via'); if(!vj[0]) fail('geocode via','a stop matching '+viaQ,'none'); p.via=vj[0].id; p.viaName=clean(vj[0].name); } }
+    const list=places().slice(); const k=list.findIndex(x=>x.id===p.id); if(k>=0) list[k]=p; else list.push(p); cfg.places=list; saveCfg(); log('place save',{id:p.id,name,mode,ret:p.ret,via:p.via||null});
+    delete MODEL.trips[p.id]; toast(`saved ${name}`); openSettings(); renderTop();
   }catch(e){ toast(e.message); }
 }
-function rmPlace(id){ cfg.places=places().filter(p=>p.id!==id); saveCfg(); openSettings(); renderTop(); toast('removed'); }
+function rmPlace(id){ const p=place(id); if(p&&p.kind){ toast('home and work stay'); return; } cfg.places=places().filter(p=>p.id!==id); saveCfg(); delete MODEL.trips[id]; openSettings(); renderTop(); toast('removed'); }
 function setLook(l){ cfg.look=l; saveCfg(); const r=document.documentElement; const want=l==='system'?(matchMedia('(prefers-color-scheme:dark)').matches?'native':'dawn'):l; if(r.dataset.look&&r.dataset.look!==want&&!reduced){ r.classList.add('looking'); setTimeout(()=>r.classList.remove('looking'),500); } r.dataset.look=want; document.querySelector('meta[name=theme-color]').content=getComputedStyle(r).getPropertyValue('--bg').trim(); retile(); render(); }
 matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{ if((cfg.look||'system')==='system') setLook('system'); });
 async function reloadApp(){ try{ if(window.caches) for(const k of await caches.keys()) await caches.delete(k); }catch(e){} location.href=location.pathname+'?r='+Date.now(); }
