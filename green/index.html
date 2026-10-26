@@ -167,7 +167,7 @@ h2{font-family:var(--display);font-weight:800;font-size:20px;margin:0;letter-spa
 #deck[hidden]{display:none}
 #vend{position:absolute;inset:0;z-index:6;background:var(--bg);animation:slidein .28s var(--ease) both;display:flex;flex-direction:column;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:calc(env(safe-area-inset-top,0px) + 8px) 24px;gap:12px;overflow:auto}#vend .vback{display:flex;align-items:center;gap:8px;background:none;border:0;color:var(--muted);font:inherit;font-size:13px;padding:4px 0;cursor:pointer}#vend .vback b{color:var(--fg)}
 #acct{position:absolute;inset:0;z-index:6;background:var(--bg);animation:slidein .28s var(--ease) both;display:flex;flex-direction:column;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:8px 24px;gap:12px;overflow:auto}
-#acct[hidden]{display:none}
+#acct[hidden]{display:none}#vend[hidden]{display:none}
 .deckhead{display:flex;justify-content:space-between;align-items:center;gap:8px;position:sticky;top:-8px;background:var(--bg);padding:8px 0;z-index:2}@keyframes slidein{from{transform:translateX(24px);opacity:0}to{transform:none;opacity:1}}.grab{display:flex;justify-content:center;padding:0 0 4px;cursor:pointer}.grab i{width:40px;height:4px;border-radius:2px;background:var(--line);display:block}.backbar{display:flex;gap:8px;margin-top:6px}.backbar .btn{flex:1}
 .deckarea{flex:1;min-height:380px;position:relative;display:flex;align-items:center;justify-content:center}
 .hintL,.hintR{position:absolute;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;opacity:.5;font-weight:700}
@@ -511,7 +511,7 @@ nav .badge{position:absolute;top:2px;right:18%;background:var(--bills);color:#ff
 // Am I Green — the app. Reads the vault through the GitHub API.
 // Data in: data/ledger.json (courier). Decisions out: config/*.json, data/tags.json, data/state.json.
 // ============================================================
-const BUILD='build 172';
+const BUILD='build 173';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const fmt=n=>(n<0?'−':'')+'$'+Math.abs(Math.round(n)).toLocaleString();
 const fmt2=n=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
