@@ -37,6 +37,8 @@ URL: https://mitetython.github.io/Plane/busboi/ · one file, `index.html`, no bu
 
 ## Log
 
+- 2026-10-26 · build 7 · fares: per-boarding table in CONF (Emery Go-Round $0, AC Transit $2.50 / $0.50 second boarding, BART $2.40 floor shown with `+`, unknown agency $2.50 with `~`). Route chips, the caption and place rows show it (`free` when $0). Default route = cheapest within 15 min of the fastest, ties to soonest. Reason: the router optimizes minutes and would never surface the free shuttle on its own.
+
 - 2026-10-26 · build 6 · via applies in both directions: leaving a via-place (at work → home) plans through MacArthur too, so the Hollis shows as a route from work; direct alternatives (any not touching the via) are merged in, tagged.
 
 - 2026-10-26 · build 5 · CARTO basemaps went key-only mid-morning ("API KEY REQUIRED" tiles) → OSM standard tiles, dark look = CSS invert/hue-rotate on `.leaflet-tile-pane`. `maxTransfers=1` on every plan (Transitous honors it; client filters too) after the router served a 36→57→6 three-bus trip. Routes A · B · C: itineraries grouped by line signature (72/72M/72L fold to one corridor), each route shown by its soonest makeable departure; main = soonest route or the picked one; picks are by signature so they survive refresh; `then` = later departures of the shown route. Pin labels auto-side.

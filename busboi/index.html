@@ -130,7 +130,7 @@ html.looking,html.looking *{transition:background-color .3s ease,color .3s ease,
 /* =====================================================================
    SLOT 1 — APP
    ===================================================================== */
-const BUILD = 'build 6';
+const BUILD = 'build 7';
 const APP = { key:'busboi', name:'busboi', answer:'how many minutes until you walk out the door' };
 
 /* =====================================================================
@@ -181,6 +181,9 @@ const CONF = {
   bbox: '-122.6,37.6,-121.9,38.1',           // bay area, for geocoding bias
   walkMax: 1200,                               // seconds of walking either end (~1 mile)
   slack: 2,                                    // minutes of slack to call a departure makeable
+  cheapWithin: 15,                             // a cheaper route wins by default if it's within this many minutes of the fastest
+  fares: { 'emery go-round':0, 'ac transit':2.5, 'bay area rapid transit':2.4 },   // per boarding; BART is a floor (distance-priced)
+  fareTransfer: { 'ac transit':0.5 },          // second boarding on the same agency within the trip (Clipper)
   near: 250,                                   // meters: "you are at <place>"
   nItin: 8,
   maxTransfers: 1,                             // two vehicles, never three
@@ -246,7 +249,14 @@ function normItin(it){
   });
   // 72 / 72M / 72L are one corridor to a human: the signature folds letter variants so they're one route with many departures
   const sig=legs.filter(l=>!l.walk).map(l=>l.bart?cap(l.line):l.line.replace(/^(\d+)[A-Z]{1,2}$/,'$1')).join('→')||'walk';
-  return { start:new Date(it.startTime), end:new Date(it.endTime), min:Math.round(it.duration/60), transfers:legs.filter(l=>!l.walk).length-1, legs, live:legs.some(l=>l.live), sig };
+  const fare=fareFor(legs);
+  return { start:new Date(it.startTime), end:new Date(it.endTime), min:Math.round(it.duration/60), transfers:legs.filter(l=>!l.walk).length-1, legs, live:legs.some(l=>l.live), sig, fare:fare.total, fareNote:fare.note };
+}
+function fareFor(legs){
+  let total=0, note='', seen={};
+  for(const l of legs){ if(l.walk) continue; const a=(l.agency||'').toLowerCase(); let f=CONF.fares[a]; if(f==null){ f=2.5; note='~'; }
+    if(seen[a]&&CONF.fareTransfer[a]!=null) f=CONF.fareTransfer[a]; seen[a]=1; if(a.includes('rapid transit')) note='+'; total+=f; }
+  return {total:+total.toFixed(2), note};
 }
 /* MOTIS legGeometry is an encoded polyline with a stated precision (6 or 7). Straight line if missing or broken. */
 function decodeGeom(g, a, b){
@@ -345,13 +355,16 @@ function pickMakeable(its,destId){
   const routes=[]; for(const x of list){ let r=routes.find(r=>r.sig===x.it.sig); if(!r){ if(routes.length>=CONF.maxRoutes) continue; r={sig:x.it.sig,deps:[]}; routes.push(r); } r.deps.push(x); }
   routes.forEach((r,k)=>{ r.letter='ABC'[k]; r.first=r.deps.find(d=>d.lead>=CONF.slack)||r.deps[0]; });
   const chosenR=destId!=null&&PICK[destId]?routes.find(r=>r.sig===PICK[destId]):null;
-  const autoR=routes.slice().sort((a,b)=>a.first.lead-b.first.lead)[0]||null;
+  // default: the cheapest route that doesn't cost more than `cheapWithin` minutes over the fastest; ties go to the one leaving soonest
+  const fastest=routes.length?Math.min(...routes.map(r=>r.first.it.min)):0;
+  const autoR=routes.slice().filter(r=>r.first.it.min-fastest<=CONF.cheapWithin).sort((a,b)=>(a.first.it.fare-b.first.it.fare)||(a.first.lead-b.first.lead))[0]||routes[0]||null;
   const route=chosenR||autoR; const main=route?route.first:null;
   const then=route?route.deps.filter(d=>d!==main&&d.lead>main.lead).slice(0,3):[];
   const next=then[0]||null; const later=then.slice(1);
   const others=routes.filter(r=>r!==route);
   return {main,next,later,list,routes,route,others,chosen:!!chosenR};
 }
+function fareTxt(it){ return it.fare===0?'free':'$'+it.fare.toFixed(2).replace(/\.00$/,'')+(it.fareNote||''); }
 function routeLabel(r){ return r.sig.replace(/→/g,' → '); }
 
 const SCREENS={
@@ -369,7 +382,7 @@ const SCREENS={
       else{
         const lead=main.lead; const cls=lead<=0?'now':lead<=CONF.slack?'thin':'';
         const v=firstVehicle(main.it);
-        const sent=v?`for the <b>${v.bart?cap(v.line):v.line}</b> at ${hhmm(v.start)}${main.it.legs[0].walk?` · walk ${main.it.legs[0].dur} min`:''}${main.it.direct?' · direct':''}`:`walk the whole way, ${main.it.min} min`;
+        const sent=v?`for the <b>${v.bart?cap(v.line):v.line}</b> at ${hhmm(v.start)}${main.it.legs[0].walk?` · walk ${main.it.legs[0].dur} min`:''}${main.it.direct?' · direct':''} · ${fareTxt(main.it)}`:`walk the whole way, ${main.it.min} min`;
         const cmp=next?`or ${next.lead} min for the ${vehLabel(next.it)}.`:'';
         top=`<div class="card" data-go="trip">
           <div class="eyebrow">leave in · to ${dest.name} · route <span style="text-transform:uppercase">${route.letter}</span>${dest.viaName&&!main.it.direct?' · via '+dest.viaName:''}${chosen?' · your pick':''}</div>
@@ -380,7 +393,7 @@ const SCREENS={
         <div class="card"><div class="eyebrow">there</div>${main.it.legs.map(legHTML).join('')}
           <div id="map-slot"><div id="map"></div></div>
           <div class="mapfoot"><a class="pill" href="${appleRoute()}" target="_blank" rel="noopener">open in Apple Maps ↗</a><span class="pill" style="color:var(--muted)">tap a pin for that stop</span></div>
-          ${routes.length>1?`<div class="rides"><span class="eyebrow">routes</span>${routes.map(r=>`<button class="ride ${r===route?'on':''}" data-route="${r.sig.replace(/"/g,'&quot;')}"><b>${r.letter}</b> ${routeLabel(r)} · ${hhmm(firstVehicle(r.first.it)?firstVehicle(r.first.it).start:r.first.it.start)} <span class="${r===route?'':'dim'}">· ${r.first.it.min}m</span></button>`).join('')}</div>`:''}
+          ${routes.length>1?`<div class="rides"><span class="eyebrow">routes</span>${routes.map(r=>`<button class="ride ${r===route?'on':''}" data-route="${r.sig.replace(/"/g,'&quot;')}"><b>${r.letter}</b> ${routeLabel(r)} · ${hhmm(firstVehicle(r.first.it)?firstVehicle(r.first.it).start:r.first.it.start)} <span class="${r===route?'':'dim'}">· ${r.first.it.min}m · ${fareTxt(r.first.it)}</span></button>`).join('')}</div>`:''}
           ${then.length?`<div class="kv" style="margin-top:8px"><span>then</span>${then.map(x=>`<span>${vehLabel(x.it)}</span>`).join('')}</div>`:''}
         </div>`;
         if(src.back){
@@ -400,7 +413,7 @@ function placesHTML(){
   const rows=places().filter(p=>!(MODEL.at&&p.id===MODEL.at.id)).map(p=>{
     const t=MODEL.trips[p.id]; const on=MODEL.dest&&p.id===MODEL.dest.id;
     let m='<span class="dim">…</span>', sub='';
-    if(t&&t.there){ const {main}=pickMakeable(t.there,p.id); if(main){ m=`${main.lead<=0?'now':main.lead}<small>min</small>`; const v=firstVehicle(main.it); sub=v?`${lineName(v)} ${hhmm(v.start)} · ${main.it.min} min`:`walk ${main.it.min} min`; } else { m='<span class="dim">—</span>'; sub='nothing running'; } }
+    if(t&&t.there){ const {main}=pickMakeable(t.there,p.id); if(main){ m=`${main.lead<=0?'now':main.lead}<small>min</small>`; const v=firstVehicle(main.it); sub=v?`${lineName(v)} ${hhmm(v.start)} · ${main.it.min} min · ${fareTxt(main.it)}`:`walk ${main.it.min} min`; } else { m='<span class="dim">—</span>'; sub='nothing running'; } }
     else if(!MODEL.loading&&!t){ m='<span class="dim">—</span>'; }
     return `<div class="prow ${on?'on':''}" data-place="${p.id}"><div><div class="nm">${p.name}</div><div class="sub">${sub}</div></div><div class="mins">${m}</div></div>`;
   }).join('');
