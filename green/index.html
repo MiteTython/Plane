@@ -512,7 +512,7 @@ nav .badge{position:absolute;top:2px;right:18%;background:var(--bills);color:#ff
 // Am I Green — the app. Reads the vault through the GitHub API.
 // Data in: data/ledger.json (courier). Decisions out: config/*.json, data/tags.json, data/state.json.
 // ============================================================
-const BUILD='build 184';
+const BUILD='build 185';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const fmt=n=>(n<0?'−':'')+'$'+Math.abs(Math.round(n)).toLocaleString();
 const fmt2=n=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -658,14 +658,14 @@ function rebuild(){HIST=null;window.__logCushion=()=>{try{if(!LEDGER||OFFLINE)re
   {const b={checking:0,bills:0,savings:0};const rows=[];(LEDGER.accounts||[]).forEach(a=>{const l=acctLane[a.account_id];if(b[l]===undefined)return;const pend=pendByAcct[a.account_id]||0;const useAvail=a.available!=null;const v=useAvail?a.available:((a.current==null?0:a.current)+pend);b[l]+=v;rows.push({acct:a.mask||a.name,lane:l,current:a.current,available:a.available,pendingRows:Math.round(pend*100)/100,used:useAvail?'available':'current+pending',bal:Math.round(v*100)/100});});BAL=b;log('balances','per account',rows);}
   // planned: lines → due dates in (TODAY, WIN.to]
   const postedAll=txns.filter(t=>t.st==='posted'&&!t.split);
-  const covered=(l,due)=>postedAll.some(t=>Math.abs(days(t.date,due))<=8&&(t.t===l.key||(!t.t&&t.lane===l.lane&&Math.sign(t.a)===-Math.sign(l.amount)&&Math.abs(Math.abs(t.a)-Math.abs(l.amount))<=Math.max(2,Math.abs(l.amount)*0.02))));
+  const covered=(l,due)=>postedAll.some(t=>Math.abs(days(t.date,due))<=(l.window||8)&&(t.t===l.key||((!t.t||t.pair||['transfer','float','lake','capone'].includes(t.b))&&t.lane===l.lane&&Math.sign(t.a)===-Math.sign(l.amount)&&Math.abs(Math.abs(t.a)-Math.abs(l.amount))<=Math.max(2,Math.abs(l.amount)*0.02))));
   const skipped=(l,due)=>!!(STATE.skips&&STATE.skips[l.key+'@'+iso(due)]);
   let pid=0;
   LINES=lines;
   lines.forEach(l=>{const until=l.until?parseISO(l.until):null;const dues=lineDues(l,WIN.to);
     dues.forEach(x=>{if(until&&x>until)return;if(!l.amount)return;if(covered(l,x)||skipped(l,x))return;txns.push({id:'p'+(pid++),date:x,n:l.n,a:-l.amount,lane:l.lane,st:'planned',b:l.b,t:l.key,exp:Math.abs(l.amount),est:!!l.estimate,once:!!l.once});});
     // late: due in the last 8 days, never posted, not skipped → stays in the plan, dated tomorrow
-    lineDuesBack(l,8).forEach(x=>{if(!l.amount)return;if(covered(l,x)||skipped(l,x))return;if(txns.some(t=>t.st==='planned'&&t.t===l.key&&t.late))return;txns.push({id:'p'+(pid++),date:addDays(TODAY,1),n:l.n,a:-l.amount,lane:l.lane,st:'planned',b:l.b,t:l.key,exp:Math.abs(l.amount),est:!!l.estimate,late:true,dueWas:x});});});
+    lineDuesBack(l,l.window||8).forEach(x=>{if(!l.amount)return;if(covered(l,x)||skipped(l,x))return;if(txns.some(t=>t.st==='planned'&&t.t===l.key&&t.late))return;txns.push({id:'p'+(pid++),date:addDays(TODAY,1),n:l.n,a:-l.amount,lane:l.lane,st:'planned',b:l.b,t:l.key,exp:Math.abs(l.amount),est:!!l.estimate,late:true,dueWas:x});});});
   // planned: paychecks
   for(let x=addDays(TODAY,1);x<=WIN.to;x=addDays(x,1)){if(isPaydayDate(x)&&!txns.some(t=>t.t==='income'&&t.st==='posted'&&Math.abs(days(t.date,x))<=2&&t.date>TODAY)){Object.entries(CONF.income.split).forEach(([lane,amt])=>txns.push({id:'p'+(pid++),date:x,n:'Paycheck',a:amt,lane,st:'planned',b:laneDefault[lane],t:'income'}));}}
   // planned: the rest of this half's petty, on the last day of the half
