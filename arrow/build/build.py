@@ -1512,8 +1512,8 @@ def stage_write(ctx, car, arrow, wl, keep, u, v, osm_nodes, sig_nodes, gr, data_
                  (g["E"], g["N"]))
         sha = hashlib.sha256(raw).hexdigest()
         gz_path = os.path.join(data_dir, "la-graph.bin.gz")
-        with open(raw_path, "rb") as f, gzip.open(gz_path + ".tmp", "wb", compresslevel=9, mtime=0) as z:
-            z.write(f.read())
+        with open(gz_path + ".tmp", "wb") as z:      # mtime 0, no name in the header: same roads, same bytes
+            z.write(gzip.compress(raw, compresslevel=9, mtime=0))
         os.replace(gz_path + ".tmp", gz_path)
         os.remove(raw_path)
         st.count("nodes", len(osm_nodes))
