@@ -5,8 +5,8 @@
 **Data, phone:** IndexedDB `arrow` / `kv` / `graph` = the LA roads `{meta, buf}` (~18 MB); localStorage `arrow-cfg` (look, flat, recents, origin, mapbox — the phone's own public Mapbox key, never in the repo), `arrow-base` (last good route), `arrow-lastfail`
 **Data, repo:** `arrow/data/` — `la-graph.bin.gz` + `manifest.json` (+ `report.json`, `whitelist.geojson`, `baseline/`), written only by the "arrow map data" Action
 **Built from:** app-builder skill, 2026-10-29
-**Current:** build 6 · data `20261029T021955Z` (442,005 road segments, 6.5 MB download, OSM of 2026-10-28)
-**Settings:** no button. Press and hold the magnifying glass in the search bar until it turns blue, then let go.
+**Current:** build 7 · data `20261029T021955Z` (442,005 road segments, 6.5 MB download, OSM of 2026-10-28)
+**Settings:** the small grey gear at the right end of the search bar (the clear × takes its place while typing). The build is the first line under the Settings title.
 
 ## How it works
 
@@ -29,6 +29,7 @@ When it breaks: the run page shows a red annotation — stage, expected vs got, 
 
 ## Decisions and why
 
+- 2026-10-29 — **A gear, and self-updating (build 7).** The hold-the-magnifying-glass Settings was too hidden: Charlie couldn't find Settings or tell which build he had. Now a quiet gear in the search bar; the build heads the Settings sheet; and on open (and on coming back) the app reads the `const BUILD` line of the live page with a cache-busting query, and loads a newer build by itself when no route, search or sheet is open — once per build per session, then "Updated to build N". 
 - 2026-10-29 — **Mapbox only with a key, and then all Mapbox (build 6).** Charlie asked whether the times count traffic (they didn't) and has a Mapbox key. Mapbox's API docs say results must be shown on a Mapbox map, so a keyed phone gets Mapbox's map too; an unkeyed phone (the friend's, until the link is opened) stays on MapLibre and miles. Times come from Map Matching on our own line, not from Mapbox's route, so the minutes belong to the route on screen.
 - 2026-10-29 — **Build 5.** Grey usual way under the blue route, animated. Minutes off the card until there's traffic behind them (Mapbox, build 6). Stops cut to divergences only — Charlie found six stops annoying; Apple's URL (and Shortcuts) can only carry stops, never a route or pass-through points, so fewer stops is the only lever. Trade-off: where our usual way and Apple's own route differ, Apple can stray. The gauntlet exists because Charlie wants it put through hell before his friend gets it.
 - 2026-10-29 — **From is back (build 4)** for testing: Charlie is in Oakland, his friend in LA, and GPS outside LA County can't route. One row on the card; the search bar switches to "Starting point" with My Location on top. Location failures split three ways: iOS answered in under 700 ms (no prompt shown: blocked in Settings, or refused earlier) → the Settings path and Reload arrow; refused on a prompt → Turn on location asks again from the tap; no fix → Try again.
@@ -69,4 +70,6 @@ When it breaks: the run page shows a red annotation — stage, expected vs got, 
 
 **2026-10-29** — build 5: grey/blue animated routes, distance and unprotected-left counts instead of minutes, divergence-only stops, the router counts unprotected lefts on every route (a non-zero count on the green-arrow route fails the model), the gauntlet and the hell list, attribution folded into its (i). 
 
-**2026-10-29** — build 6: Mapbox key support (Settings, or the setup link for another phone), Mapbox map with live traffic on keyed phones, live-traffic minutes for both routes via Map Matching, Mapbox wordmark kept above the card, a Mapbox check in the gauntlet. Open: Charlie to paste his key, run the gauntlet, work the hell list; first real drive.
+**2026-10-29** — build 6: Mapbox key support (Settings, or the setup link for another phone), Mapbox map with live traffic on keyed phones, live-traffic minutes for both routes via Map Matching, Mapbox wordmark kept above the card, a Mapbox check in the gauntlet. 
+
+**2026-10-29** — build 7: gear in the search bar replaces the hold gesture, build shown atop Settings, the app updates itself to the live build when idle. Open: Charlie to paste his key, run the gauntlet, work the hell list; first real drive.
