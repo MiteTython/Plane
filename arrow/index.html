@@ -1,0 +1,844 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<!-- no apple-mobile-web-app-status-bar-style: see app-builder references/ios-pwa.md -->
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css">
+<title>arrow</title>
+<script>
+try{var _c=JSON.parse(localStorage.getItem('arrow-cfg')||'{}');var _l=_c.look||'system';document.documentElement.dataset.look=_l==='light'?'dawn':_l==='dark'?'native':(matchMedia('(prefers-color-scheme: dark)').matches?'native':'dawn');}catch(e){}
+</script>
+<style>
+/* ---------- looks: Native (dark) + Dawn (light), following the system ---------- */
+:root, :root[data-look=native] {
+  --bg:#000; --surface:#1c1c1e; --surface2:#2c2c2e; --fg:#f2f2f7; --muted:#8e8e93; --line:rgba(84,84,88,.55);
+  --panel:rgba(28,28,30,.84); --field:rgba(118,118,128,.24);
+  --blue:#0a84ff; --green:#30d158; --amber:#ffd60a; --red:#ff453a;
+  --route:#0a84ff; --casing:#0a3d7a;
+  --font:-apple-system,system-ui,sans-serif; --mono:ui-monospace,Menlo,monospace;
+  --sat:env(safe-area-inset-top); --sab:env(safe-area-inset-bottom);
+  --peek:calc(86px + env(safe-area-inset-bottom));
+  color-scheme:dark;
+}
+:root[data-look=dawn] {
+  --bg:#f2f2f7; --surface:#fff; --surface2:#f2f2f7; --fg:#000; --muted:#6c6c70; --line:rgba(60,60,67,.18);
+  --panel:rgba(249,249,251,.88); --field:rgba(118,118,128,.12);
+  --blue:#007aff; --green:#34c759; --amber:#ff9f0a; --red:#ff3b30;
+  --route:#007aff; --casing:#ffffff;
+  color-scheme:light;
+}
+
+/* ---------- shell (references/ios-pwa.md) ---------- */
+html,body{margin:0;height:100%;overscroll-behavior:none}
+body{background:var(--bg);color:var(--fg);font:16px/1.35 var(--font);-webkit-text-size-adjust:100%;-webkit-user-select:none;user-select:none;-webkit-font-smoothing:antialiased}
+input,textarea{-webkit-user-select:text;user-select:text}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+a{-webkit-tap-highlight-color:transparent}
+#app{position:fixed;inset:0;height:100dvh;overflow:hidden}
+#map{position:absolute;inset:0;background:var(--surface2);z-index:1;-webkit-touch-callout:none}
+.maplibregl-ctrl-top-left{top:var(--sat)}
+.maplibregl-ctrl-attrib{font:11px var(--font)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}.dim{color:var(--muted)}
+
+/* map controls, top right, like Apple's */
+#ctl{position:absolute;right:10px;top:calc(var(--sat) + 10px);z-index:5;display:flex;flex-direction:column;border-radius:10px;overflow:hidden;background:var(--panel);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);box-shadow:0 2px 12px rgba(0,0,0,.2)}
+#ctl button{width:44px;height:44px;display:grid;place-items:center;color:var(--blue)}
+#ctl button+button{border-top:1px solid var(--line)}
+
+/* map markers */
+.mk-here{width:16px;height:16px;border-radius:50%;background:var(--blue);border:3px solid #fff;box-shadow:0 0 0 7px rgba(10,132,255,.2),0 1px 4px rgba(0,0,0,.35)}
+.mk-dest{width:26px;height:26px;border-radius:50%;background:var(--red);border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35);display:grid;place-items:center}
+.mk-dest::after{content:"";width:7px;height:7px;border-radius:50%;background:#fff}
+.mk-origin{width:14px;height:14px;border-radius:50%;background:#8e8e93;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+.mk-left{width:22px;height:22px;border-radius:7px;background:var(--green);border:2px solid #fff;display:grid;place-items:center;box-shadow:0 1px 5px rgba(0,0,0,.35)}
+
+/* ---------- the panel: Apple Maps' bottom sheet ---------- */
+#panel{position:absolute;left:0;right:0;bottom:0;height:92dvh;z-index:6;display:flex;flex-direction:column;
+  background:var(--panel);-webkit-backdrop-filter:saturate(180%) blur(22px);backdrop-filter:saturate(180%) blur(22px);
+  border-radius:14px 14px 0 0;box-shadow:0 -1px 0 var(--line),0 -8px 30px rgba(0,0,0,.18);
+  transform:translateY(calc(92dvh - var(--peek)));transition:transform .38s var(--spring)}
+#panel.half{transform:translateY(calc(92dvh - 54dvh))}
+#panel.full{transform:translateY(0)}
+#panel.drag{transition:none}
+#panel .grab{flex:none;padding:6px 0 6px;display:flex;justify-content:center;touch-action:none}
+#panel .grab i{width:36px;height:5px;border-radius:3px;background:var(--muted);opacity:.45}
+#pc{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 16px calc(28px + var(--sab));touch-action:pan-y;overscroll-behavior:contain}
+#panel:not(.full) #pc{overflow:hidden}
+
+.search{display:flex;align-items:center;gap:7px;background:var(--field);border-radius:10px;padding:0 10px;height:38px;margin:2px 0 12px;color:var(--muted)}
+.search input{flex:1;border:0;background:transparent;font:17px var(--font);color:var(--fg);outline:none;padding:0;height:38px;min-width:0;-webkit-appearance:none;appearance:none}
+.search input::-webkit-search-cancel-button{display:none}
+.search .clr{width:22px;height:22px;display:grid;place-items:center;color:var(--muted)}
+.search .clr[hidden]{display:none}
+.pick{font-size:14px;color:var(--muted);margin:-4px 0 8px;display:flex;gap:6px;align-items:center}
+.link{color:var(--blue);font-weight:600}
+.eyebrow{font:700 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:6px 0 2px}
+.list{display:flex;flex-direction:column}
+.trow{display:flex;align-items:center;gap:12px;min-height:58px;padding:7px 0;text-align:left;width:100%;border-bottom:1px solid var(--line)}
+.trow:last-child{border-bottom:0}
+.trow .ico{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;flex:none;background:var(--red);color:#fff}
+.trow .ico.blue{background:var(--blue)}
+.trow .t{display:flex;flex-direction:column;min-width:0;flex:1}
+.trow b{font-weight:600;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trow i{font-style:normal;color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.msg{font-size:14px;color:var(--muted);padding:10px 0}
+.msg.bad{color:var(--red)}
+
+/* route card */
+.rhead{display:flex;align-items:flex-start;gap:10px;margin:0 0 10px}
+.rhead .t{flex:1;min-width:0}
+.rhead h2{margin:0;font-size:22px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rhead p{margin:2px 0 0;color:var(--muted);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.x{width:30px;height:30px;border-radius:50%;background:var(--field);display:grid;place-items:center;color:var(--muted);flex:none}
+.group{background:var(--surface);border-radius:12px;padding:0 14px;margin-bottom:12px}
+.from,.opt{display:flex;align-items:center;gap:10px;min-height:48px;width:100%;text-align:left}
+.from{border-bottom:1px solid var(--line)}
+.from .k{color:var(--muted);font-size:15px;width:44px}
+.from .v{flex:1;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.from svg{color:var(--muted)}
+.opt .ol{flex:1;display:flex;align-items:center;gap:10px;font-size:16px}
+.opt .ol svg{color:var(--muted)}
+.switch{position:relative;width:51px;height:31px;flex:none;display:inline-block}
+.switch input{position:absolute;opacity:0;width:0;height:0}
+.switch span{position:absolute;inset:0;border-radius:16px;background:var(--field);transition:background .2s}
+.switch span::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.25);transition:transform .25s var(--spring)}
+.switch input:checked+span{background:var(--green)}
+.switch input:checked+span::after{transform:translateX(20px)}
+.sum{padding:2px 2px 0}
+.big{font-size:34px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.1}
+.facts{color:var(--muted);font-size:15px;margin-top:3px}
+.cap{font-size:14px;margin-top:8px;line-height:1.4}.cap .cmp{color:var(--muted)}
+.go{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;box-sizing:border-box;background:var(--green);color:#fff;font-weight:700;font-size:17px;border-radius:12px;min-height:50px;margin-top:14px;text-decoration:none;transition:transform .15s var(--spring)}
+.go:active{transform:scale(.97)}
+.note{font-size:13px;color:var(--muted);margin-top:8px;line-height:1.4}
+.sec{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:0 14px;border-radius:9px;background:var(--field);color:var(--blue);font-weight:600;font-size:15px}
+.sec.wide{width:100%;margin-top:10px;min-height:44px}
+.busy{padding:18px 2px;color:var(--muted);font-size:15px}
+.err{padding:6px 2px}
+.err b{display:block;font-size:17px;margin-bottom:4px}
+.err p{margin:0 0 10px;color:var(--muted);font-size:14px;line-height:1.4}
+
+/* ---------- modal sheet (settings) ---------- */
+#sheets .scrim{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:20;animation:scrimin .25s ease both}
+#sheets .sheet{position:fixed;left:0;right:0;bottom:0;max-height:90dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--surface2);border-radius:14px 14px 0 0;z-index:21;padding:0 16px calc(24px + var(--sab));box-sizing:border-box}
+#sheets .sheet .grab{display:flex;justify-content:center;padding:7px 0 4px}
+#sheets .sheet .grab i{width:36px;height:5px;border-radius:3px;background:var(--muted);opacity:.45}
+.sh h3{margin:4px 0 12px;font-size:20px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:46px;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.row.col{flex-direction:column;align-items:stretch;padding:10px 0;gap:8px}
+.row .k{font-size:16px}
+.row input{font:16px var(--font);color:var(--fg);background:var(--field);border:0;border-radius:9px;padding:10px;outline:none;width:100%;box-sizing:border-box}
+.rowbtns{display:flex;gap:8px}
+.seg{display:flex;background:var(--field);border-radius:9px;padding:2px}
+.seg button{padding:6px 12px;border-radius:7px;font-size:14px;color:var(--muted);font-weight:600}
+.seg button[aria-pressed=true]{background:var(--surface);color:var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.mini{font-size:13px;color:var(--muted);line-height:1.4}
+.mini.good{color:var(--green)}.mini.bad{color:var(--red)}
+pre.log{font:11px/1.35 var(--mono);white-space:pre-wrap;word-break:break-all;max-height:40vh;overflow:auto;margin:0 0 12px;color:var(--muted);-webkit-user-select:text;user-select:text}
+
+/* toasts */
+#toasts{position:fixed;left:0;right:0;top:calc(var(--sat) + 62px);display:flex;flex-direction:column;align-items:center;gap:6px;z-index:40;pointer-events:none}
+.toast{background:var(--surface);color:var(--fg);border-radius:12px;padding:10px 14px;font-size:14px;font-weight:600;max-width:86vw}
+.toast.bad{color:var(--red)}.toast.warn{color:var(--amber)}
+
+/* ---------- Motion block (app-builder contract) ---------- */
+:root{--spring:cubic-bezier(.2,.9,.25,1.2);--ease:cubic-bezier(.2,.7,.2,1)}
+/* press */
+button,.btn,.chip,.pchip,.tcpill,.tcgear,.acch,.grp,.drow,.trow,.prow,.pipbtn,.subx,.cvr,[data-go],tr[data-tx],tr[data-pl],tr[data-b],tr[data-dedit],tr[data-vk]{transition:transform .15s var(--spring)}
+button:active,.btn:active,.chip:active,.pchip:active,.tcpill:active,.tcgear:active,.acch:active,.pipbtn:active,.subx:active,.cvr:active,[data-go]:active{transform:scale(.96)}
+.trow:active,.prow:active,.grp:active,.drow:active,tr[data-tx]:active,tr[data-pl]:active,tr[data-b]:active,tr[data-dedit]:active,tr[data-vk]:active{transform:scale(.985)}
+.chev,.accc{display:inline-block;transition:transform .15s var(--spring)}:active>.chev,:active .chev,.acch:active .accc{transform:translateX(4px)}
+/* toast · sheet */
+.toast{animation:toastin .42s var(--spring) both,toastout .3s ease-in 2.2s forwards;box-shadow:0 8px 24px rgba(0,0,0,.45),0 2px 6px rgba(0,0,0,.3)}
+@keyframes toastin{from{transform:translateY(40px) scale(.96);opacity:0}to{transform:none;opacity:1}}@keyframes toastout{to{transform:translateY(-6px);opacity:0}}
+.sheet{animation:sheetup .35s var(--spring) both}@keyframes sheetup{from{transform:translateY(100%)}to{transform:none}}
+.sheet.from-stat{transform-origin:92% 100%;animation:sheetfromstat .42s var(--spring) both}@keyframes sheetfromstat{from{transform:scale(.25);opacity:0}to{transform:none;opacity:1}}
+/* arrival */
+@keyframes rowin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.boot .tcrows .trow,.boot .btab tbody tr{animation:rowin .4s var(--ease) both}
+.boot .trow:nth-child(2),.boot tbody tr:nth-child(2){animation-delay:55ms}.boot .trow:nth-child(3),.boot tbody tr:nth-child(3){animation-delay:110ms}.boot .trow:nth-child(4),.boot tbody tr:nth-child(4){animation-delay:165ms}.boot .trow:nth-child(5),.boot tbody tr:nth-child(5){animation-delay:220ms}.boot .trow:nth-child(6),.boot tbody tr:nth-child(6){animation-delay:275ms}.boot .trow:nth-child(7),.boot tbody tr:nth-child(7){animation-delay:330ms}.boot .trow:nth-child(8),.boot tbody tr:nth-child(8){animation-delay:385ms}.boot .trow:nth-child(n+9),.boot tbody tr:nth-child(n+9){animation-delay:440ms}
+/* charts */
+.lfoot .anim,.canim{clip-path:inset(0 100% 0 0)}.lfoot.go .anim{animation:wipe 1.1s var(--ease) .1s forwards}.canim.go{animation:wipe 1s var(--ease) .05s forwards}@keyframes wipe{to{clip-path:inset(0 0 0 0)}}
+.canim2{opacity:0;transform:scale(.85)}.canim2.go{animation:ringin .6s var(--spring) forwards}@keyframes ringin{to{opacity:1;transform:none}}
+.lfoot .pl{opacity:0}.lfoot.go .pl{animation:pillin .35s var(--ease) forwards}@keyframes pillin{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.lfoot.go .pl:nth-of-type(1){animation-delay:1.1s}.lfoot.go .pl:nth-of-type(2){animation-delay:1.22s}.lfoot.go .pl:nth-of-type(3){animation-delay:1.34s}.lfoot.go .pl:nth-of-type(4){animation-delay:1.46s}.lfoot.go .pl:nth-of-type(5){animation-delay:1.58s}.lfoot.go .pl:nth-of-type(6){animation-delay:1.7s}
+.lfoot .brk{transform-box:fill-box;transform-origin:50% 0;transform:scaleY(0)}.lfoot.go .brk{animation:brkgrow .4s var(--spring) 1.25s forwards}@keyframes brkgrow{to{transform:scaleY(1)}}
+.lfoot .tpulse{opacity:0;transform-box:fill-box;transform-origin:center}.lfoot.go .tpulse{animation:tpulse .9s ease-out 1.3s 1}@keyframes tpulse{0%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(3.2)}}
+.canim .cur{transform-box:fill-box;transform-origin:50% 100%}.canim.go .cur{animation:barpulse .5s ease 1.1s 1}@keyframes barpulse{0%,100%{transform:none;opacity:1}50%{transform:scaleY(1.06);opacity:.7}}
+.heat .hc{opacity:0}.heat.go .hc{animation:pillin .4s var(--ease) forwards}.heat.go td:nth-child(3) .hc{animation-delay:.08s}.heat.go td:nth-child(4) .hc{animation-delay:.16s}.heat.go td:nth-child(5) .hc{animation-delay:.24s}.heat.go td:nth-child(6) .hc{animation-delay:.32s}.heat.go td:nth-child(7) .hc{animation-delay:.4s}.heat.go td:nth-child(8) .hc{animation-delay:.48s}
+.heat td{transition:opacity .25s}.heat.focus tr:not(.on) td{opacity:.3}.heat .hk{cursor:pointer}
+.ring circle{transition:stroke-width .2s var(--spring)}.ring circle.sel{stroke-width:21}
+svg .scrub{opacity:0;pointer-events:none;transition:opacity .12s}svg .scrub.on{opacity:1}
+/* controls */
+.pips i{transition:background .2s}@keyframes pipbump{0%,100%{transform:scale(1)}50%{transform:scale(1.6)}}.pips.bump i:nth-child(1){animation:pipbump .3s var(--spring)}.pips.bump i:nth-child(2){animation:pipbump .3s var(--spring) .07s}.pips.bump i:nth-child(3){animation:pipbump .3s var(--spring) .14s}
+tr.fold td{transition:padding .26s var(--ease),line-height .26s var(--ease),font-size .26s var(--ease),opacity .2s;padding-top:0!important;padding-bottom:0!important;line-height:0!important;font-size:0!important;opacity:0}tr.fold td *{font-size:0!important;line-height:0!important}
+.hs{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}.hs.atend{-webkit-mask-image:none;mask-image:none}
+.slwrap{position:relative;padding-top:22px}.sltip{position:absolute;top:0;transform:translateX(-50%) translateY(6px);background:var(--fg);color:var(--bg);font-family:var(--mono);font-size:10px;font-weight:800;padding:2px 6px;border-radius:5px;opacity:0;transition:opacity .15s,transform .15s var(--spring);pointer-events:none;white-space:nowrap}.slwrap.dragging .sltip{opacity:1;transform:translateX(-50%) translateY(0)}
+input[type=range]::-webkit-slider-thumb{transition:transform .15s var(--spring)}input[type=range]:active::-webkit-slider-thumb{transform:scale(1.3)}
+.korow{position:relative;transition:transform .18s var(--ease);background:var(--surface)}.korow .grip{width:16px;color:var(--muted);font-size:11px;letter-spacing:-3px;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;flex:none}.korow.lift{transition:none;z-index:3;box-shadow:0 8px 20px rgba(0,0,0,.45);background:var(--surface2);border-radius:6px}
+/* meaning */
+@keyframes dotbreathe{0%,100%{box-shadow:0 0 0 0 currentColor}70%{box-shadow:0 0 0 7px transparent}}.tcdot{animation:dotbreathe 2.6s ease-out infinite}.tcdot.c-amber{animation-duration:1.8s}.tcdot.c-red{animation-duration:1.2s}.tcdot.muted{animation:none}
+@keyframes nsamber{0%,100%{box-shadow:0 0 0 0 rgba(255,214,10,0)}50%{box-shadow:0 0 0 3px rgba(255,214,10,.4)}}@keyframes nsred{0%,100%{box-shadow:0 0 0 0 rgba(255,69,58,0)}50%{box-shadow:0 0 0 3px rgba(255,69,58,.5)}}.navstat.thin{animation:nsamber 2.4s ease-in-out infinite}.navstat.short{animation:nsred 1.3s ease-in-out infinite}
+@keyframes pulse2{0%,100%{box-shadow:0 0 0 0 transparent}30%{box-shadow:0 0 0 5px rgba(255,214,10,.3)}60%{box-shadow:0 0 0 0 transparent}80%{box-shadow:0 0 0 5px rgba(255,214,10,.3)}}.tag.pulse2{animation:pulse2 1.8s ease .4s 1}
+.rededge{position:fixed;left:0;right:0;top:0;height:36px;pointer-events:none;z-index:50;background:linear-gradient(rgba(255,69,58,.55),transparent);animation:edgepulse 1.7s ease 1 forwards}@keyframes edgepulse{0%,100%{opacity:0}20%,30%{opacity:1}50%{opacity:.1}65%,75%{opacity:1}}
+@keyframes emptybreathe{0%,100%{opacity:.55}50%{opacity:1}}.empty{animation:emptybreathe 3.2s ease-in-out infinite}
+html.looking,html.looking *{transition:background-color .3s ease,color .3s ease,border-color .3s ease,fill .3s ease,stroke .3s ease,box-shadow .3s ease!important}
+/* closing a sheet (closeSheet) */
+@keyframes sheetdown{to{transform:translateY(100%)}}@keyframes scrimout{to{opacity:0}}@keyframes scrimin{from{opacity:0}}
+/* off switch — keep last */
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.lfoot .anim,.canim{clip-path:none}.canim2,.lfoot .pl,.heat .hc{opacity:1;transform:none}.lfoot .brk{transform:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="map"></div>
+  <div id="ctl">
+    <button id="bGear" aria-label="Settings"></button>
+    <button id="bLoc" aria-label="Show my location"></button>
+  </div>
+  <div id="panel" class="peek"><div class="grab"><i></i></div><div id="pc"></div></div>
+  <div id="sheets"></div>
+  <div id="toasts"></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+<script>
+'use strict';
+/* =====================================================================
+   SLOT 1 — APP: identity
+   ===================================================================== */
+const BUILD = 'build 1';
+const APP = {
+  key: 'arrow',
+  name: 'arrow',
+  answer: 'How do I get there turning left only on a green arrow, and around the hills?',
+};
+
+/* =====================================================================
+   SLOT 2 — CONF
+   ===================================================================== */
+const CONF = {
+  styles: { dawn: 'https://tiles.openfreemap.org/styles/liberty', native: 'https://tiles.openfreemap.org/styles/dark' },
+  photon: 'https://photon.komoot.io/api/',
+  nominatim: 'https://nominatim.openstreetmap.org/search',
+  bbox: [-118.96, 33.70, -117.64, 34.83],      // what the server's graph covers: LA County
+  center: [-118.33, 34.06], zoom: 10.3,
+  maxPins: 12,           // Apple Maps tops out around 13 stops per route
+  pinGap: 70,            // metres between pins along the route
+  quietPins: 6,          // cap when arrow's route matches the plain one (pins become stops)
+  fwy: ['motorway', 'motorway_link', 'trunk_link', 'primary_link', 'secondary_link', 'tertiary_link'],
+  routeTimeout: 30000,
+};
+const FWY = new Set(CONF.fwy);
+
+/* =====================================================================
+   ENGINE — log, fail, stage, cfg, dump. Domain-free.
+   ===================================================================== */
+const LOG = [];
+function log(stage, data){
+  const line = `${new Date().toISOString().slice(11,23)} ${stage} ${data==null?'':typeof data==='string'?data:JSON.stringify(data)}`;
+  LOG.push(line); if (LOG.length > 500) LOG.shift();
+  console.log(line);
+}
+class StageError extends Error {
+  constructor(stage, expected, got, evidence){ super(`[${stage}] expected ${expected}, got ${got}`); this.stage=stage; this.expected=expected; this.got=got; this.evidence=evidence||null; }
+}
+function fail(stage, expected, got, evidence){ throw new StageError(stage, expected, got, evidence); }
+const STAGES = {};
+async function stage(name, fn, summarize){
+  const t0 = performance.now();
+  try {
+    const out = await fn();
+    const ms = +(performance.now()-t0).toFixed(1);
+    const summ = summarize ? summarize(out) : out;
+    STAGES[name] = {ok:true, ms, at:new Date().toISOString(), out:summ};
+    log(name, `PASS ${ms} ms | ${JSON.stringify(summ)}`);
+    return out;
+  } catch (e) {
+    const ms = +(performance.now()-t0).toFixed(1);
+    const err = e instanceof StageError ? e : new StageError(name, 'clean run', `${e.name}: ${e.message}`);
+    STAGES[name] = {ok:false, ms, at:new Date().toISOString(), error:err.message, evidence:err.evidence, stack:e.stack};
+    log(name, 'FAIL ' + err.message);
+    try { localStorage.setItem(APP.key+'-lastfail', JSON.stringify({at:new Date().toISOString(), stage:name, error:err.message})); } catch(_){}
+    if (err !== e) { err.status = e.status; err.ghMessage = e.ghMessage; }
+    throw err;
+  }
+}
+let ENV = null;
+function dumpJSON(){
+  let base = null, last = null;
+  try { base = JSON.parse(localStorage.getItem(APP.key+'-base')||'null'); last = JSON.parse(localStorage.getItem(APP.key+'-lastfail')||'null'); } catch(_){}
+  return JSON.stringify({app:APP.key, build:BUILD, runtime:'js', at:new Date().toISOString(), env:ENV,
+    cfg:{server:cfg.server||null, look:cfg.look||'system', flat:!!cfg.flat, recents:(cfg.recents||[]).length},
+    state:{origin:S.origin, dest:S.dest, mode:S.mode, route:S.route?{km:S.route.km, ms:S.route.ms, pins:S.route.pins.length, url:S.route.url}:null},
+    stages:STAGES, baseline:base, lastfail:last, log:LOG}, null, 2);
+}
+function download(name, text){
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text],{type:'application/json'})); a.download = name; a.click();
+}
+let cfg = {};
+try { cfg = JSON.parse(localStorage.getItem(APP.key+'-cfg') || '{}'); } catch(e){ log('cfg', 'read failed: '+e.message); }
+function saveCfg(){ try { localStorage.setItem(APP.key+'-cfg', JSON.stringify(cfg)); } catch(e){ log('cfg', 'write failed: '+e.message); } }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fetchT(url, ms, opt){ const ac = new AbortController(); const t = setTimeout(()=>ac.abort(), ms); return fetch(url, {...(opt||{}), signal:ac.signal, cache:'no-store'}).finally(()=>clearTimeout(t)); }
+const sleep = ms => new Promise(r=>setTimeout(r, ms));
+
+/* ---- Motion helpers (app-builder contract) ---- */
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+document.body.classList.add('boot');setTimeout(()=>document.body.classList.remove('boot'),4000);
+function capt(a,b){return `<div class="cap">${a}${b?` <span class="cmp">${b}</span>`:''}</div>`;}
+function svgPill(x,y,txt,kind,anchor){const w=txt.length*6.2+10,h=14;const x0=anchor==='end'?x-w:anchor==='middle'?x-w/2:x;const fill=kind==='primary'?'var(--fg)':kind==='red'?'var(--red)':kind==='green'?'var(--green)':'var(--surface2)';const tf=kind==='muted'?'var(--fg)':'var(--bg)';return `<g class="pl"><rect x="${x0.toFixed(1)}" y="${(y-h/2).toFixed(1)}" width="${w.toFixed(1)}" height="${h}" rx="4" fill="${fill}"${kind==='muted'?' stroke="var(--line)"':''}/><text x="${(x0+w/2).toFixed(1)}" y="${(y+3.5).toFixed(1)}" text-anchor="middle" fill="${tf}" font-size="10" font-weight="700">${txt}</text></g>`;}
+function watchCharts(v,mode){if(mode==='all'){const go=()=>v.querySelectorAll('.canim,.canim2,.canim3,.heat,.lfoot').forEach(el=>{el.style.setProperty('--rd','0s');el.classList.add('go');});go();requestAnimationFrame(go);return;}const check=()=>{let k=0;const R=v.getBoundingClientRect();v.querySelectorAll('.canim,.canim2,.canim3,.heat,.lfoot').forEach(el=>{const r=el.getBoundingClientRect();if(!r.height)return;const vis=Math.min(r.bottom,R.bottom)-Math.max(r.top,R.top);const need=Math.min(Math.max(r.height*0.3,80),r.height,R.height*0.5);const inFromBottom=R.bottom-r.top,inFromTop=r.bottom-R.top;if(inFromBottom>=need&&inFromTop>=need){if(!el.classList.contains('go')){el.style.setProperty('--rd',k.toFixed(1)+'s');k+=el.classList.contains('canim3')?1.2:0.6;el.classList.add('go');}}else if(vis<=-24&&el.classList.contains('go')){el.classList.remove('go');el.style.removeProperty('--rd');}});};if(!v.dataset.cw){v.dataset.cw='1';let t=null;v.addEventListener('scroll',()=>{if(t)return;t=requestAnimationFrame(()=>{t=null;check();});},{passive:true});}check();requestAnimationFrame(check);setTimeout(check,350);}
+function wireFootScrub(root){root.querySelectorAll('svg[data-scrub]').forEach(svg=>{let pts;try{pts=JSON.parse(svg.dataset.scrub);}catch(e){return;}if(!pts||pts.length<2)return;const ns='http://www.w3.org/2000/svg';const mk=(t,a)=>{const el=document.createElementNS(ns,t);Object.entries(a).forEach(([k,v])=>el.setAttribute(k,v));return el;};const g=mk('g',{class:'scrub'});const ln=mk('line',{y1:6,y2:svg.viewBox.baseVal.height-16,stroke:'var(--fg)','stroke-width':1,opacity:.5});const dot=mk('circle',{r:4.5,fill:'var(--fg)'});const rect=mk('rect',{height:16,rx:4,fill:'var(--fg)'});const txt=mk('text',{'font-size':10,'font-weight':700,fill:'var(--bg)','text-anchor':'middle'});g.append(ln,dot,rect,txt);svg.appendChild(g);svg.style.touchAction='pan-y';let on=false;const show=e=>{const r=svg.getBoundingClientRect();const x=(e.clientX-r.left)/r.width*340;let best=pts[0];for(const p of pts)if(Math.abs(p.x-x)<Math.abs(best.x-x))best=p;ln.setAttribute('x1',best.x);ln.setAttribute('x2',best.x);dot.setAttribute('cx',best.x);dot.setAttribute('cy',best.y);const w=best.l.length*6.2+10;const px=Math.max(w/2+2,Math.min(340-w/2-2,best.x));rect.setAttribute('x',px-w/2);rect.setAttribute('y',2);rect.setAttribute('width',w);txt.setAttribute('x',px);txt.setAttribute('y',13.5);txt.textContent=best.l;g.classList.add('on');};svg.addEventListener('pointerdown',e=>{on=true;svg.setPointerCapture(e.pointerId);show(e);});svg.addEventListener('pointermove',e=>{if(on)show(e);});const off=()=>{on=false;g.classList.remove('on');};svg.addEventListener('pointerup',off);svg.addEventListener('pointercancel',off);});}
+function redEdge(){if(reduced)return;const d=document.createElement('div');d.className='rededge';document.body.appendChild(d);setTimeout(()=>d.remove(),1800);}
+let SHEET_FROM=null;function sheet(html,onReady){const host=document.querySelector('#sheets');const from=SHEET_FROM;SHEET_FROM=null;host.innerHTML=`<div class="scrim" data-close></div><div class="sheet ${from?'from-'+from:''}"><div class="grab" data-close><i></i></div>${html}</div>`;host.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeSheet);if(onReady)onReady(host.querySelector('.sheet'));}
+function wireStrips(v){v.querySelectorAll('.hs').forEach(el=>{const chk=()=>el.classList.toggle('atend',el.scrollLeft+el.clientWidth>=el.scrollWidth-2);chk();el.addEventListener('scroll',chk,{passive:true});});}
+function closeSheet(){const host=document.querySelector('#sheets');const s=host.querySelector('.sheet'),sc=host.querySelector('.scrim');if(!s||reduced){host.innerHTML='';return;}s.style.animation='sheetdown .3s var(--ease) forwards';if(sc)sc.style.animation='scrimout .3s ease forwards';setTimeout(()=>{host.innerHTML='';},300);}
+function toast(text, kind){ const el=document.createElement('div'); el.className='toast'+(kind?' '+kind:''); el.textContent=text; document.getElementById('toasts').appendChild(el); setTimeout(()=>el.remove(), 2700); }
+function countTo(el, toMin, fmt){ if(!el) return; if(reduced){ el.textContent=fmt(toMin); return; } const t0=performance.now(), D=700; const tick=now=>{ const k=Math.min(1,(now-t0)/D), e=1-Math.pow(1-k,3); el.textContent=fmt(Math.max(1,Math.round(toMin*e))); if(k<1) requestAnimationFrame(tick); }; requestAnimationFrame(tick); }
+
+/* =====================================================================
+   icons — stroke SVG, no emoji
+   ===================================================================== */
+const ICON = {
+  mag:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>',
+  gear:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8"/></svg>',
+  loc:'<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M20.6 3.4 3.5 10.7l7.2 2.1 2.1 7.2z"/></svg>',
+  pin:'<svg viewBox="0 0 24 24" width="16" height="16" fill="#fff"><path d="M12 2a6.5 6.5 0 0 0-6.5 6.5c0 4.9 6.5 13 6.5 13s6.5-8.1 6.5-13A6.5 6.5 0 0 0 12 2zm0 9a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg>',
+  x:'<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+  xs:'<svg viewBox="0 0 24 24" width="18" height="18"><circle cx="12" cy="12" r="10" fill="currentColor" opacity=".7"/><path d="M8.5 8.5l7 7M15.5 8.5l-7 7" style="stroke:var(--bg)" stroke-width="2.2" stroke-linecap="round"/></svg>',
+  chev:'<svg class="chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>',
+  hill:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M2 19 9 8l4 6 3-4 6 9z"/></svg>',
+  car:'<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17v-4l2-5.5h12l2 5.5v4z"/><path d="M6.5 17v2.5M17.5 17v2.5M4 13h16"/></svg>',
+  left:'<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20v-7a4 4 0 0 0-4-4H6"/><path d="m10 5-4 4 4 4"/></svg>',
+};
+
+/* =====================================================================
+   state
+   ===================================================================== */
+const S = {
+  mode: 'search',        // search | route
+  picking: 'dest',       // dest | origin  (what a search result fills)
+  query: '', results: [], searchErr: null,
+  here: null,            // live GPS fix
+  origin: null,          // null = My Location, else a place
+  dest: null,
+  flat: !!cfg.flat,
+  route: null, busy: false, err: null,
+};
+(function serverFromLink(){
+  try {
+    const u = new URL(location.href); const s = u.searchParams.get('server');
+    if (s) { cfg.server = s.replace(/\/+$/,''); saveCfg(); log('cfg', 'server set from link'); u.searchParams.delete('server'); history.replaceState(null, '', u.pathname + u.search + u.hash); }
+  } catch(e){ log('cfg', 'server link unreadable: '+e.message); }
+})();
+
+/* =====================================================================
+   look
+   ===================================================================== */
+function lookFor(p){ return p==='light'?'dawn':p==='dark'?'native':(matchMedia('(prefers-color-scheme: dark)').matches?'native':'dawn'); }
+function cssv(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+function applyLook(){
+  const r = document.documentElement, look = lookFor(cfg.look||'system');
+  if (r.dataset.look && r.dataset.look !== look && !reduced){ r.classList.add('looking'); setTimeout(()=>r.classList.remove('looking'), 500); }
+  r.dataset.look = look;
+  document.querySelector('meta[name=theme-color]').content = cssv('--bg');
+  if (MAP && MAP.__look !== look){ MAP.__look = look; STYLE_READY = false; MAP.setStyle(CONF.styles[look]); log('map', 'style → '+look); }
+}
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=>{ if ((cfg.look||'system')==='system') applyLook(); });
+
+/* =====================================================================
+   map
+   ===================================================================== */
+let MAP = null, STYLE_READY = false;
+const MK = {here:null, dest:null, origin:null, lefts:[]};
+const EMPTY = {type:'FeatureCollection', features:[]};
+function initMap(){
+  if (!window.maplibregl){ log('map', 'FAIL maplibre-gl did not load (CDN unreachable)'); toast('Map didn’t load. Routing still works.', 'warn'); return; }
+  const look = document.documentElement.dataset.look;
+  try {
+    MAP = new maplibregl.Map({container:'map', style:CONF.styles[look], center:CONF.center, zoom:CONF.zoom,
+      attributionControl:false, dragRotate:false, pitchWithRotate:false, touchPitch:false});
+  } catch(e){ log('map', 'FAIL '+e.message); MAP = null; toast('Map didn’t start. Routing still works.', 'warn'); return; }
+  MAP.__look = look;
+  MAP.touchZoomRotate.disableRotation();
+  MAP.addControl(new maplibregl.AttributionControl({compact:true}), 'top-left');
+  MAP.on('style.load', ()=>{ STYLE_READY = true; ensureLayers(); drawRoute(); log('map', `style ${MAP.__look} loaded`); });
+  MAP.on('error', e=>log('map', 'error '+((e.error&&e.error.message)||e.message||'?')));
+  let t = null, p0 = null, lastDrop = 0;
+  const cancel = ()=>{ clearTimeout(t); t = null; };
+  const drop = ll => { if (Date.now()-lastDrop < 900) return; lastDrop = Date.now(); dropPin(ll); };
+  MAP.on('touchstart', e=>{ cancel(); if (e.originalEvent.touches.length !== 1) return; p0 = e.point; const ll = e.lngLat; t = setTimeout(()=>{ t = null; drop(ll); }, 550); });
+  MAP.on('touchmove', e=>{ if (p0 && Math.hypot(e.point.x-p0.x, e.point.y-p0.y) > 10) cancel(); });
+  ['touchend','touchcancel','dragstart','zoomstart'].forEach(ev=>MAP.on(ev, cancel));
+  MAP.on('contextmenu', e=>drop(e.lngLat));
+}
+function ensureLayers(){
+  if (!MAP || !STYLE_READY) return false;
+  try {
+    const before = ((MAP.getStyle().layers||[]).find(l=>l.type==='symbol')||{}).id;
+    if (!MAP.getSource('route')) MAP.addSource('route', {type:'geojson', data:EMPTY});
+    if (!MAP.getSource('pins')) MAP.addSource('pins', {type:'geojson', data:EMPTY});
+    if (!MAP.getLayer('route-casing')) MAP.addLayer({id:'route-casing', type:'line', source:'route', layout:{'line-cap':'round','line-join':'round'},
+      paint:{'line-color':cssv('--casing'), 'line-width':['interpolate',['linear'],['zoom'],9,5,13,9,17,17]}}, before);
+    if (!MAP.getLayer('route-line')) MAP.addLayer({id:'route-line', type:'line', source:'route', layout:{'line-cap':'round','line-join':'round'},
+      paint:{'line-color':cssv('--route'), 'line-width':['interpolate',['linear'],['zoom'],9,3,13,6,17,12]}}, before);
+    if (!MAP.getLayer('pins')) MAP.addLayer({id:'pins', type:'circle', source:'pins',
+      paint:{'circle-radius':['interpolate',['linear'],['zoom'],9,3.5,15,6], 'circle-color':'#ffffff', 'circle-stroke-color':cssv('--route'), 'circle-stroke-width':2.5}});
+    return true;
+  } catch(e){ log('map', 'layers '+e.message); return false; }
+}
+function setMarker(key, lngLat, cls){
+  if (!MAP) return;
+  if (!lngLat){ if (MK[key]){ MK[key].remove(); MK[key] = null; } return; }
+  if (!MK[key]){ const el = document.createElement('div'); el.className = cls; MK[key] = new maplibregl.Marker({element:el}).setLngLat(lngLat).addTo(MAP); }
+  else MK[key].setLngLat(lngLat);
+}
+function drawRoute(){
+  if (!MAP) return;
+  setMarker('here', S.here ? [S.here.lon, S.here.lat] : null, 'mk-here');
+  setMarker('dest', S.dest ? [S.dest.lon, S.dest.lat] : null, 'mk-dest');
+  setMarker('origin', S.origin ? [S.origin.lon, S.origin.lat] : null, 'mk-origin');
+  MK.lefts.forEach(m=>m.remove()); MK.lefts = [];
+  const R = S.route;
+  if (R) R.lefts.forEach(l=>{ const el = document.createElement('div'); el.className = 'mk-left'; el.innerHTML = ICON.left; MK.lefts.push(new maplibregl.Marker({element:el}).setLngLat(l).addTo(MAP)); });
+  if (!ensureLayers()) return;
+  MAP.getSource('route').setData(R ? {type:'Feature', properties:{}, geometry:{type:'LineString', coordinates:R.coords.map(c=>[c[0], c[1]])}} : EMPTY);
+  MAP.getSource('pins').setData(R ? {type:'FeatureCollection', features:R.pins.map(p=>({type:'Feature', properties:{}, geometry:{type:'Point', coordinates:[p.at[0], p.at[1]]}}))} : EMPTY);
+}
+function panelVisible(){ return Math.max(0, innerHeight - document.getElementById('panel').getBoundingClientRect().top); }
+function fitRoute(){
+  if (!MAP || !S.route) return;
+  const b = new maplibregl.LngLatBounds();
+  S.route.coords.forEach(c=>b.extend([c[0], c[1]]));
+  const top = 64 + (parseFloat(cssv('--sat'))||0);
+  MAP.fitBounds(b, {padding:{top, bottom:Math.round(panelVisible()+28), left:36, right:64}, duration:reduced?0:800, maxZoom:16});
+}
+
+/* =====================================================================
+   location + search
+   ===================================================================== */
+let WATCH = null;
+function startWatch(){
+  if (!('geolocation' in navigator) || WATCH != null) return;
+  WATCH = navigator.geolocation.watchPosition(p=>{
+    const first = !S.here;
+    S.here = {lat:p.coords.latitude, lon:p.coords.longitude, acc:Math.round(p.coords.accuracy), at:Date.now()};
+    if (first){ log('geo', `fix ±${S.here.acc} m`); if (MAP && !S.route) MAP.easeTo({center:[S.here.lon, S.here.lat], zoom:13.5, duration:reduced?0:700}); }
+    setMarker('here', [S.here.lon, S.here.lat], 'mk-here');
+  }, e=>log('geo', `watch ${e.code} ${e.message}`), {enableHighAccuracy:true, maximumAge:15000, timeout:20000});
+}
+function stopWatch(){ if (WATCH != null){ navigator.geolocation.clearWatch(WATCH); WATCH = null; } }
+document.addEventListener('visibilitychange', ()=>{ document.hidden ? stopWatch() : startWatch(); });
+function locateOnce(){
+  return new Promise((res, rej)=>{
+    if (!('geolocation' in navigator)) return rej(new StageError('origin', 'the geolocation API', 'none in this browser'));
+    navigator.geolocation.getCurrentPosition(
+      p=>res({lat:p.coords.latitude, lon:p.coords.longitude, acc:Math.round(p.coords.accuracy), at:Date.now()}),
+      e=>rej(new StageError('origin', 'a GPS fix', `${['','permission denied','position unavailable','timeout'][e.code]||e.code}: ${e.message}`)),
+      {enableHighAccuracy:true, maximumAge:30000, timeout:9000});
+  });
+}
+function photonPlace(f){
+  const p = f.properties||{}, [lon, lat] = f.geometry.coordinates;
+  const street = [p.housenumber, p.street].filter(Boolean).join(' ');
+  const name = p.name || street || p.city || 'Place';
+  const sub = [p.name && street ? street : '', p.city || p.district || p.county, p.state].filter(Boolean).join(', ');
+  return {lat, lon, name, sub};
+}
+async function photon(q){
+  const c = MAP ? MAP.getCenter() : {lng:CONF.center[0], lat:CONF.center[1]};
+  const u = `${CONF.photon}?q=${encodeURIComponent(q)}&limit=8&lang=en&lat=${c.lat.toFixed(4)}&lon=${c.lng.toFixed(4)}&bbox=${CONF.bbox.join(',')}`;
+  const r = await fetchT(u, 8000);
+  if (!r.ok) fail('search', 'HTTP 200 from Photon', r.status, {url:u, status:r.status, body:(await r.text()).slice(0,600)});
+  const j = await r.json();
+  if (!j || !Array.isArray(j.features)) fail('search', 'GeoJSON features from Photon', JSON.stringify(j).slice(0,160), {url:u});
+  return j.features.filter(f=>f.geometry && Array.isArray(f.geometry.coordinates)).map(photonPlace);
+}
+async function nominatim(q){
+  const [w, s, e, n] = CONF.bbox;
+  const u = `${CONF.nominatim}?format=jsonv2&limit=6&bounded=1&viewbox=${w},${n},${e},${s}&q=${encodeURIComponent(q)}`;
+  const r = await fetchT(u, 8000);
+  if (!r.ok) fail('search.fallback', 'HTTP 200 from Nominatim', r.status, {url:u});
+  const j = await r.json();
+  if (!Array.isArray(j)) fail('search.fallback', 'a JSON list from Nominatim', typeof j, {url:u});
+  return j.map(x=>{ const parts = String(x.display_name||'').split(','); return {lat:+x.lat, lon:+x.lon, name:x.name || parts[0], sub:parts.slice(1,3).join(',').trim()}; });
+}
+let SEQ = 0, STIMER = null;
+function onQuery(v){
+  S.query = v; S.searchErr = null; clearTimeout(STIMER);
+  if (!v.trim()){ S.results = []; renderList(); return; }
+  S.results = []; renderList();
+  STIMER = setTimeout(()=>runSearch(v), 280);
+}
+async function runSearch(q){
+  const my = ++SEQ;
+  try { const res = await stage('search', ()=>photon(q), r=>({q, n:r.length})); if (my !== SEQ) return; S.results = res; }
+  catch(e){
+    await sleep(700); if (my !== SEQ) return;       // Nominatim forbids type-ahead: only once the typing stops
+    try { const res = await stage('search.fallback', ()=>nominatim(q), r=>({q, n:r.length})); if (my !== SEQ) return; S.results = res; }
+    catch(e2){ if (my !== SEQ) return; S.results = []; S.searchErr = 'Search isn’t answering right now.'; redEdge(); }
+  }
+  renderList();
+}
+
+/* =====================================================================
+   SLOT 3 — the pipeline: origin → routes → pins → Apple URL
+   ===================================================================== */
+function ghURL(o, d, profile, full){
+  const p = new URLSearchParams();
+  p.append('point', `${o.lat.toFixed(6)},${o.lon.toFixed(6)}`);
+  p.append('point', `${d.lat.toFixed(6)},${d.lon.toFixed(6)}`);
+  p.set('profile', profile); p.set('points_encoded', 'false'); p.set('locale', 'en');
+  p.set('instructions', full ? 'true' : 'false');
+  p.append('details', 'edge_id');
+  if (full){ p.append('details', 'road_class'); p.append('details', 'average_slope'); }
+  p.append('curbside', 'right'); p.append('curbside', 'right'); p.set('curbside_strictness', 'soft');
+  return `${cfg.server}/route?${p}`;
+}
+async function gh(o, d, profile, full){
+  const name = 'route.'+profile, url = ghURL(o, d, profile, full);
+  let r;
+  try { r = await fetchT(url, CONF.routeTimeout); }
+  catch(e){ const err = new StageError(name, `a response from ${cfg.server}`, e.name==='AbortError' ? `no answer in ${CONF.routeTimeout/1000} s` : `${e.name}: ${e.message}`, {url}); err.status = 0; throw err; }
+  const text = await r.text(); let j = null;
+  try { j = JSON.parse(text); } catch(_){}
+  const ev = {url, status:r.status, contentType:r.headers.get('content-type'), body:text.slice(0, 4000)};
+  if (!r.ok){
+    const msg = (j && (j.message || (j.hints && j.hints[0] && j.hints[0].message))) || text.slice(0, 200);
+    const err = new StageError(name, 'HTTP 200 with a path', `HTTP ${r.status}: ${msg}`, ev); err.status = r.status; err.ghMessage = msg; throw err;
+  }
+  const p = j && j.paths && j.paths[0];
+  if (!p) fail(name, 'paths[0] in the response', j ? Object.keys(j).join(',') : 'not JSON', ev);
+  const co = p.points && p.points.coordinates;
+  if (!Array.isArray(co) || co.length < 2) fail(name, 'at least 2 coordinates (points_encoded=false)', Array.isArray(co) ? co.length : typeof p.points, ev);
+  if (!p.details || !Array.isArray(p.details.edge_id)) fail(name, 'details.edge_id', Object.keys(p.details||{}).join(',') || 'no details', ev);
+  if (full && !Array.isArray(p.instructions)) fail(name, 'instructions', typeof p.instructions, ev);
+  if (typeof p.time !== 'number' || typeof p.distance !== 'number') fail(name, 'numeric time and distance', `${typeof p.time}/${typeof p.distance}`, ev);
+  return p;
+}
+const sumRoute = p => p ? {km:+(p.distance/1000).toFixed(2), min:+(p.time/60000).toFixed(1), pts:p.points.coordinates.length, edges:p.details.edge_id.length} : null;
+
+function hav(a, b){ const R = 6371008.8, r = Math.PI/180, dLa = (b[1]-a[1])*r, dLo = (b[0]-a[0])*r; const s = Math.sin(dLa/2)**2 + Math.cos(a[1]*r)*Math.cos(b[1]*r)*Math.sin(dLo/2)**2; return 2*R*Math.asin(Math.min(1, Math.sqrt(s))); }
+function cumDist(co){ const c = [0]; for (let i = 1; i < co.length; i++) c.push(c[i-1] + hav(co[i-1], co[i])); return c; }
+function segArray(n, details, fill){ const a = new Array(Math.max(0, n-1)).fill(fill); for (const [f, t, v] of (details||[])) for (let i = f; i < t && i < a.length; i++) a[i] = v; return a; }
+function segAt(cum, d){ let lo = 0, hi = cum.length - 2; while (lo < hi){ const m = (lo + hi + 1) >> 1; if (cum[m] <= d) lo = m; else hi = m - 1; } return Math.max(0, lo); }
+function pointAt(co, cum, d){ const i = segAt(cum, d), L = (cum[i+1] - cum[i]) || 1, f = Math.min(1, Math.max(0, (d - cum[i]) / L)); return [co[i][0] + f*(co[i+1][0]-co[i][0]), co[i][1] + f*(co[i+1][1]-co[i][1])]; }
+
+/* Pins become Apple Maps stops. Apple re-routes freely between them, so they go where
+   arrow's route leaves the plain one (Apple would cut across there), after each turn
+   inside those stretches, and at both ends (pull away and arrive on the right side). */
+function choosePins(path, cum, edge, cls, carE){
+  const co = path.points.coordinates, total = cum[cum.length-1], ins = path.instructions || [];
+  const okAt = d => d > 60 && d < total - 60 && !FWY.has(cls[segAt(cum, d)] || '');
+  const div = edge.map(e => carE ? !carE.has(e) : false);
+  const C = [];
+  const add = (d, prio, why) => { if (okAt(d)) C.push({d, prio, why}); };
+  for (let i = 0; i < div.length; i++){
+    if (!div[i] || (i > 0 && div[i-1])) continue;
+    let j = i; while (j < div.length && div[j]) j++;
+    add(Math.min(cum[i] + 40, (cum[i] + cum[j]) / 2), 1, 'leaves the plain route');
+  }
+  ins.forEach((it, k)=>{
+    if (k === 0 || it.sign === 0 || it.sign === 4 || it.sign === 5 || !Array.isArray(it.interval)) return;
+    const s = Math.min(it.interval[0], cum.length - 1), d0 = cum[s];
+    const d1 = k + 1 < ins.length && Array.isArray(ins[k+1].interval) ? cum[Math.min(ins[k+1].interval[0], cum.length-1)] : total;
+    const inDiv = div[Math.min(s, div.length - 1)] || (s > 0 && div[s-1]);
+    add(Math.min(d0 + 40, (d0 + d1) / 2), inDiv ? 2 : 4, it.text);
+  });
+  add(total - 80, 3, 'final approach');
+  add(80, 3, 'pull away');
+  const cap = C.some(c=>c.prio === 1) ? CONF.maxPins : CONF.quietPins;
+  C.sort((a, b)=> a.prio - b.prio || (a.prio === 4 ? Math.min(a.d, total-a.d) - Math.min(b.d, total-b.d) : a.d - b.d));
+  const pick = [];
+  for (const c of C){
+    if (pick.length >= (c.prio <= 3 ? CONF.maxPins : cap)) continue;
+    if (pick.some(p=>Math.abs(p.d - c.d) < CONF.pinGap)) continue;
+    pick.push(c);
+  }
+  pick.sort((a, b)=>a.d - b.d);
+  return pick.map(p=>({d:Math.round(p.d), prio:p.prio, why:p.why, at:pointAt(co, cum, p.d)}));
+}
+function appleURL(o, d, pins){
+  const f = (lat, lon)=>`${lat.toFixed(6)},${lon.toFixed(6)}`;
+  const q = [];
+  if (o && !o.here) q.push('source=' + f(o.lat, o.lon));
+  q.push('destination=' + f(d.lat, d.lon));
+  pins.forEach(p=>q.push('waypoint=' + f(p.at[1], p.at[0])));
+  q.push('mode=driving');
+  return 'https://maps.apple.com/directions?' + q.join('&');
+}
+function buildModel(main, car, o, d, profile){
+  const co = main.points.coordinates, n = co.length, cum = cumDist(co);
+  const edge = segArray(n, main.details.edge_id, null);
+  const cls = segArray(n, main.details.road_class, '');
+  if (edge.some(e=>e == null)) fail('model', 'an edge id on every segment', `${edge.filter(e=>e==null).length} gaps`);
+  const carE = car ? new Set(car.details.edge_id.map(x=>x[2])) : null;
+  const pins = choosePins(main, cum, edge, cls, carE);
+  const lefts = (main.instructions||[]).filter(it=>(it.sign === -2 || it.sign === -3) && Array.isArray(it.interval) && !FWY.has(cls[Math.min(it.interval[0], cls.length-1)]))
+    .map(it=>{ const c = co[Math.min(it.interval[0], n-1)]; return [c[0], c[1]]; });
+  let climb = 0;
+  for (const [f, t, v] of (main.details.average_slope||[])) if (typeof v === 'number' && cum[Math.min(t, n-1)] - cum[f] >= 40 && v > climb) climb = v;
+  let div = 0; if (carE) for (let i = 0; i < edge.length; i++) if (!carE.has(edge[i])) div += cum[i+1] - cum[i];
+  return {coords:co, pins, lefts, climb:Math.round(climb), km:main.distance/1000, ms:main.time, carMs:car ? car.time : null,
+    divergedKm:carE ? +(div/1000).toFixed(2) : null, url:appleURL(o, d, pins), profile, at:Date.now()};
+}
+function explain(e){
+  const m = String(e.ghMessage || e.got || e.message || '');
+  if (e.stage === 'plan') return {title:'Add your server', body:'arrow needs the address of your routing server.', action:'settings'};
+  if (e.stage === 'origin') return {title:'Location is off', body:`Your phone didn’t give a position (${e.got}).`, action:'from'};
+  if (/^route\./.test(e.stage || '')){
+    if (e.status === 0) return {title:'Can’t reach the server', body:`${cfg.server||'The server'} isn’t answering. Quick-tunnel URLs change every time the server restarts.`, action:'settings'};
+    if (/out of bounds/i.test(m)) return {title:'Outside the map', body:'The routing server covers LA County.', action:null};
+    if (/cannot find point/i.test(m)) return {title:'No road there', body:'The server found no drivable road near that spot.', action:null};
+    if (/connection between locations not found|not found/i.test(m)) return {title:'No way there without an unprotected left', body:'Every route to this spot needs a left with no arrow. A point on the next street over usually works.', action:null};
+    if (e.status) return {title:'Routing failed', body:`The server said: ${m}`, action:null};
+    return {title:'The server answered strangely', body:`${e.message}. Settings → Log → Dump has the response.`, action:'settings'};
+  }
+  return {title:'Something broke', body:`${e.message}. Settings → Log → Dump has the details.`, action:'settings'};
+}
+let PLANSEQ = 0;
+async function plan(){
+  if (!S.dest) return;
+  const my = ++PLANSEQ;
+  S.mode = 'route'; S.route = null; S.err = null; S.busy = true;
+  setPanel('half'); renderPanel(); drawRoute();
+  try {
+    if (!cfg.server) fail('plan', 'a server URL in Settings', 'none');
+    const o = await stage('origin', async ()=>{
+      if (S.origin) return S.origin;
+      if (S.here && Date.now() - S.here.at < 120000) return {...S.here, here:true};
+      const fix = await locateOnce(); S.here = fix; return {...fix, here:true};
+    }, o=>({here:!!o.here, lat:+o.lat.toFixed(5), lon:+o.lon.toFixed(5)}));
+    const profile = S.flat ? 'arrow_flat' : 'arrow';
+    const [main, car] = await Promise.all([
+      stage('route.'+profile, ()=>gh(o, S.dest, profile, true), sumRoute),
+      stage('route.car', ()=>gh(o, S.dest, 'car', false), sumRoute).catch(()=>{ log('route.car', 'no comparison route: pins fall back to the turns near both ends'); return null; }),
+    ]);
+    if (my !== PLANSEQ) return;
+    const R = await stage('model', async ()=>buildModel(main, car, o, S.dest, profile),
+      R=>({pins:R.pins.length, lefts:R.lefts.length, climb:R.climb, divergedKm:R.divergedKm, urlLen:R.url.length}));
+    S.route = R;
+    try { localStorage.setItem(APP.key+'-base', JSON.stringify({at:new Date().toISOString(), profile, km:+R.km.toFixed(2), min:+(R.ms/60000).toFixed(1), pins:R.pins.length, lefts:R.lefts.length, climb:R.climb})); } catch(_){}
+    const rec = {lat:S.dest.lat, lon:S.dest.lon, name:S.dest.name, sub:S.dest.sub};
+    cfg.recents = [rec, ...(cfg.recents||[]).filter(x=>Math.abs(x.lat-rec.lat) > 1e-5 || Math.abs(x.lon-rec.lon) > 1e-5)].slice(0, 6); saveCfg();
+  } catch(e){
+    if (my !== PLANSEQ) return;
+    S.err = explain(e); redEdge();
+    log('plan', `FAIL shown as "${S.err.title}" — ${e.message}`);
+  } finally {
+    if (my === PLANSEQ){ S.busy = false; renderPanel(); drawRoute(); setTimeout(fitRoute, 420); }
+  }
+}
+function dropPin(ll){
+  log('pin', `dropped ${ll.lat.toFixed(5)},${ll.lng.toFixed(5)}`);
+  const place = {lat:ll.lat, lon:ll.lng, name:'Dropped Pin', sub:`${ll.lat.toFixed(5)}, ${ll.lng.toFixed(5)}`};
+  if (S.picking === 'origin'){ S.origin = place; S.picking = 'dest'; S.query = ''; if (S.dest){ plan(); return; } renderPanel(); return; }
+  S.dest = place; plan();
+}
+
+/* =====================================================================
+   SLOT 4 — SCREENS: the panel (search | route) and the settings sheet
+   ===================================================================== */
+let PANEL = 'peek';
+function setPanel(pos){
+  PANEL = pos; const s = document.getElementById('panel');
+  s.classList.remove('peek', 'half', 'full', 'drag'); s.classList.add(pos); s.style.transform = '';
+  if (pos !== 'full') document.getElementById('pc').scrollTop = 0;
+}
+function renderPanel(){
+  const c = document.getElementById('pc');
+  if (S.mode === 'search'){
+    c.innerHTML = `<div class="search">${ICON.mag}<input id="q" type="search" enterkeyhint="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="${S.picking==='origin'?'Starting point':'Search Maps'}" value="${esc(S.query)}"><button class="clr" aria-label="Clear" ${S.query?'':'hidden'}>${ICON.xs}</button></div>`
+      + (S.picking === 'origin' ? `<div class="pick">Starting point for ${esc(S.dest?S.dest.name:'the route')} · <button class="link" data-act="cancelpick">Cancel</button></div>` : '')
+      + `<div id="plist" class="list"></div>`;
+    const q = c.querySelector('#q'), clr = c.querySelector('.clr');
+    q.addEventListener('focus', ()=>setPanel('full'));
+    q.addEventListener('input', ()=>{ clr.hidden = !q.value; onQuery(q.value); });
+    q.addEventListener('keydown', e=>{ if (e.key === 'Enter'){ e.preventDefault(); clearTimeout(STIMER); if (q.value.trim()) runSearch(q.value); } });
+    q.addEventListener('blur', ()=>setTimeout(()=>window.scrollTo(0, 0), 50));
+    clr.onclick = ()=>{ q.value = ''; clr.hidden = true; onQuery(''); q.focus(); };
+    const cp = c.querySelector('[data-act=cancelpick]');
+    if (cp) cp.onclick = ()=>{ S.picking = 'dest'; S.mode = S.dest ? 'route' : 'search'; S.query = ''; renderPanel(); setPanel(S.dest ? 'half' : 'peek'); };
+    renderList();
+    return;
+  }
+  c.innerHTML = routeHTML();
+  c.querySelectorAll('[data-act]').forEach(b=>b.onclick = ()=>act(b.dataset.act));
+  const flat = c.querySelector('#flat');
+  if (flat) flat.onchange = ()=>{ S.flat = cfg.flat = flat.checked; saveCfg(); log('opt', 'avoid hills '+(S.flat?'on':'off')); plan(); };
+  const go = c.querySelector('#goApple');
+  if (go) go.onclick = ()=>log('apple', {pins:S.route.pins.length, url:S.route.url});
+  if (S.route && !S.route.shown){ S.route.shown = true; countTo(c.querySelector('#bigmin'), Math.round(S.route.ms/60000), m=>fmtDur(m*60000)); }
+}
+function renderList(){
+  const el = document.getElementById('plist'); if (!el) return;
+  const rows = []; let eyebrow = '';
+  if (S.picking === 'origin') rows.push({here:true, name:'My Location', sub:S.here ? `±${S.here.acc} m` : ''});
+  if (S.query.trim()) rows.push(...S.results);
+  else if ((cfg.recents||[]).length && S.picking === 'dest'){ eyebrow = 'Recents'; rows.push(...cfg.recents); }
+  const waiting = S.query.trim() && !S.results.length && !S.searchErr;
+  el.innerHTML = (eyebrow ? `<div class="eyebrow">${eyebrow}</div>` : '')
+    + (S.searchErr ? `<div class="msg bad">${esc(S.searchErr)}</div>` : '')
+    + rows.map((r, i)=>`<button class="trow" data-i="${i}"><span class="ico ${r.here?'blue':''}">${r.here?ICON.loc:ICON.pin}</span><span class="t"><b>${esc(r.name)}</b><i>${esc(r.sub||'')}</i></span></button>`).join('')
+    + (waiting ? `<div class="msg empty">Searching</div>` : '');
+  el.querySelectorAll('.trow').forEach(b=>b.onclick = ()=>choose(rows[+b.dataset.i]));
+}
+function choose(p){
+  const q = document.getElementById('q'); if (q) q.blur();
+  if (S.picking === 'origin'){
+    S.origin = p.here ? null : {lat:p.lat, lon:p.lon, name:p.name, sub:p.sub};
+    S.picking = 'dest'; S.query = ''; S.results = [];
+    log('pick', 'origin ' + (S.origin ? S.origin.name : 'My Location'));
+    if (S.dest){ plan(); return; }
+    S.mode = 'search'; renderPanel(); return;
+  }
+  S.dest = {lat:p.lat, lon:p.lon, name:p.name, sub:p.sub}; S.query = ''; S.results = [];
+  log('pick', 'destination ' + p.name);
+  plan();
+}
+function fmtDur(ms){ const m = Math.max(1, Math.round(ms/60000)); return m < 60 ? `${m} min` : `${Math.floor(m/60)} hr${m%60 ? ` ${m%60} min` : ''}`; }
+function fmtMi(km){ const mi = km/1.609344; return mi < 10 ? `${mi.toFixed(1)} mi` : `${Math.round(mi)} mi`; }
+function routeHTML(){
+  const R = S.route, d = S.dest;
+  let html = `<div class="rhead"><div class="t"><h2>${esc(d.name)}</h2><p>${esc(d.sub||'')}</p></div><button class="x" data-act="close" aria-label="Close">${ICON.x}</button></div>
+    <div class="group"><button class="from" data-act="from"><span class="k">From</span><span class="v">${esc(S.origin ? S.origin.name : 'My Location')}</span>${ICON.chev}</button>
+    <div class="opt"><span class="ol">${ICON.hill}<span>Avoid hills</span></span><label class="switch"><input type="checkbox" id="flat" ${S.flat?'checked':''}><span></span></label></div></div>`;
+  if (S.busy) return html + `<div class="busy empty">Finding a way with no unprotected lefts</div>`;
+  if (S.err) return html + `<div class="err"><b>${esc(S.err.title)}</b><p>${esc(S.err.body)}</p>`
+    + (S.err.action === 'settings' ? `<button class="sec wide" data-act="settings">Settings</button>` : '')
+    + (S.err.action === 'from' ? `<button class="sec wide" data-act="from">Choose a starting point</button>` : '') + `</div>`;
+  if (!R) return html;
+  const L = R.lefts.length;
+  const extra = R.carMs == null ? '' : (R.ms - R.carMs >= 60000 ? `That’s ${fmtDur(R.ms - R.carMs)} more than the plain route.` : 'Same time as the plain route.');
+  return html + `<div class="sum"><div class="big" id="bigmin">${fmtDur(R.ms)}</div>
+      <div class="facts">${fmtMi(R.km)} · ${L ? `${L} left${L>1?'s':''} on an arrow` : 'no lefts'} · steepest climb ${R.climb}%</div>
+      ${capt('No unprotected lefts on this route.', extra)}</div>
+    <a class="go" id="goApple" href="${esc(R.url)}">${ICON.car}<span>Open in Apple Maps</span></a>
+    <div class="note">Apple Maps will show ${R.pins.length} stop${R.pins.length===1?'':'s'} on the way. They hold it to this route.</div>
+    <button class="sec wide" data-act="copy">Copy link</button>`;
+}
+function act(a){
+  if (a === 'close'){ PLANSEQ++; S.mode = 'search'; S.dest = null; S.route = null; S.err = null; S.busy = false; S.origin = null; S.picking = 'dest'; renderPanel(); drawRoute(); setPanel('peek'); return; }
+  if (a === 'from'){ S.mode = 'search'; S.picking = 'origin'; S.query = ''; S.results = []; renderPanel(); setPanel('full'); setTimeout(()=>{ const q = document.getElementById('q'); if (q) q.focus(); }, 60); return; }
+  if (a === 'settings'){ openSettings(); return; }
+  if (a === 'copy' && S.route){
+    navigator.clipboard.writeText(S.route.url).then(()=>toast('Link copied'), e=>{ log('copy', 'FAIL '+e.message); toast('Couldn’t copy', 'bad'); });
+  }
+}
+
+function openSettings(){
+  const look = cfg.look || 'system';
+  sheet(`<div class="sh"><h3>Settings</h3></div>
+    <div class="group">
+      <div class="row col"><span class="k">Routing server</span>
+        <input id="srv" type="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://….trycloudflare.com" value="${esc(cfg.server||'')}">
+        <div class="rowbtns"><button class="sec" data-s="save">Save</button><button class="sec" data-s="test">Test</button></div>
+        <div id="srvmsg" class="mini"></div></div>
+      <div class="row"><span class="k">Look</span><div class="seg">${['light','dark','system'].map(l=>`<button data-look="${l}" aria-pressed="${look===l}">${l[0].toUpperCase()+l.slice(1)}</button>`).join('')}</div></div>
+      <div class="row"><span class="k">Build</span><span class="mono dim">${BUILD}</span></div>
+      <div class="row"><span class="k">Reload app</span><button class="sec" data-s="reload">Reload</button></div>
+    </div>
+    <div class="group">
+      <div class="row"><span class="k">Log</span><span class="rowbtns"><button class="sec" data-s="copylog">Copy</button><button class="sec" data-s="dump">Dump</button></span></div>
+      <pre class="log">${esc(LOG.slice(-200).join('\n'))}</pre>
+    </div>
+    <div class="mini">Map © OpenFreeMap, OpenMapTiles, OpenStreetMap contributors. Search: Photon. Routes: your server, LA County.</div>`, s=>{
+    const srv = s.querySelector('#srv'), msg = s.querySelector('#srvmsg');
+    const norm = v=>v.trim().replace(/\/+$/, '');
+    const save = ()=>{
+      const v = norm(srv.value);
+      if (v){ try { const u = new URL(v); if (u.protocol !== 'https:' && !/^(localhost|127\.)/.test(u.hostname)){ msg.className = 'mini bad'; msg.textContent = 'Needs https:// (the app lives on https).'; return false; } } catch(e){ msg.className = 'mini bad'; msg.textContent = 'That isn’t a URL.'; return false; } }
+      cfg.server = v || undefined; saveCfg(); log('cfg', 'server ' + (v ? 'saved' : 'cleared')); return true;
+    };
+    s.querySelector('[data-s=save]').onclick = ()=>{ if (save()){ msg.className = 'mini good'; msg.textContent = 'Saved.'; } };
+    s.querySelector('[data-s=test]').onclick = async ()=>{
+      if (!save() || !cfg.server) return;
+      msg.className = 'mini empty'; msg.textContent = 'Asking the server';
+      try {
+        const info = await stage('server.test', async ()=>{
+          const u = cfg.server + '/info', r = await fetchT(u, 12000);
+          if (!r.ok) fail('server.test', 'HTTP 200 from /info', r.status, {url:u, body:(await r.text()).slice(0,400)});
+          const j = await r.json();
+          const names = (j.profiles||[]).map(p=>p.name);
+          if (!['arrow','arrow_flat','car'].every(n=>names.includes(n))) fail('server.test', 'profiles arrow, arrow_flat, car', names.join(',')||'none', {url:u});
+          return j;
+        }, j=>({profiles:(j.profiles||[]).map(p=>p.name), data_date:j.data_date, version:j.version}));
+        msg.className = 'mini good'; msg.textContent = `Connected · GraphHopper ${info.version||''} · map data ${String(info.data_date||'?').slice(0,10)}`;
+      } catch(e){ msg.className = 'mini bad'; msg.textContent = e.got ? `No: ${e.got}` : e.message; redEdge(); }
+    };
+    s.querySelectorAll('[data-look]').forEach(b=>b.onclick = ()=>{ cfg.look = b.dataset.look; saveCfg(); applyLook(); s.querySelectorAll('[data-look]').forEach(x=>x.setAttribute('aria-pressed', x === b)); });
+    s.querySelector('[data-s=reload]').onclick = reloadApp;
+    s.querySelector('[data-s=copylog]').onclick = ()=>navigator.clipboard.writeText(LOG.join('\n')).then(()=>toast('Log copied'), ()=>toast('Couldn’t copy', 'bad'));
+    s.querySelector('[data-s=dump]').onclick = ()=>download(`${APP.key}-dump-${Date.now()}.json`, dumpJSON());
+    srv.addEventListener('blur', ()=>setTimeout(()=>window.scrollTo(0, 0), 50));
+  });
+}
+async function reloadApp(){
+  try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k); } catch(e){}
+  location.href = location.pathname + '?r=' + Date.now();
+}
+
+/* ---- panel drag: grab or the panel body; snaps peek / half / full ---- */
+(function(){
+  const s = document.getElementById('panel'), c = document.getElementById('pc');
+  let y0 = null, base = 0, dy = 0;
+  s.addEventListener('pointerdown', e=>{
+    if (e.target.closest('input,a,button,label,pre')) return;
+    if (e.target.closest('#pc') && PANEL === 'full' && c.scrollTop > 0) return;
+    y0 = e.clientY; dy = 0; base = new DOMMatrix(getComputedStyle(s).transform).m42; s.classList.add('drag');
+  });
+  window.addEventListener('pointermove', e=>{ if (y0 == null) return; dy = e.clientY - y0; s.style.transform = `translateY(${Math.max(0, base + dy)}px)`; }, {passive:true});
+  const up = ()=>{
+    if (y0 == null) return; y0 = null; s.classList.remove('drag'); s.style.transform = '';
+    const order = ['peek', 'half', 'full'], prev = PANEL; let i = order.indexOf(PANEL);
+    if (dy < -40) i = Math.min(2, i+1); else if (dy > 40) i = Math.max(0, i-1);
+    if (order[i] === prev){ s.classList.add(prev); return; }
+    setPanel(order[i]);
+    if (order[i] !== 'full'){ const q = document.getElementById('q'); if (q) q.blur(); }
+    setTimeout(fitRoute, 420);
+  };
+  window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+})();
+
+/* ---- controls ---- */
+document.getElementById('bGear').innerHTML = ICON.gear;
+document.getElementById('bLoc').innerHTML = ICON.loc;
+document.getElementById('bGear').onclick = openSettings;
+document.getElementById('bLoc').onclick = async ()=>{
+  startWatch();
+  try {
+    const fix = S.here && Date.now() - S.here.at < 60000 ? S.here : await stage('locate', locateOnce, f=>({acc:f.acc}));
+    S.here = fix; setMarker('here', [fix.lon, fix.lat], 'mk-here');
+    if (MAP) MAP.easeTo({center:[fix.lon, fix.lat], zoom:Math.max(MAP.getZoom(), 14), duration:reduced?0:600});
+  } catch(e){ toast('Location is off for this app', 'warn'); }
+};
+
+/* ---- viewport line: logged once, always ---- */
+function envViewport(){
+  const cs = getComputedStyle(document.documentElement), p = document.getElementById('panel').getBoundingClientRect();
+  ENV = {standalone:!!(navigator.standalone || matchMedia('(display-mode: standalone)').matches), vh:innerHeight,
+    app:document.getElementById('app').offsetHeight, panelBottom:Math.round(p.bottom),
+    insets:[cs.getPropertyValue('--sat').trim()||'?', cs.getPropertyValue('--sab').trim()||'?'],
+    inner:`${innerWidth}x${innerHeight}`, screen:`${screen.width}x${screen.height}`, ua:navigator.userAgent};
+  log('env viewport', ENV);
+}
+
+/* ---- boot ---- */
+log('boot', `${APP.name} ${BUILD} · server ${cfg.server ? 'set' : 'not set'}`);
+try { const lf = JSON.parse(localStorage.getItem(APP.key+'-lastfail')||'null'); if (lf) log('lastfail', lf); } catch(_){}
+applyLook();
+initMap();
+startWatch();
+renderPanel();
+setPanel('peek');
+requestAnimationFrame(envViewport);
+window.addEventListener('focus', ()=>scrollTo(0, 0));
+</script>
+</body>
+</html>
