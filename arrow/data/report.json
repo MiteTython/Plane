@@ -1,0 +1,537 @@
+{
+ "version": "20261029T021955Z",
+ "counts": {
+  "selftest": "ok",
+  "signals": 29691,
+  "ways_in_file": 963639,
+  "car_ways": 282137,
+  "service_ways_left_out": 373092,
+  "car_forbidden_ways": 12600,
+  "ways_missing_nodes": 0,
+  "existing_restrictions": 32780,
+  "junctions": 293809,
+  "pieces": 443162,
+  "isolated_rings_dropped": 9,
+  "osm_dual_left_unsignalized": 943,
+  "osm_dual_left_not_at_junction": 4,
+  "wl_osm_dual_left": 4046,
+  "wl_ladot_signs_in": 243,
+  "wl_ladot_matched": 215,
+  "wl_ladot_unmatched": 28,
+  "wl_hand_rows": 0,
+  "wl_hand_matched": 0,
+  "wl_approaches": 3330,
+  "wl_pocket_moves": 248,
+  "blocked_geo": 4777,
+  "blocked_permissive": 279701,
+  "blocked_yield": 114746,
+  "ex_continuation": 7840,
+  "ex_freeway": 548,
+  "ex_no_conflict": 11320,
+  "ex_roundabout": 1383,
+  "ex_whitelist": 3566,
+  "leftish": 423881,
+  "blocked_share_of_leftish": 0.9418,
+  "osm_restr_ignored_value": 10,
+  "osm_restr_unresolved": 18691,
+  "osm_restr_applied_no": 5053,
+  "osm_restr_via_way_skipped": 5264,
+  "osm_restr_applied_only": 1758,
+  "osm_restr_via_not_in_graph": 657,
+  "osm_restr_not_for_cars": 1197,
+  "osm_restr_malformed": 153,
+  "dead_ends": 50619,
+  "nodes_over_16_roads": 0,
+  "arrow_moves_open": 1075226,
+  "car_moves_open": 1470972,
+  "islands_dropped": 481,
+  "edges_in_islands": 1157,
+  "largest_component_edges": 442005
+ },
+ "blocked_sample": [
+  {
+   "lat": 34.09152,
+   "lon": -118.145242,
+   "from": "Palm Avenue",
+   "to": "West Main Street",
+   "class": "geo"
+  },
+  {
+   "lat": 33.96823,
+   "lon": -117.72604,
+   "from": "Shantung Avenue",
+   "to": "Shantung Court",
+   "class": "permissive"
+  },
+  {
+   "lat": 34.281473,
+   "lon": -118.878828,
+   "from": "Susan Avenue",
+   "to": "Millard Street",
+   "class": "yield"
+  },
+  {
+   "lat": 34.195841,
+   "lon": -118.863916,
+   "from": "Briar Cliff Road",
+   "to": "Windsor Drive",
+   "class": "permissive"
+  },
+  {
+   "lat": 34.06889,
+   "lon": -118.407722,
+   "from": "Santa Monica Boulevard",
+   "to": "North Roxbury Drive",
+   "class": "permissive"
+  },
+  {
+   "lat": 34.037087,
+   "lon": -118.492044,
+   "from": "Alta Avenue",
+   "to": "19th Street",
+   "class": "permissive"
+  },
+  {
+   "lat": 34.05274,
+   "lon": -117.785348,
+   "from": "West Brea Canyon Road",
+   "to": "Westmont Avenue",
+   "class": "permissive"
+  },
+  {
+   "lat": 33.806222,
+   "lon": -118.212198,
+   "from": "West 27th Street",
+   "to": "Caspian Avenue",
+   "class": "permissive"
+  },
+  {
+   "lat": 33.881003,
+   "lon": -117.867906,
+   "from": "West Madison Avenue",
+   "to": "North Bradford Avenue",
+   "class": "permissive"
+  },
+  {
+   "lat": 34.276413,
+   "lon": -118.523454,
+   "from": "Zelzah Avenue",
+   "to": "Simonds Street",
+   "class": "permissive"
+  },
+  {
+   "lat": 34.686792,
+   "lon": -118.182057,
+   "from": "Ruth Lane",
+   "to": "Chaplin Drive",
+   "class": "yield"
+  },
+  {
+   "lat": 34.458804,
+   "lon": -118.647047,
+   "from": "Hasley Canyon Road",
+   "to": "Trotters Lane",
+   "class": "permissive"
+  },
+  {
+   "lat": 33.779236,
+   "lon": -118.043568,
+   "from": "Violet Street",
+   "to": "Fir Avenue",
+   "class": "yield"
+  },
+  {
+   "lat": 33.862841,
+   "lon": -118.170555,
+   "from": "East Hungerford Street",
+   "to": "Rose Avenue",
+   "class": "permissive"
+  },
+  {
+   "lat": 34.535209,
+   "lon": -117.831162,
+   "from": "167th Street East",
+   "to": "East Avenue T 8",
+   "class": "permissive"
+  },
+  {
+   "lat": 34.300603,
+   "lon": -118.460228,
+   "from": "Oswald Street",
+   "to": "San Fernando Road",
+   "class": "yield"
+  },
+  {
+   "lat": 34.803563,
+   "lon": -118.583434,
+   "from": "West Avenue B",
+   "to": "Taney Street",
+   "class": "permissive"
+  },
+  {
+   "lat": 33.73947,
+   "lon": -117.863467,
+   "from": "East Bishop Street",
+   "to": "Maple Street",
+   "class": "permissive"
+  },
+  {
+   "lat": 34.066285,
+   "lon": -117.936056,
+   "from": "South Evanwood Avenue",
+   "to": "West Camila Road",
+   "class": "permissive"
+  },
+  {
+   "lat": 33.781991,
+   "lon": -117.984086,
+   "from": "Robinet Lane",
+   "to": "Dale Street",
+   "class": "yield"
+  },
+  {
+   "lat": 33.770277,
+   "lon": -118.014774,
+   "from": "La Pata Street",
+   "to": "Kiowa Road",
+   "class": "yield"
+  },
+  {
+   "lat": 33.887884,
+   "lon": -118.06946,
+   "from": "Alondra Boulevard",
+   "to": "Madris Avenue",
+   "class": "yield"
+  },
+  {
+   "lat": 34.014621,
+   "lon": -117.963309,
+   "from": "Galemont Avenue",
+   "to": "East Clarkgrove Street",
+   "class": "yield"
+  },
+  {
+   "lat": 33.834816,
+   "lon": -118.318115,
+   "from": "Cravens Avenue",
+   "to": "Post Avenue",
+   "class": "permissive"
+  },
+  {
+   "lat": 33.952905,
+   "lon": -118.01471,
+   "from": "Highland Avenue",
+   "to": "Whittier Boulevard",
+   "class": "yield"
+  },
+  {
+   "lat": 34.011243,
+   "lon": -118.171857,
+   "from": "Noakes Street",
+   "to": "South Duncan Avenue",
+   "class": "permissive"
+  },
+  {
+   "lat": 34.069921,
+   "lon": -118.09181,
+   "from": "Hellman Avenue",
+   "to": "Alanreed Avenue",
+   "class": "permissive"
+  },
+  {
+   "lat": 34.02981,
+   "lon": -117.879431,
+   "from": "Colina Drive",
+   "to": "Venado Way",
+   "class": "permissive"
+  },
+  {
+   "lat": 33.870558,
+   "lon": -118.200515,
+   "from": "East Bort Street",
+   "to": "Muriel Avenue",
+   "class": "permissive"
+  },
+  {
+   "lat": 34.038209,
+   "lon": -118.137992,
+   "from": "Findlay Avenue",
+   "to": "West Floral Drive",
+   "class": "permissive"
+  },
+  {
+   "lat": 33.994291,
+   "lon": -118.4748,
+   "from": "Vernon Avenue",
+   "to": "Hampton Drive",
+   "class": "yield"
+  },
+  {
+   "lat": 34.803353,
+   "lon": -118.475511,
+   "from": "West Avenue B",
+   "to": "195th Street West",
+   "class": "yield"
+  },
+  {
+   "lat": 34.112489,
+   "lon": -117.794134,
+   "from": "North San Dimas Canyon Road",
+   "to": "Payson Street",
+   "class": "permissive"
+  },
+  {
+   "lat": 34.087679,
+   "lon": -118.28689,
+   "from": "North Virgil Avenue",
+   "to": "Burns Avenue",
+   "class": "permissive"
+  },
+  {
+   "lat": 33.893818,
+   "lon": -118.320548,
+   "from": "Purche Avenue",
+   "to": "West 152nd Street",
+   "class": "yield"
+  },
+  {
+   "lat": 33.899278,
+   "lon": -118.123143,
+   "from": "Cabel Avenue",
+   "to": "Maplewood Street",
+   "class": "permissive"
+  },
+  {
+   "lat": 34.243691,
+   "lon": -118.366506,
+   "from": "Stonehurst Avenue",
+   "to": "Stonehurst Avenue",
+   "class": "permissive"
+  },
+  {
+   "lat": 33.982745,
+   "lon": -118.057434,
+   "from": "Rincon Drive",
+   "to": "Hadley Street",
+   "class": "permissive"
+  },
+  {
+   "lat": 34.149331,
+   "lon": -118.18085,
+   "from": "Woodcliffe Road",
+   "to": "Patrician Way",
+   "class": "yield"
+  },
+  {
+   "lat": 34.67114,
+   "lon": -118.236552,
+   "from": "60th Street West",
+   "to": "West Avenue K 4",
+   "class": "permissive"
+  },
+  {
+   "lat": 33.952126,
+   "lon": -118.018604,
+   "from": "Hayward Street",
+   "to": "Gunn Avenue",
+   "class": "permissive"
+  },
+  {
+   "lat": 34.040037,
+   "lon": -118.286396,
+   "from": "West Washington Boulevard",
+   "to": "Magnolia Avenue",
+   "class": "permissive"
+  },
+  {
+   "lat": 34.135776,
+   "lon": -118.151826,
+   "from": "West California Boulevard",
+   "to": "Fairmount Avenue",
+   "class": "permissive"
+  },
+  {
+   "lat": 34.09557,
+   "lon": -118.291757,
+   "from": "Fountain Avenue",
+   "to": "North Vermont Avenue",
+   "class": "permissive"
+  },
+  {
+   "lat": 34.421108,
+   "lon": -118.520262,
+   "from": "Riverrock Way",
+   "to": "Santa Clarita Parkway",
+   "class": "permissive"
+  },
+  {
+   "lat": 33.880107,
+   "lon": -118.369978,
+   "from": "Vail Avenue",
+   "to": "West Robinson Street",
+   "class": "permissive"
+  },
+  {
+   "lat": 33.991089,
+   "lon": -118.219384,
+   "from": "Soto Street",
+   "to": "East 57th Street",
+   "class": "permissive"
+  },
+  {
+   "lat": 34.090333,
+   "lon": -117.887933,
+   "from": "San Bernardino Road",
+   "to": "North 2nd Avenue",
+   "class": "permissive"
+  },
+  {
+   "lat": 34.528293,
+   "lon": -117.992516,
+   "from": "East Avenue U",
+   "to": "77th Street East",
+   "class": "permissive"
+  },
+  {
+   "lat": 34.028933,
+   "lon": -118.021266,
+   "from": "Crossroads Parkway South",
+   "to": "",
+   "class": "permissive"
+  }
+ ],
+ "probes": [
+  {
+   "name": "sherman-oaks\u2192dtla",
+   "car": {
+    "min": 21.4,
+    "km": 25.28,
+    "cost": 1286.5,
+    "protected_lefts": 1,
+    "max_climb": 10,
+    "edges": 145,
+    "pops": 28890,
+    "s": 0.1
+   },
+   "arrow": {
+    "min": 21.5,
+    "km": 25.48,
+    "cost": 1289.7,
+    "protected_lefts": 0,
+    "max_climb": 10,
+    "edges": 151,
+    "pops": 20162,
+    "s": 0.1
+   },
+   "arrow_flat": {
+    "min": 21.5,
+    "km": 25.48,
+    "cost": 1294.1,
+    "protected_lefts": 0,
+    "max_climb": 10,
+    "edges": 151,
+    "pops": 18998,
+    "s": 0.1
+   }
+  },
+  {
+   "name": "dtla\u2192sherman-oaks",
+   "car": {
+    "min": 21.0,
+    "km": 25.31,
+    "cost": 1257.6,
+    "protected_lefts": 1,
+    "max_climb": 12,
+    "edges": 144,
+    "pops": 32361,
+    "s": 0.2
+   },
+   "arrow": {
+    "min": 21.0,
+    "km": 25.34,
+    "cost": 1258.9,
+    "protected_lefts": 2,
+    "max_climb": 12,
+    "edges": 151,
+    "pops": 24455,
+    "s": 0.1
+   },
+   "arrow_flat": {
+    "min": 21.4,
+    "km": 25.35,
+    "cost": 1503.0,
+    "protected_lefts": 2,
+    "max_climb": 12,
+    "edges": 153,
+    "pops": 43959,
+    "s": 0.2
+   }
+  },
+  {
+   "name": "santa-monica\u2192pasadena",
+   "car": {
+    "min": 33.5,
+    "km": 41.01,
+    "cost": 2009.8,
+    "protected_lefts": 1,
+    "max_climb": 10,
+    "edges": 236,
+    "pops": 93174,
+    "s": 0.4
+   },
+   "arrow": {
+    "min": 33.7,
+    "km": 41.02,
+    "cost": 2020.1,
+    "protected_lefts": 1,
+    "max_climb": 10,
+    "edges": 227,
+    "pops": 80935,
+    "s": 0.4
+   },
+   "arrow_flat": {
+    "min": 33.7,
+    "km": 41.02,
+    "cost": 2172.9,
+    "protected_lefts": 1,
+    "max_climb": 10,
+    "edges": 227,
+    "pops": 95794,
+    "s": 0.4
+   }
+  },
+  {
+   "name": "long-beach\u2192burbank",
+   "car": {
+    "min": 39.8,
+    "km": 54.26,
+    "cost": 2390.0,
+    "protected_lefts": 0,
+    "max_climb": 7,
+    "edges": 251,
+    "pops": 98443,
+    "s": 0.5
+   },
+   "arrow": {
+    "min": 42.4,
+    "km": 55.25,
+    "cost": 2545.7,
+    "protected_lefts": 0,
+    "max_climb": 7,
+    "edges": 269,
+    "pops": 101727,
+    "s": 0.5
+   },
+   "arrow_flat": {
+    "min": 42.4,
+    "km": 55.25,
+    "cost": 2639.1,
+    "protected_lefts": 0,
+    "max_climb": 7,
+    "edges": 269,
+    "pops": 120430,
+    "s": 0.5
+   }
+  }
+ ]
+}

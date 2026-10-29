@@ -1,0 +1,118 @@
+{
+ "format": 1,
+ "version": "20261029T021955Z",
+ "file": "la-graph.bin.gz",
+ "sha256": "1f4e91d5e53e45c45cc638a31a9a75f21d7b2935eee2936ba82c8bde8f14ab0c",
+ "bytes_gz": 6788846,
+ "bytes_raw": 17697612,
+ "nodes": 343822,
+ "edges": 442005,
+ "geom_points": 225213,
+ "bbox": [
+  -118.96,
+  33.7,
+  -117.64,
+  34.83
+ ],
+ "osm_timestamp": "2026-10-28T20:20:04Z",
+ "built": "2026-10-29T02:23:09+00:00",
+ "turn_costs_s": {
+  "signal": 8.0,
+  "right": 4.0,
+  "left": 8.0,
+  "uturn": 25.0
+ },
+ "vmax_mps": 30.6,
+ "whitelist": {
+  "wl_osm_dual_left": 4046,
+  "wl_ladot_matched": 215,
+  "wl_hand_matched": 0,
+  "wl_approaches": 3330
+ },
+ "probes": [
+  {
+   "name": "sherman-oaks\u2192dtla",
+   "car": {
+    "min": 21.4,
+    "km": 25.28,
+    "protected_lefts": 1,
+    "max_climb": 10
+   },
+   "arrow": {
+    "min": 21.5,
+    "km": 25.48,
+    "protected_lefts": 0,
+    "max_climb": 10
+   },
+   "arrow_flat": {
+    "min": 21.5,
+    "km": 25.48,
+    "protected_lefts": 0,
+    "max_climb": 10
+   }
+  },
+  {
+   "name": "dtla\u2192sherman-oaks",
+   "car": {
+    "min": 21.0,
+    "km": 25.31,
+    "protected_lefts": 1,
+    "max_climb": 12
+   },
+   "arrow": {
+    "min": 21.0,
+    "km": 25.34,
+    "protected_lefts": 2,
+    "max_climb": 12
+   },
+   "arrow_flat": {
+    "min": 21.4,
+    "km": 25.35,
+    "protected_lefts": 2,
+    "max_climb": 12
+   }
+  },
+  {
+   "name": "santa-monica\u2192pasadena",
+   "car": {
+    "min": 33.5,
+    "km": 41.01,
+    "protected_lefts": 1,
+    "max_climb": 10
+   },
+   "arrow": {
+    "min": 33.7,
+    "km": 41.02,
+    "protected_lefts": 1,
+    "max_climb": 10
+   },
+   "arrow_flat": {
+    "min": 33.7,
+    "km": 41.02,
+    "protected_lefts": 1,
+    "max_climb": 10
+   }
+  },
+  {
+   "name": "long-beach\u2192burbank",
+   "car": {
+    "min": 39.8,
+    "km": 54.26,
+    "protected_lefts": 0,
+    "max_climb": 7
+   },
+   "arrow": {
+    "min": 42.4,
+    "km": 55.25,
+    "protected_lefts": 0,
+    "max_climb": 7
+   },
+   "arrow_flat": {
+    "min": 42.4,
+    "km": 55.25,
+    "protected_lefts": 0,
+    "max_climb": 7
+   }
+  }
+ ]
+}
