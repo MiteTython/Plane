@@ -1,0 +1,78 @@
+# Builds the LA County road graph the arrow app routes on (arrow/data/).
+# Monthly, on demand, and whenever arrow/build/ changes (e.g. a new whitelist.csv row).
+name: arrow map data
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 10 2 * *"          # 2nd of every month, 10:23 UTC
+  push:
+    branches: [main]
+    paths:
+      - "arrow/build/**"
+      - ".github/workflows/arrow-data.yml"
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: arrow-data
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: tools
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q osmium-tool
+          pip install -q osmium==4.1.1 numpy==2.2.6
+          osmium --version | head -1
+
+      - name: build
+        run: |
+          export ARROW_DATA="$RUNNER_TEMP/arrow-diag"     # logs, baselines, dumps (diag.py)
+          python arrow/build/build.py --data arrow/data --work "$RUNNER_TEMP/arrow-work"
+
+      - name: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add arrow/data
+          if git diff --cached --quiet; then echo "nothing changed"; exit 0; fi
+          v=$(jq -r .version arrow/data/manifest.json)
+          e=$(jq -r .edges arrow/data/manifest.json)
+          mb=$(jq -r '.bytes_gz/1048576*10|floor/10' arrow/data/manifest.json)
+          git commit -q -m "arrow data $v: $e road segments, ${mb} MB"
+          for i in 1 2 3; do
+            git pull -q --rebase origin main && git push -q origin HEAD:main && exit 0
+            sleep 5
+          done
+          echo "push failed three times"; exit 1
+
+      - name: ask Pages to publish
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X POST "repos/${{ github.repository }}/pages/builds" --silent || echo "pages build request refused; the app falls back to raw.githubusercontent.com"
+
+      - name: keep the corpse
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arrow-build-diagnostics
+          path: ${{ runner.temp }}/arrow-diag
+          retention-days: 30

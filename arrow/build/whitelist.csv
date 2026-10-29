@@ -1,0 +1,10 @@
+# Protected lefts you've verified yourself (Street View, or driving it).
+# One row per approach that has a green arrow. Lines starting with # are ignored.
+#   lat, lon  — drop the pin on the middle of the intersection
+#   approach  — direction you're TRAVELING when you make the left: NB, SB, EB, WB
+#               (or NEB/SEB/SWB/NWB, or a compass heading in degrees like 315)
+#   note      — anything; shows up in arrow/data/whitelist.geojson
+# Each row matches the nearest signalized junction within 45 m whose approach heads
+# that way and has a left. A row that doesn't match is a WARN in the build log.
+# Commit the edit to main: the "arrow map data" GitHub Action rebuilds (~15 min).
+lat,lon,approach,note
