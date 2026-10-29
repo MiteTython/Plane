@@ -45,7 +45,15 @@ jobs:
       - name: build
         run: |
           export ARROW_DATA="$RUNNER_TEMP/arrow-diag"     # logs, baselines, dumps (diag.py)
-          python arrow/build/build.py --data arrow/data --work "$RUNNER_TEMP/arrow-work"
+          mkdir -p "$ARROW_DATA"
+          set +e
+          python arrow/build/build.py --data arrow/data --work "$RUNNER_TEMP/arrow-work" 2>&1 | tee "$ARROW_DATA/console.txt"
+          rc=${PIPESTATUS[0]}
+          set -e
+          if [ "$rc" -ge 128 ]; then
+            echo "::error title=arrow build killed (exit $rc)::signal $((rc - 128)); 9 means the runner ran out of memory. Last stage line: $(grep -E ' (START|PASS|…) ' "$ARROW_DATA/console.txt" | tail -n 1 | cut -c1-300)"
+          fi
+          exit "$rc"
 
       - name: commit
         run: |

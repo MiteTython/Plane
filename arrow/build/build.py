@@ -1619,6 +1619,13 @@ def main():
         diag.print_summary()
         print(f"{diag.RED}{e}{diag.OFF}", file=sys.stderr)
         sys.exit(1)
+    except Exception as e:                            # outside any stage: still leave the first red line
+        import traceback
+        tb = traceback.format_exc()
+        diag.print_summary()
+        print(tb, file=sys.stderr)
+        diag.annotate("error", "crash outside a stage", f"{type(e).__name__}: {e}\n\n{tb[-3000:]}")
+        sys.exit(1)
     diag.print_summary()
 
 

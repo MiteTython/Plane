@@ -178,6 +178,12 @@ class Stage:
         status = "DEGRADED" if self.degradable else "FAIL"
         emit(self.name, status, {"ms": ms, "expected": expected, "got": got, "dump": self.dump}, RED)
         SUMMARY.append((self.name, status, ms, f"expected {expected}, got {got} — dump: {self.dump}"))
+        tb_text = "".join(traceback.format_tb(tb)) if tb and not isinstance(ev, StageFailure) else ""
+        if tb_text:
+            print(tb_text, file=sys.stderr, flush=True)
+        annotate("warning" if self.degradable else "error", f"{self.name} {status}",
+                 f"expected {expected}\ngot {got}\ndump {self.dump}\n\n{tb_text[-3000:]}\n"
+                 f"counts so far {json.dumps(self.counts, default=str)[:1500]}")
         if self.degradable:
             return True     # swallow; caller falls back
         raise StageFailure(self.name, expected, got, self.dump) from ev
@@ -223,6 +229,19 @@ class Stage:
         except OSError as e:
             print(f"{RED}could not write dump {path}: {e}{OFF}", file=sys.stderr)
         return path
+
+
+def annotate(level, title, text):
+    """GitHub Actions: the first red line goes on the run page itself, where it reads without
+    downloading the log or the diagnostics artifact. No-op anywhere else."""
+    if os.environ.get("GITHUB_ACTIONS") != "true":
+        return
+
+    def esc(s, prop=False):
+        s = s.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+        return s.replace(":", "%3A").replace(",", "%2C") if prop else s
+
+    print(f"::{level} title={esc('arrow build · ' + title, True)}::{esc(text[:6000])}", flush=True)
 
 
 def print_summary():
