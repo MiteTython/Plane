@@ -1596,6 +1596,13 @@ def main():
             if prev:
                 pe = prev.get("edges", 0)
                 st.check(g["E"] >= 0.75 * pe, f"edges within 25% of the last good build ({pe})", g["E"])
+            unchanged = bool(prev and prev.get("sha256") == sha)
+            st.count("unchanged", int(unchanged))
+        if unchanged:                                         # same roads phones already hold: write nothing,
+            diag.emit("publish", "UNCHANGED", {"version": prev.get("version"), "sha256": sha[:16]})   # so nothing commits
+            diag.print_summary()
+            return
+        with diag.Stage("publish_files", inputs={"previous": prev.get("version") if prev else None}) as st:
             version = diag.RUN_ID
             manifest = {"format": FORMAT, "version": version, "file": "la-graph.bin.gz", "sha256": sha,
                         "bytes_gz": gz_bytes, "bytes_raw": raw_bytes, "nodes": g["N"], "edges": g["E"],

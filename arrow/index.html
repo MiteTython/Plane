@@ -147,6 +147,15 @@ pre.log{font:11px/1.35 var(--mono);white-space:pre-wrap;word-break:break-all;max
 .toast{background:var(--surface);color:var(--fg);border-radius:12px;padding:10px 14px;font-size:14px;font-weight:600;max-width:86vw}
 .toast.bad{color:var(--red)}.toast.warn{color:var(--amber)}
 
+/* map data status: first download, loading, errors (sheet grows to show it, like Apple's) */
+.dstat{display:flex;flex-direction:column;gap:7px;font-size:14px;color:var(--muted);padding:0 0 12px}
+.dstat .l{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.dstat .l span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dstat.bad{color:var(--red)}
+.bar{height:4px;border-radius:2px;background:var(--field);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--blue);border-radius:2px;transition:width .25s var(--ease)}
+#panel.peek.dl{transform:translateY(calc(92dvh - var(--peek) - 46px))}
+
 /* ---------- Motion block (app-builder contract) ---------- */
 :root{--spring:cubic-bezier(.2,.9,.25,1.2);--ease:cubic-bezier(.2,.7,.2,1)}
 /* press */
@@ -206,13 +215,373 @@ html.looking,html.looking *{transition:background-color .3s ease,color .3s ease,
   <div id="sheets"></div>
   <div id="toasts"></div>
 </div>
+<script id="router" type="text/plain">
+'use strict';
+/* arrow router — a Web Worker that holds LA County's roads and finds routes with no
+   unprotected lefts. Mirrors arrow/build/build.py: write_graph() for the file, Router for
+   the costs. The build routes on the same file in Python before it's published. */
+const MAGIC = 0x31575241, FORMAT = 1;
+const SECTIONS = [['lat', Int32Array], ['lon', Int32Array], ['nflag', Uint8Array], ['eu', Uint32Array], ['ev', Uint32Array],
+  ['elen', Uint16Array], ['espd', Uint8Array], ['eflag', Uint8Array], ['egrade', Int8Array], ['gstart', Uint32Array],
+  ['geom', Int16Array], ['mcar', Uint16Array], ['marr', Uint16Array], ['mwl', Uint16Array]];
+const RAD = Math.PI / 180;
+const MY = 0.110574, MX = 0.11132;   // metres per 1e-6° of latitude, and of longitude at the equator
+const CELL = 4000;                    // snap grid cell, 1e-6° (about 440 × 370 m in LA)
+const SNAP_MAX = 1000;                // metres from a point to the road it snaps to
+const CURB = 45;                      // seconds: arriving, or pulling away, with the place across the street
+const POP_CAP = 4000000;              // states per search before giving up
+let P = null;                         // the loaded graph; swapped only after a new one is fully built
+let HK = new Float64Array(1 << 17), HV = new Int32Array(1 << 17), HN = 0, HTOP = 0;
+
+class RErr extends Error {
+  constructor(code, expected, got, extra){ super(`expected ${expected}, got ${got}`); this.code = code; this.expected = expected; this.got = got; this.extra = extra || null; }
+}
+
+self.onmessage = ev => {
+  const m = ev.data || {}, t0 = performance.now();
+  try {
+    if (m.type === 'load'){
+      const g = build(m.buf, m.turn, m.vmax);
+      P = g;
+      self.postMessage({id: m.id, ok: true, nodes: g.N, edges: g.E, geom: g.G, snapEdges: g.snapEdges, ms: Math.round(performance.now() - t0)});
+      return;
+    }
+    if (m.type === 'route'){
+      if (!P) throw new RErr('nograph', 'the LA roads loaded in the router', 'nothing loaded');
+      const route = routeReq(m.o, m.d, m.profile);
+      route.ms = Math.round(performance.now() - t0);
+      self.postMessage({id: m.id, ok: true, route});
+      return;
+    }
+    throw new RErr('crash', 'a load or route message', String(m.type));
+  } catch (e){
+    self.postMessage({id: m.id, ok: false, error: {code: e.code || 'crash', expected: e.expected || 'a clean run',
+      got: e.got != null ? String(e.got) : `${e.name}: ${e.message}`, extra: e.extra || null, stack: String(e.stack || '').slice(0, 1500)}});
+  }
+};
+
+/* ---- the file -------------------------------------------------------------------- */
+function build(buf, turn, vmax){
+  if (!(buf instanceof ArrayBuffer) || buf.byteLength < 192) throw new RErr('data.parse', 'a graph file of 192+ bytes', buf && buf.byteLength);
+  const dv = new DataView(buf);
+  const magic = dv.getUint32(0, true), fmt = dv.getUint32(4, true);
+  if (magic !== MAGIC) throw new RErr('data.parse', 'magic ARW1 (0x31575241)', '0x' + magic.toString(16));
+  if (fmt !== FORMAT) throw new RErr('data.parse', `format ${FORMAT}`, fmt);
+  const N = dv.getUint32(8, true), E = dv.getUint32(12, true), G = dv.getUint32(16, true);
+  const g = {N, E, G, S6: dv.getInt32(20, true), W6: dv.getInt32(24, true), N6: dv.getInt32(28, true), E6: dv.getInt32(32, true)};
+  const ns = dv.getUint32(36, true);
+  if (ns !== SECTIONS.length) throw new RErr('data.parse', `${SECTIONS.length} sections`, ns);
+  if (!(N > 1 && E > 0 && g.W6 < g.E6 && g.S6 < g.N6)) throw new RErr('data.parse', 'nodes, edges and a bbox', `${N}/${E}/${g.W6},${g.S6},${g.E6},${g.N6}`);
+  const want = {lat: N, lon: N, nflag: N, eu: E, ev: E, elen: E, espd: E, eflag: E, egrade: 3 * E, gstart: E + 1, geom: 2 * G, mcar: 2 * E, marr: 2 * E, mwl: 2 * E};
+  SECTIONS.forEach(([name, T], i) => {
+    const off = dv.getUint32(64 + i * 8, true), len = dv.getUint32(68 + i * 8, true), sz = T.BYTES_PER_ELEMENT;
+    if (off % sz || len % sz || off + len > buf.byteLength) throw new RErr('data.parse', `section ${name} aligned and inside the file`, `offset ${off}, ${len} bytes, file ${buf.byteLength}`);
+    const a = new T(buf, off, len / sz);
+    if (a.length !== want[name]) throw new RErr('data.parse', `${want[name]} items in ${name}`, a.length);
+    g[name] = a;
+  });
+  if (g.gstart[0] !== 0 || g.gstart[E] !== G) throw new RErr('data.parse', `geometry index 0…${G}`, `${g.gstart[0]}…${g.gstart[E]}`);
+  for (let e = 0; e < E; e++){
+    if (g.eu[e] >= N || g.ev[e] >= N) throw new RErr('data.parse', `node ids below ${N}`, `edge ${e}: ${g.eu[e]} → ${g.ev[e]}`);
+    if (g.gstart[e + 1] < g.gstart[e]) throw new RErr('data.parse', 'a rising geometry index', `edge ${e}`);
+  }
+  g.TURN = turn && typeof turn.signal === 'number' ? turn : {signal: 8, right: 4, left: 8, uturn: 25};
+  g.VMAX = vmax > 0 ? vmax : 30.6;
+  prep(g);
+  return g;
+}
+
+function hill(up, avg){ return up >= 15 ? 50 : avg >= 10 ? 20 : avg >= 7 ? 1 / 0.3 : avg >= 5 ? 1.25 : 1; }
+
+function brg(la1, lo1, la2, lo2){            // degrees clockwise from north, as build.py bearing()
+  const k = Math.cos((la1 + la2) * 0.5e-6 * RAD);
+  const b = Math.atan2((lo2 - lo1) * MX * k, (la2 - la1) * MY) / RAD;
+  return b < 0 ? b + 360 : b;
+}
+
+function prep(g){
+  const {N, E, eu: EU, ev: EV, lat: LAT, lon: LON, gstart: GS, geom: GM, eflag: EF, elen: EL, espd: SP, egrade: GR} = g;
+  // directed edges leaving each node, ascending edge id: the order the turn masks count in
+  const AST = new Uint32Array(N + 1);
+  for (let e = 0; e < E; e++){ AST[EU[e] + 1]++; AST[EV[e] + 1]++; }
+  for (let n = 0; n < N; n++) AST[n + 1] += AST[n];
+  const ADJ = new Uint32Array(2 * E), cur = AST.slice(0, N);
+  for (let e = 0; e < E; e++){ ADJ[cur[EU[e]]++] = 2 * e; ADJ[cur[EV[e]]++] = 2 * e + 1; }
+  // seconds per directed edge, hill-weighted copy, headings off the first/last geometry segment, snap cells
+  const WT = new Float32Array(2 * E), WF = new Float32Array(2 * E), DEP = new Float32Array(2 * E), ARR = new Float32Array(2 * E);
+  const COLS = Math.ceil((g.E6 - g.W6) / CELL), ROWS = Math.ceil((g.N6 - g.S6) / CELL);
+  const row = la => Math.min(ROWS - 1, Math.max(0, Math.floor((la - g.S6) / CELL)));
+  const col = lo => Math.min(COLS - 1, Math.max(0, Math.floor((lo - g.W6) / CELL)));
+  const RC = new Int32Array(4 * E), CST = new Uint32Array(ROWS * COLS + 1);
+  let snapEdges = 0;
+  for (let e = 0; e < E; e++){
+    const t = Math.max(1, EL[e]) / (Math.max(5, SP[e]) / 3.6);
+    WT[2 * e] = WT[2 * e + 1] = t;
+    WF[2 * e] = t * hill(GR[3 * e + 1], GR[3 * e]);
+    WF[2 * e + 1] = t * hill(GR[3 * e + 2], -GR[3 * e]);
+    const u = EU[e], v = EV[e], j0 = GS[e], j1 = GS[e + 1];
+    let la = LAT[u], lo = LON[u], fa = LAT[v], fo = LON[v];
+    let a0 = Math.min(LAT[u], LAT[v]), a1 = Math.max(LAT[u], LAT[v]), o0 = Math.min(LON[u], LON[v]), o1 = Math.max(LON[u], LON[v]);
+    for (let j = j0; j < j1; j++){
+      la += GM[2 * j] * 10; lo += GM[2 * j + 1] * 10;
+      if (j === j0){ fa = la; fo = lo; }
+      if (la < a0) a0 = la; else if (la > a1) a1 = la;
+      if (lo < o0) o0 = lo; else if (lo > o1) o1 = lo;
+    }
+    // (fa, fo) = first point after u, (la, lo) = last point before v
+    DEP[2 * e] = brg(LAT[u], LON[u], fa, fo);
+    ARR[2 * e] = brg(la, lo, LAT[v], LON[v]);
+    DEP[2 * e + 1] = brg(LAT[v], LON[v], la, lo);
+    ARR[2 * e + 1] = brg(fa, fo, LAT[u], LON[u]);
+    const f = EF[e];
+    if ((f & 8) || !(f & 3)){ RC[4 * e] = 1; RC[4 * e + 1] = 0; continue; }     // freeway, ramp, bridge, tunnel: no snapping
+    const r0 = row(a0), r1 = row(a1), c0 = col(o0), c1 = col(o1);
+    RC[4 * e] = r0; RC[4 * e + 1] = r1; RC[4 * e + 2] = c0; RC[4 * e + 3] = c1;
+    for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) CST[r * COLS + c + 1]++;
+    snapEdges++;
+  }
+  for (let k = 0; k < ROWS * COLS; k++) CST[k + 1] += CST[k];
+  const CELLS = new Uint32Array(CST[ROWS * COLS]), fill = CST.slice(0, ROWS * COLS);
+  for (let e = 0; e < E; e++){
+    const r0 = RC[4 * e], r1 = RC[4 * e + 1];
+    for (let r = r0; r <= r1; r++) for (let c = RC[4 * e + 2]; c <= RC[4 * e + 3]; c++) CELLS[fill[r * COLS + c]++] = e;
+  }
+  Object.assign(g, {AST, ADJ, WT, WF, DEP, ARR, ROWS, COLS, CST, CELLS, snapEdges,
+    ESEEN: new Uint32Array(E), estamp: 0, SEEN: new Uint32Array(2 * E), G: new Float64Array(2 * E), PAR: new Int32Array(2 * E), stamp: 0});
+}
+
+/* ---- snapping a point to a road ---------------------------------------------------- */
+function project(e, la6, lo6){
+  const g = P, u = g.eu[e], v = g.ev[e], j0 = g.gstart[e], j1 = g.gstart[e + 1], GM = g.geom;
+  const sx = MX * Math.cos(la6 * 1e-6 * RAD);
+  let pa = g.lat[u], po = g.lon[u];
+  let ax = (po - lo6) * sx, ay = (pa - la6) * MY;
+  let acc = 0, bd = Infinity, bAcc = 0, bCross = 0, bla = pa, blo = po;
+  for (let j = j0; j <= j1; j++){
+    let qa, qo;
+    if (j < j1){ qa = pa + GM[2 * j] * 10; qo = po + GM[2 * j + 1] * 10; } else { qa = g.lat[v]; qo = g.lon[v]; }
+    const bx = (qo - lo6) * sx, by = (qa - la6) * MY;
+    const dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy, L = Math.sqrt(L2);
+    let t = L2 > 0 ? -(ax * dx + ay * dy) / L2 : 0;
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    const fx = ax + t * dx, fy = ay + t * dy, d = Math.sqrt(fx * fx + fy * fy);
+    if (d < bd){ bd = d; bAcc = acc + t * L; bCross = dy * ax - dx * ay; bla = pa + t * (qa - pa); blo = po + t * (qo - po); }
+    acc += L; ax = bx; ay = by; pa = qa; po = qo;
+  }
+  // side +1: the point is left of the road as drawn u → v; 0: on the road itself
+  return {e, d: bd, f: acc > 0 ? Math.min(1, Math.max(0, bAcc / acc)) : 0, side: bd < 4 ? 0 : bCross > 0 ? 1 : -1, la6: Math.round(bla), lo6: Math.round(blo)};
+}
+
+function snapCands(la6, lo6){
+  const g = P, r = Math.floor((la6 - g.S6) / CELL), c = Math.floor((lo6 - g.W6) / CELL);
+  const st = ++g.estamp, SEEN = g.ESEEN, CST = g.CST, CELLS = g.CELLS, out = [];
+  for (let rr = Math.max(0, r - 2); rr <= Math.min(g.ROWS - 1, r + 2); rr++){
+    for (let cc = Math.max(0, c - 2); cc <= Math.min(g.COLS - 1, c + 2); cc++){
+      const k = rr * g.COLS + cc;
+      for (let i = CST[k]; i < CST[k + 1]; i++){
+        const e = CELLS[i];
+        if (SEEN[e] === st) continue;
+        SEEN[e] = st;
+        const p = project(e, la6, lo6);
+        if (p.d <= SNAP_MAX) out.push(p);
+      }
+    }
+  }
+  out.sort((a, b) => a.d - b.d);
+  return out.slice(0, 3);
+}
+
+// Right-hand traffic: driving u → v (dir 0) with the place on the left means it's across the street.
+function curb(side, dir){ return side === 0 ? 0 : ((dir === 0) === (side > 0) ? CURB : 0); }
+
+/* ---- the search: A* over directed edges, turn masks at every node -------------------- */
+function push(k, v){
+  if (HN === HK.length){
+    const nk = new Float64Array(HN * 2); nk.set(HK); HK = nk;
+    const nv = new Int32Array(HN * 2); nv.set(HV); HV = nv;
+  }
+  let i = HN++;
+  while (i > 0){ const p = (i - 1) >> 1; if (HK[p] <= k) break; HK[i] = HK[p]; HV[i] = HV[p]; i = p; }
+  HK[i] = k; HV[i] = v;
+}
+function pop(){
+  const top = HV[0]; HTOP = HK[0];
+  const n = --HN;
+  if (n > 0){
+    const k = HK[n], v = HV[n];
+    let i = 0;
+    for (;;){
+      let c = 2 * i + 1;
+      if (c >= n) break;
+      if (c + 1 < n && HK[c + 1] < HK[c]) c++;
+      if (HK[c] >= k) break;
+      HK[i] = HK[c]; HV[i] = HV[c]; i = c;
+    }
+    HK[i] = k; HV[i] = v;
+  }
+  return top;
+}
+
+function search(S, T, profile){
+  const g = P, EU = g.eu, EV = g.ev, LAT = g.lat, LON = g.lon, NF = g.nflag, EF = g.eflag;
+  const AST = g.AST, ADJ = g.ADJ, DEP = g.DEP, ARR = g.ARR, SEEN = g.SEEN, G = g.G, PAR = g.PAR;
+  const M = profile === 'car' ? g.mcar : g.marr, W = profile === 'arrow_flat' ? g.WF : g.WT;
+  const TS = g.TURN.signal, TR = g.TURN.right, TL = g.TURN.left, TU = g.TURN.uturn;
+  const st = ++g.stamp;
+  const tla = T.la6, tlo = T.lo6, kx = MX * Math.cos(tla * 1e-6 * RAD), hs = 0.98 / g.VMAX;
+  const h = n => { const dy = (LAT[n] - tla) * MY, dx = (LON[n] - tlo) * kx; return Math.sqrt(dx * dx + dy * dy) * hs; };
+  HN = 0;
+  let best = Infinity, bPrev = -1, bDE = -1, pops = 0;
+  const eS = S.e, fS = EF[eS], owS = (fS & 3) !== 3, eT = T.e, owT = (EF[eT] & 3) !== 3;
+  for (let dir = 0; dir < 2; dir++){
+    if (!(fS & (dir ? 2 : 1))) continue;
+    const de = 2 * eS + dir, cs = owS ? 0 : curb(S.side, dir);
+    if (eT === eS && (dir === 0 ? T.f >= S.f : T.f <= S.f)){
+      const c = W[de] * Math.abs(T.f - S.f) + cs + (owT ? 0 : curb(T.side, dir));
+      if (c < best){ best = c; bPrev = -1; bDE = de; }
+    }
+    const g0 = W[de] * (dir ? S.f : 1 - S.f) + cs;
+    SEEN[de] = st; G[de] = g0; PAR[de] = -1;
+    push(g0 + h(dir ? EU[eS] : EV[eS]), de);
+  }
+  while (HN > 0){
+    const de = pop(), key = HTOP;
+    if (key >= best) break;
+    const e = de >> 1, n = (de & 1) ? EU[e] : EV[e], gc = G[de];
+    if (key > gc + h(n) + 1e-6) continue;              // a stale heap entry
+    if (++pops > POP_CAP) break;
+    const m = M[de];
+    if (m === 0) continue;
+    const a0 = AST[n], dg = Math.min(16, AST[n + 1] - a0), sig = (NF[n] & 1) ? TS : 0, ain = ARR[de];
+    for (let i = 0; i < dg; i++){
+      if (((m >> i) & 1) === 0) continue;
+      const b = ADJ[a0 + i], eb = b >> 1, db = b & 1;
+      if ((EF[eb] & (db ? 2 : 1)) === 0) continue;
+      let c = gc + sig;
+      if (eb === e) c += TU;
+      else { const d = (DEP[b] - ain + 540) % 360 - 180; if (d > 35) c += TR; else if (d < -35) c += TL; }
+      if (eb === eT){                                  // the destination sits part-way along this edge
+        const ct = c + W[b] * (db ? 1 - T.f : T.f) + (owT ? 0 : curb(T.side, db));
+        if (ct < best){ best = ct; bPrev = de; bDE = b; }
+      }
+      const ng = c + W[b];
+      if (SEEN[b] !== st || ng < G[b]){
+        SEEN[b] = st; G[b] = ng; PAR[b] = de;
+        push(ng + h(db ? EU[eb] : EV[eb]), b);
+      }
+    }
+  }
+  if (bDE < 0) return {des: null, pops};
+  const des = [bDE];
+  for (let x = bPrev, k = 0; x !== -1; x = PAR[x]){
+    if (SEEN[x] !== st || ++k > 2 * g.E) throw new RErr('crash', 'a parent chain back to the start', `broken at directed edge ${x}`);
+    des.push(x);
+  }
+  des.reverse();
+  return {des, cost: best, pops};
+}
+
+/* ---- turning a list of directed edges into a drawable, explainable route -------------- */
+function edgePts(e){
+  const g = P, u = g.eu[e], v = g.ev[e], j0 = g.gstart[e], j1 = g.gstart[e + 1];
+  const la = [g.lat[u]], lo = [g.lon[u]];
+  let a = g.lat[u], b = g.lon[u];
+  for (let j = j0; j < j1; j++){ a += g.geom[2 * j] * 10; b += g.geom[2 * j + 1] * 10; la.push(a); lo.push(b); }
+  la.push(g.lat[v]); lo.push(g.lon[v]);
+  return [la, lo];
+}
+
+function cut(e, f0, f1){                      // [lon, lat] points from fraction f0 to f1 along u → v
+  const [la, lo] = edgePts(e), n = la.length, out = [];
+  if (f0 <= 0 && f1 >= 1){ for (let i = 0; i < n; i++) out.push([lo[i] / 1e6, la[i] / 1e6]); return out; }
+  const sx = MX * Math.cos(la[0] * 1e-6 * RAD), cum = new Float64Array(n);
+  for (let i = 1; i < n; i++) cum[i] = cum[i - 1] + Math.hypot((lo[i] - lo[i - 1]) * sx, (la[i] - la[i - 1]) * MY);
+  const L = cum[n - 1], d0 = f0 * L, d1 = f1 * L;
+  const at = d => {
+    let i = 1;
+    while (i < n - 1 && cum[i] < d) i++;
+    const s = cum[i] - cum[i - 1], t = s > 0 ? Math.min(1, Math.max(0, (d - cum[i - 1]) / s)) : 0;
+    return [(lo[i - 1] + t * (lo[i] - lo[i - 1])) / 1e6, (la[i - 1] + t * (la[i] - la[i - 1])) / 1e6];
+  };
+  out.push(at(d0));
+  for (let i = 1; i < n - 1; i++) if (cum[i] > d0 && cum[i] < d1) out.push([lo[i] / 1e6, la[i] / 1e6]);
+  out.push(at(d1));
+  return out;
+}
+
+function describe(r, S, T){
+  const g = P, des = r.des, coords = [], segDE = [], segCls = [], turns = [];
+  const TS = g.TURN.signal, TR = g.TURN.right, TL = g.TURN.left, TU = g.TURN.uturn;
+  let dist = 0, time = 0, climb = 0;
+  for (let i = 0; i < des.length; i++){
+    const de = des[i], e = de >> 1, dir = de & 1;
+    let f0 = 0, f1 = 1;
+    if (i === 0){ if (dir === 0) f0 = S.f; else f1 = S.f; }
+    if (i === des.length - 1){ if (dir === 0) f1 = T.f; else f0 = T.f; }
+    if (f1 < f0) f1 = f0;
+    const pts = cut(e, f0, f1);
+    if (dir === 1) pts.reverse();
+    if (i > 0){
+      const a = des[i - 1], n = dir ? g.ev[e] : g.eu[e];
+      const ha = (a & 1) ? g.eu[a >> 1] : g.ev[a >> 1];
+      if (ha !== n) throw new RErr('crash', 'consecutive edges meeting at a node', `${a} ends at ${ha}, ${de} starts at ${n}`);
+      const d = (g.DEP[de] - g.ARR[a] + 540) % 360 - 180;
+      const kind = (a >> 1) === e ? 'uturn' : d > 35 ? 'right' : d < -35 ? 'left' : 'straight';
+      time += ((g.nflag[n] & 1) ? TS : 0) + (kind === 'uturn' ? TU : kind === 'right' ? TR : kind === 'left' ? TL : 0);
+      if (kind !== 'straight'){
+        const a0 = g.AST[n], dg = g.AST[n + 1] - a0;
+        let pos = -1;
+        for (let k = 0; k < dg; k++) if (g.ADJ[a0 + k] === de){ pos = k; break; }
+        turns.push({ci: coords.length - 1, kind, deg: Math.round(d), wl: pos >= 0 && pos < 16 && ((g.mwl[a] >> pos) & 1) === 1,
+          sig: (g.nflag[n] & 1) === 1, lat: g.lat[n] / 1e6, lon: g.lon[n] / 1e6});
+      }
+    }
+    for (let k = coords.length ? 1 : 0; k < pts.length; k++){
+      coords.push(pts[k]);
+      if (coords.length > 1){ segDE.push(de); segCls.push(g.eflag[e] >> 4); }
+    }
+    const frac = f1 - f0;
+    dist += g.elen[e] * frac;
+    time += g.WT[de] * frac;
+    if (g.elen[e] >= 40){ const up = g.egrade[3 * e + 1 + dir]; if (up > climb) climb = up; }
+  }
+  return {coords, segDE, segCls, turns, dist: Math.round(dist), time: Math.round(time), cost: Math.round(r.cost * 10) / 10, climb};
+}
+
+function routeReq(o, d, profile){
+  if (profile !== 'car' && profile !== 'arrow' && profile !== 'arrow_flat') throw new RErr('crash', 'profile car, arrow or arrow_flat', profile);
+  const g = P;
+  const cands = [['origin', o], ['destination', d]].map(([which, p]) => {
+    if (!p || !isFinite(p.lat) || !isFinite(p.lon)) throw new RErr('crash', `a lat/lon for the ${which}`, JSON.stringify(p));
+    const la6 = Math.round(p.lat * 1e6), lo6 = Math.round(p.lon * 1e6);
+    if (la6 < g.S6 || la6 > g.N6 || lo6 < g.W6 || lo6 > g.E6) throw new RErr('outside', `the ${which} inside LA County`, `${p.lat.toFixed(5)},${p.lon.toFixed(5)}`, {which});
+    const c = snapCands(la6, lo6);
+    if (!c.length) throw new RErr('nosnap', `a drivable street within ${SNAP_MAX} m of the ${which}`, 'none', {which});
+    return c;
+  });
+  const [so, sd] = cands;
+  let pops = 0, tries = 0;
+  for (let i = 0; i < Math.min(2, so.length); i++){
+    for (let j = 0; j < Math.min(2, sd.length); j++){
+      tries++;
+      const r = search(so[i], sd[j], profile);
+      pops += r.pops;
+      if (r.des){
+        const out = describe(r, so[i], sd[j]);
+        return Object.assign(out, {profile, pops, tries, snapO: Math.round(so[i].d), snapD: Math.round(sd[j].d)});
+      }
+    }
+  }
+  throw new RErr('noroute', `a ${profile} route`, `none from ${tries} snap pairs, ${pops} states searched`, {tries, pops});
+}
+</script>
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
 <script>
 'use strict';
 /* =====================================================================
    SLOT 1 — APP: identity
    ===================================================================== */
-const BUILD = 'build 1';
+const BUILD = 'build 2';
 const APP = {
   key: 'arrow',
   name: 'arrow',
@@ -226,13 +595,15 @@ const CONF = {
   styles: { dawn: 'https://tiles.openfreemap.org/styles/liberty', native: 'https://tiles.openfreemap.org/styles/dark' },
   photon: 'https://photon.komoot.io/api/',
   nominatim: 'https://nominatim.openstreetmap.org/search',
-  bbox: [-118.96, 33.70, -117.64, 34.83],      // what the server's graph covers: LA County
+  bbox: [-118.96, 33.70, -117.64, 34.83],      // LA County: what the road graph covers (build.py BBOX)
   center: [-118.33, 34.06], zoom: 10.3,
+  data: 'data/',                               // GitHub Pages, next to this file
+  raw: 'https://raw.githubusercontent.com/MiteTython/Plane/main/arrow/data/',   // the same files when Pages lags
   maxPins: 12,           // Apple Maps tops out around 13 stops per route
   pinGap: 70,            // metres between pins along the route
   quietPins: 6,          // cap when arrow's route matches the plain one (pins become stops)
-  fwy: ['motorway', 'motorway_link', 'trunk_link', 'primary_link', 'secondary_link', 'tertiary_link'],
-  routeTimeout: 30000,
+  fwy: [0, 1, 3, 5, 7, 9],   // road classes no pin lands on: motorway, motorway_link, trunk_link, primary/secondary/tertiary links
+  routeTimeout: 60000, loadTimeout: 120000,
 };
 const FWY = new Set(CONF.fwy);
 
@@ -262,10 +633,9 @@ async function stage(name, fn, summarize){
   } catch (e) {
     const ms = +(performance.now()-t0).toFixed(1);
     const err = e instanceof StageError ? e : new StageError(name, 'clean run', `${e.name}: ${e.message}`);
-    STAGES[name] = {ok:false, ms, at:new Date().toISOString(), error:err.message, evidence:err.evidence, stack:e.stack};
+    STAGES[name] = {ok:false, ms, at:new Date().toISOString(), error:err.message, code:err.code||null, evidence:err.evidence, stack:e.stack};
     log(name, 'FAIL ' + err.message);
     try { localStorage.setItem(APP.key+'-lastfail', JSON.stringify({at:new Date().toISOString(), stage:name, error:err.message})); } catch(_){}
-    if (err !== e) { err.status = e.status; err.ghMessage = e.ghMessage; }
     throw err;
   }
 }
@@ -273,8 +643,11 @@ let ENV = null;
 function dumpJSON(){
   let base = null, last = null;
   try { base = JSON.parse(localStorage.getItem(APP.key+'-base')||'null'); last = JSON.parse(localStorage.getItem(APP.key+'-lastfail')||'null'); } catch(_){}
+  const de = DATA.err;
   return JSON.stringify({app:APP.key, build:BUILD, runtime:'js', at:new Date().toISOString(), env:ENV,
-    cfg:{server:cfg.server||null, look:cfg.look||'system', flat:!!cfg.flat, recents:(cfg.recents||[]).length},
+    cfg:{look:cfg.look||'system', flat:!!cfg.flat, recents:(cfg.recents||[]).length},
+    data:{state:DATA.state, meta:DATA.meta, got:DATA.got, total:DATA.total, updating:DATA.updating,
+      err:de ? {stage:de.stage||null, message:de.message, code:de.code||null, evidence:de.evidence||null} : null},
     state:{origin:S.origin, dest:S.dest, mode:S.mode, route:S.route?{km:S.route.km, ms:S.route.ms, pins:S.route.pins.length, url:S.route.url}:null},
     stages:STAGES, baseline:base, lastfail:last, log:LOG}, null, 2);
 }
@@ -331,12 +704,7 @@ const S = {
   flat: !!cfg.flat,
   route: null, busy: false, err: null,
 };
-(function serverFromLink(){
-  try {
-    const u = new URL(location.href); const s = u.searchParams.get('server');
-    if (s) { cfg.server = s.replace(/\/+$/,''); saveCfg(); log('cfg', 'server set from link'); u.searchParams.delete('server'); history.replaceState(null, '', u.pathname + u.search + u.hash); }
-  } catch(e){ log('cfg', 'server link unreadable: '+e.message); }
-})();
+if (cfg.server){ delete cfg.server; saveCfg(); log('cfg', 'dropped the build 1 server address: routes are worked out on this phone now'); }
 
 /* =====================================================================
    look
@@ -488,55 +856,308 @@ async function runSearch(q){
 }
 
 /* =====================================================================
-   SLOT 3 — the pipeline: origin → routes → pins → Apple URL
+   SLOT 3a — map data: manifest → download → verify → keep on the phone → router
+   The roads live in a Web Worker (the router script above). GitHub Actions
+   rebuilds them monthly; the app downloads once and checks for a newer one quietly.
    ===================================================================== */
-function ghURL(o, d, profile, full){
-  const p = new URLSearchParams();
-  p.append('point', `${o.lat.toFixed(6)},${o.lon.toFixed(6)}`);
-  p.append('point', `${d.lat.toFixed(6)},${d.lon.toFixed(6)}`);
-  p.set('profile', profile); p.set('points_encoded', 'false'); p.set('locale', 'en');
-  p.set('instructions', full ? 'true' : 'false');
-  p.append('details', 'edge_id');
-  if (full){ p.append('details', 'road_class'); p.append('details', 'average_slope'); }
-  p.append('curbside', 'right'); p.append('curbside', 'right'); p.set('curbside_strictness', 'soft');
-  return `${cfg.server}/route?${p}`;
+const DATA = {state:'idle', got:0, total:0, meta:null, err:null, loading:null, updating:false, upd:null};
+let WK = null, WSEQ = 0;
+const WPEND = new Map();
+function startWorker(){
+  try {
+    const src = document.getElementById('router').textContent;
+    WK = new Worker(URL.createObjectURL(new Blob([src], {type:'text/javascript'})));
+  } catch(e){ WK = null; log('worker', 'FAIL could not start: ' + e.message); return false; }
+  WK.onmessage = ev=>{
+    const m = ev.data || {}, p = WPEND.get(m.id);
+    if (!p) return;
+    WPEND.delete(m.id); clearTimeout(p.timer);
+    if (m.ok){ p.res(m); return; }
+    const er = m.error || {};
+    const e = new StageError(p.stage, er.expected || 'a clean answer', er.got || 'an error', {code:er.code, extra:er.extra, stack:er.stack});
+    e.code = er.code || 'crash'; e.which = er.extra && er.extra.which;
+    p.rej(e);
+  };
+  WK.onerror = ev=>{
+    if (ev.preventDefault) ev.preventDefault();
+    log('worker', `FAIL crashed: ${ev.message || 'no message'} (line ${ev.lineno || '?'})`);
+    restartWorker(`the router crashed: ${ev.message || 'no message'}`);
+  };
+  WK.onmessageerror = ()=>log('worker', 'FAIL a message from the router could not be read');
+  return true;
 }
-async function gh(o, d, profile, full){
-  const name = 'route.'+profile, url = ghURL(o, d, profile, full);
-  let r;
-  try { r = await fetchT(url, CONF.routeTimeout); }
-  catch(e){ const err = new StageError(name, `a response from ${cfg.server}`, e.name==='AbortError' ? `no answer in ${CONF.routeTimeout/1000} s` : `${e.name}: ${e.message}`, {url}); err.status = 0; throw err; }
-  const text = await r.text(); let j = null;
-  try { j = JSON.parse(text); } catch(_){}
-  const ev = {url, status:r.status, contentType:r.headers.get('content-type'), body:text.slice(0, 4000)};
-  if (!r.ok){
-    const msg = (j && (j.message || (j.hints && j.hints[0] && j.hints[0].message))) || text.slice(0, 200);
-    const err = new StageError(name, 'HTTP 200 with a path', `HTTP ${r.status}: ${msg}`, ev); err.status = r.status; err.ghMessage = msg; throw err;
+function restartWorker(why){
+  for (const [, p] of WPEND){ clearTimeout(p.timer); const e = new StageError(p.stage, 'an answer from the router', why); e.code = 'crash'; p.rej(e); }
+  WPEND.clear();
+  try { if (WK) WK.terminate(); } catch(_){}
+  WK = null;
+  if (DATA.state === 'ready') DATA.state = 'idle';   // the roads lived in that worker: the next route reloads them from the phone
+  startWorker();
+  renderData();
+}
+function workerCall(stageName, msg, transfer, ms){
+  return new Promise((res, rej)=>{
+    if (!WK && !startWorker()){ const e = new StageError(stageName, 'a Web Worker', 'none could start'); e.code = 'crash'; rej(e); return; }
+    const id = ++WSEQ;
+    const timer = setTimeout(()=>{
+      WPEND.delete(id);
+      const e = new StageError(stageName, `an answer within ${ms/1000} s`, 'none'); e.code = 'crash'; rej(e);
+      restartWorker(`${stageName} ran past ${ms/1000} s`);
+    }, ms);
+    WPEND.set(id, {res, rej, timer, stage:stageName});
+    try { WK.postMessage({...msg, id}, transfer || []); }
+    catch(e){ clearTimeout(timer); WPEND.delete(id); const err = new StageError(stageName, 'the request handed to the router', `${e.name}: ${e.message}`); err.code = 'crash'; rej(err); }
+  });
+}
+
+/* ---- this phone's copy: IndexedDB 'arrow' / store 'kv' / key 'graph' = {meta, buf} ---- */
+function idbOpen(){
+  return new Promise((res, rej)=>{
+    if (!window.indexedDB){ rej(new Error('no IndexedDB in this browser')); return; }
+    const q = indexedDB.open(APP.key, 1);
+    q.onupgradeneeded = ()=>{ if (!q.result.objectStoreNames.contains('kv')) q.result.createObjectStore('kv'); };
+    q.onsuccess = ()=>res(q.result);
+    q.onerror = ()=>rej(q.error || new Error('open failed'));
+    q.onblocked = ()=>rej(new Error('blocked by another copy of the app'));
+  });
+}
+async function idbDo(mode, fn){
+  const db = await idbOpen();
+  try {
+    return await new Promise((res, rej)=>{
+      const tx = db.transaction('kv', mode); let out;
+      const r = fn(tx.objectStore('kv'));
+      if (r) r.onsuccess = ()=>{ out = r.result; };
+      tx.oncomplete = ()=>res(out);
+      tx.onerror = ()=>rej(tx.error || new Error('transaction failed'));
+      tx.onabort = ()=>rej(tx.error || new Error('transaction aborted (storage full?)'));
+    });
+  } finally { db.close(); }
+}
+const idbGet = key => idbDo('readonly', s=>s.get(key)).then(v=>v || null);
+const idbPut = (key, val) => idbDo('readwrite', s=>s.put(val, key));
+const idbDel = key => idbDo('readwrite', s=>s.delete(key));
+
+/* ---- GitHub: Pages first, raw.githubusercontent.com when Pages hasn't caught up ---- */
+async function fetchManifest(){
+  const tries = [['pages', new URL(CONF.data, location.href).href], ['raw', CONF.raw]];
+  const errs = []; let all404 = true;
+  for (const [src, base] of tries){
+    const u = `${base}manifest.json?t=${Date.now()}`;
+    let r;
+    try { r = await fetchT(u, 12000); }
+    catch(e){ all404 = false; errs.push(`${src}: ${e.name === 'AbortError' ? 'no answer in 12 s' : e.message}`); continue; }
+    if (!r.ok){ if (r.status !== 404) all404 = false; errs.push(`${src}: HTTP ${r.status}`); continue; }
+    let j = null;
+    try { j = await r.json(); } catch(e){ all404 = false; errs.push(`${src}: not JSON`); continue; }
+    if (!j || j.format !== 1 || typeof j.file !== 'string' || !/^[0-9a-f]{64}$/.test(j.sha256 || '') || !(j.bytes_gz > 0) || !(j.bytes_raw > 0) || !(j.edges > 0) || !(j.nodes > 0))
+      fail('data.manifest', 'format 1 with file, sha256, sizes and counts', JSON.stringify(j).slice(0, 240), {url:u});
+    j._base = base; j._src = src;
+    return j;
   }
-  const p = j && j.paths && j.paths[0];
-  if (!p) fail(name, 'paths[0] in the response', j ? Object.keys(j).join(',') : 'not JSON', ev);
-  const co = p.points && p.points.coordinates;
-  if (!Array.isArray(co) || co.length < 2) fail(name, 'at least 2 coordinates (points_encoded=false)', Array.isArray(co) ? co.length : typeof p.points, ev);
-  if (!p.details || !Array.isArray(p.details.edge_id)) fail(name, 'details.edge_id', Object.keys(p.details||{}).join(',') || 'no details', ev);
-  if (full && !Array.isArray(p.instructions)) fail(name, 'instructions', typeof p.instructions, ev);
-  if (typeof p.time !== 'number' || typeof p.distance !== 'number') fail(name, 'numeric time and distance', `${typeof p.time}/${typeof p.distance}`, ev);
-  return p;
+  const err = new StageError('data.manifest', 'manifest.json from GitHub Pages or raw.githubusercontent.com', errs.join(' · '), {errs});
+  err.code = all404 ? 'nodata' : 'offline';
+  throw err;
 }
-const sumRoute = p => p ? {km:+(p.distance/1000).toFixed(2), min:+(p.time/60000).toFixed(1), pts:p.points.coordinates.length, edges:p.details.edge_id.length} : null;
+const hex = buf => [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2, '0')).join('');
+async function fetchGraph(m, src, base, onProgress){
+  const u = `${base}${m.file}?v=${encodeURIComponent(m.version)}`;
+  const ac = new AbortController(); let stall = null, r = null, got = 0;
+  const arm = ()=>{ clearTimeout(stall); stall = setTimeout(()=>ac.abort(), 30000); };
+  const parts = [];
+  arm();
+  try {
+    r = await fetch(u, {signal:ac.signal});
+    if (!r.ok) fail('data.download', `HTTP 200 from ${src}`, `HTTP ${r.status}`, {url:u, status:r.status});
+    if (!r.body || !r.body.getReader) fail('data.download', 'a streamed response body', 'none', {url:u});
+    const rd = r.body.getReader();
+    onProgress(0, m.bytes_gz);
+    for (;;){
+      const {done, value} = await rd.read();
+      if (done) break;
+      parts.push(value); got += value.byteLength; arm(); onProgress(got, m.bytes_gz);
+    }
+  } catch(e){
+    if (e instanceof StageError) throw e;
+    fail('data.download', `${m.bytes_gz} bytes from ${src}`, `${got} bytes, then ${e.name === 'AbortError' ? 'nothing for 30 s' : `${e.name}: ${e.message}`}`, {url:u});
+  } finally { clearTimeout(stall); }
+  const head = parts.length ? parts[0] : new Uint8Array(0);
+  const ev = {url:u, bytes:got, contentType:r.headers.get('content-type'), contentEncoding:r.headers.get('content-encoding')};
+  let raw;
+  if (head[0] === 0x1f && head[1] === 0x8b){
+    if (got !== m.bytes_gz) fail('data.download', `${m.bytes_gz} bytes (manifest)`, `${got} bytes`, ev);
+    try { raw = await new Response(new Blob(parts).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer(); }
+    catch(e){ fail('data.unzip', 'gzip data that inflates', `${e.name}: ${e.message}`, ev); }
+  } else if (got === m.bytes_raw){
+    raw = await new Blob(parts).arrayBuffer();
+    log('data.download', 'arrived already inflated (Content-Encoding on the wire)');
+  } else fail('data.download', `gzip bytes (1f 8b …) or ${m.bytes_raw} raw bytes`, `${got} bytes starting ${hex(head.slice(0, 4))}`, ev);
+  parts.length = 0;
+  if (raw.byteLength !== m.bytes_raw) fail('data.unzip', `${m.bytes_raw} bytes after unzip (manifest)`, raw.byteLength, ev);
+  const sha = hex(await crypto.subtle.digest('SHA-256', raw));
+  if (sha !== m.sha256) fail('data.verify', `sha256 ${m.sha256.slice(0, 16)}… (manifest)`, `${sha.slice(0, 16)}…`, ev);
+  return raw;
+}
+async function downloadGraph(m, onProgress){
+  if (typeof DecompressionStream === 'undefined') fail('data.download', 'DecompressionStream (iOS 16.4 or newer)', 'not in this browser');
+  if (!window.crypto || !crypto.subtle) fail('data.verify', 'crypto.subtle (the app on https)', 'missing');
+  const bases = [[m._src, m._base]];
+  if (m._src !== 'raw') bases.push(['raw', CONF.raw]);
+  let last = null;
+  for (const [src, base] of bases){
+    try { return {raw:await fetchGraph(m, src, base, onProgress), src}; }
+    catch(e){ last = e; log('data.download', `${src} didn’t work: ${e.message}`); }
+  }
+  throw last;
+}
+function metaOf(m, src){
+  return {format:m.format, version:m.version, sha256:m.sha256, bytes_gz:m.bytes_gz, bytes_raw:m.bytes_raw, nodes:m.nodes, edges:m.edges,
+    osm_timestamp:m.osm_timestamp || null, built:m.built || null, whitelist:m.whitelist || {}, turn_costs_s:m.turn_costs_s || null,
+    vmax_mps:m.vmax_mps || null, src, kept:new Date().toISOString()};
+}
+async function loadIntoWorker(buf, meta){
+  const r = await workerCall('data.load', {type:'load', buf, turn:meta.turn_costs_s, vmax:meta.vmax_mps}, [buf], CONF.loadTimeout);
+  if (r.edges !== meta.edges || r.nodes !== meta.nodes) fail('data.load', `${meta.edges} edges and ${meta.nodes} nodes (manifest)`, `${r.edges} and ${r.nodes}`);
+  return r;
+}
+function setData(state, got, total){ DATA.state = state; if (got != null) DATA.got = got; if (total != null) DATA.total = total; renderData(); }
+function progress(set){ let t = 0; return (got, total)=>{ set(got, total); const now = performance.now(); if (now - t > 120 || got >= total){ t = now; renderData(); } }; }
+function persistStorage(){
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().then(ok=>log('data', `persistent storage ${ok ? 'granted' : 'not granted: iOS may clear it if the phone runs short of space'}`), ()=>{}); } catch(_){}
+}
+function loadData(){
+  if (DATA.loading) return DATA.loading;
+  DATA.loading = (async ()=>{
+    DATA.err = null;
+    try {
+      setData('load');
+      const c = await stage('data.cache', async ()=>{ try { return await idbGet('graph'); } catch(e){ log('data.cache', 'this phone’s copy is unreadable: ' + e.message); return null; } },
+        c=>c && c.meta && c.buf ? {version:c.meta.version, mb:+(c.buf.byteLength/1048576).toFixed(1)} : 'none');
+      if (c && c.meta && c.buf instanceof ArrayBuffer && c.buf.byteLength === c.meta.bytes_raw){
+        try {
+          await stage('data.load', ()=>loadIntoWorker(c.buf, c.meta), r=>({edges:r.edges, snapEdges:r.snapEdges, ms:r.ms, from:'this phone'}));
+          DATA.meta = c.meta; setData('ready');
+          setTimeout(()=>checkUpdate(false), 5000);
+          return;
+        } catch(e){ log('data', 'this phone’s copy didn’t load; getting a fresh one'); idbDel('graph').catch(()=>{}); }
+      }
+      setData('manifest');
+      const m = await stage('data.manifest', fetchManifest, m=>({version:m.version, src:m._src, mb:+(m.bytes_gz/1048576).toFixed(1), edges:m.edges}));
+      setData('download', 0, m.bytes_gz);
+      const {raw, src} = await stage('data.download', ()=>downloadGraph(m, progress((g, t)=>{ DATA.got = g; DATA.total = t; })), x=>({src:x.src, bytes:x.raw.byteLength}));
+      const meta = metaOf(m, src);
+      setData('store');
+      await stage('data.store', ()=>idbPut('graph', {meta, buf:raw}), ()=>({kept:true}))
+        .catch(e=>log('data.store', `not kept on this phone (${e.message}); it downloads again next time`));
+      setData('load');
+      await stage('data.load', ()=>loadIntoWorker(raw, meta), r=>({edges:r.edges, snapEdges:r.snapEdges, ms:r.ms, from:src}));
+      DATA.meta = meta; setData('ready');
+      toast('LA roads saved on this phone');
+      persistStorage();
+    } catch(e){
+      DATA.err = e instanceof StageError ? e : new StageError('data', 'the LA roads loaded', `${e.name}: ${e.message}`);
+      setData('error'); redEdge();
+    } finally { DATA.loading = null; }
+  })();
+  return DATA.loading;
+}
+async function checkUpdate(manual){
+  if (DATA.state !== 'ready' || DATA.updating){ if (manual && DATA.updating) toast('Already checking'); return; }
+  DATA.updating = true; renderData();
+  try {
+    const m = await stage('data.manifest', fetchManifest, m=>({version:m.version, src:m._src, have:DATA.meta && DATA.meta.version}));
+    if (DATA.meta && m.version === DATA.meta.version){ if (manual) toast('LA roads are up to date'); return; }
+    log('data', `newer roads ${m.version} (have ${DATA.meta ? DATA.meta.version : 'none'})`);
+    DATA.upd = {got:0, total:m.bytes_gz};
+    const {raw, src} = await stage('data.download', ()=>downloadGraph(m, progress((g, t)=>{ DATA.upd = {got:g, total:t}; })), x=>({src:x.src, bytes:x.raw.byteLength}));
+    const meta = metaOf(m, src);
+    await stage('data.store', ()=>idbPut('graph', {meta, buf:raw}), ()=>({kept:true}))
+      .catch(e=>log('data.store', `update not kept on this phone (${e.message})`));
+    await stage('data.load', ()=>loadIntoWorker(raw, meta), r=>({edges:r.edges, snapEdges:r.snapEdges, ms:r.ms, from:src}));
+    DATA.meta = meta;
+    toast('LA roads updated');
+  } catch(e){
+    log('data', `update skipped: ${e.message}`);
+    if (manual) toast(e.code === 'offline' || e.code === 'nodata' ? 'Couldn’t reach GitHub' : 'Update didn’t finish', 'warn');
+  } finally { DATA.updating = false; DATA.upd = null; renderData(); }
+}
+async function ensureData(){
+  if (DATA.state === 'ready') return;
+  await (DATA.loading || loadData());
+  if (DATA.state !== 'ready'){
+    if (DATA.err) throw DATA.err;
+    const e = new StageError('data', 'the LA roads loaded', DATA.state); e.code = 'crash'; throw e;
+  }
+}
+
+/* ---- what the panel says while the roads load ---- */
+const mb = b => (b/1048576).toFixed(b < 10485760 ? 1 : 0);
+function dataLine(){
+  const st = DATA.state;
+  if (st === 'ready' || st === 'idle') return '';
+  if (st === 'error'){ const x = explain(DATA.err || {}); return `<div class="dstat bad"><div class="l"><span>${esc(x.title)}</span><button class="link" data-act="retry">Try again</button></div></div>`; }
+  if (st === 'download'){
+    const p = DATA.total ? Math.min(100, Math.round(DATA.got / DATA.total * 100)) : 0;
+    return `<div class="dstat"><div class="l"><span>Downloading LA roads, first time only</span><span class="mono">${mb(DATA.got)} / ${mb(DATA.total)} MB</span></div><div class="bar"><i style="width:${p}%"></i></div></div>`;
+  }
+  const words = {load:'Loading LA roads', manifest:'Looking for LA roads', store:'Saving LA roads on this phone'};
+  return `<div class="dstat empty"><div class="l"><span>${words[st] || 'Loading LA roads'}</span></div></div>`;
+}
+function dataStatus(){
+  const m = DATA.meta;
+  if (DATA.updating && DATA.upd) return `Updating ${DATA.upd.total ? Math.round(DATA.upd.got / DATA.upd.total * 100) : 0}%`;
+  if (DATA.state === 'ready' && m) return `${mb(m.bytes_gz)} MB · OSM ${fmtDay(m.osm_timestamp)}`;
+  if (DATA.state === 'download') return `Downloading ${DATA.total ? Math.round(DATA.got / DATA.total * 100) : 0}%`;
+  if (DATA.state === 'error') return 'Not loaded';
+  return 'Loading';
+}
+function fmtDay(iso){ if (!iso) return '?'; const d = new Date(iso); return isNaN(d) ? String(iso).slice(0, 10) : d.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}); }
+function wireActs(root){ if (root) root.querySelectorAll('[data-act]').forEach(b=>b.onclick = ()=>act(b.dataset.act)); }
+function renderData(){
+  const el = document.getElementById('dstat');
+  if (el){
+    const bar = el.querySelector('.bar i'), num = el.querySelector('.l .mono');
+    if (DATA.state === 'download' && bar && num){
+      bar.style.width = `${DATA.total ? Math.min(100, Math.round(DATA.got / DATA.total * 100)) : 0}%`;
+      num.textContent = `${mb(DATA.got)} / ${mb(DATA.total)} MB`;
+    } else { el.innerHTML = dataLine(); wireActs(el); }
+  }
+  const bw = document.getElementById('busyw');
+  if (bw) bw.hidden = DATA.state !== 'ready';
+  const sd = document.getElementById('sdata');
+  if (sd) sd.textContent = dataStatus();
+  document.getElementById('panel').classList.toggle('dl', S.mode === 'search' && DATA.state !== 'ready' && DATA.state !== 'idle');
+}
+
+/* =====================================================================
+   SLOT 3b — the pipeline: origin → routes (on the phone) → pins → Apple URL
+   ===================================================================== */
+async function route(o, d, profile){
+  const name = 'route.' + profile;
+  const m = await workerCall(name, {type:'route', o:{lat:o.lat, lon:o.lon}, d:{lat:d.lat, lon:d.lon}, profile}, null, CONF.routeTimeout);
+  const r = m.route;
+  if (!r || !Array.isArray(r.coords) || r.coords.length < 2) fail(name, 'at least 2 coordinates', r && Array.isArray(r.coords) ? r.coords.length : typeof r, {route:r});
+  if (!Array.isArray(r.segDE) || r.segDE.length !== r.coords.length - 1 || !Array.isArray(r.segCls) || r.segCls.length !== r.coords.length - 1)
+    fail(name, `${r.coords.length - 1} segment edges and classes`, `${r.segDE && r.segDE.length} / ${r.segCls && r.segCls.length}`);
+  if (!Array.isArray(r.turns) || !(r.time >= 0) || !(r.dist >= 0)) fail(name, 'turns, time and distance', `${typeof r.turns} / ${r.time} / ${r.dist}`);
+  if (r.coords.some(c=>!Array.isArray(c) || !isFinite(c[0]) || !isFinite(c[1]))) fail(name, 'finite [lon, lat] pairs', 'a bad coordinate', {first:r.coords.slice(0, 3)});
+  return r;
+}
+const sumRoute = r => ({km:+(r.dist/1000).toFixed(2), min:+(r.time/60).toFixed(1), pts:r.coords.length, turns:r.turns.length,
+  arrows:r.turns.filter(t=>t.wl).length, climb:r.climb, snap_m:[r.snapO, r.snapD], tries:r.tries, pops:r.pops, ms:r.ms});
 
 function hav(a, b){ const R = 6371008.8, r = Math.PI/180, dLa = (b[1]-a[1])*r, dLo = (b[0]-a[0])*r; const s = Math.sin(dLa/2)**2 + Math.cos(a[1]*r)*Math.cos(b[1]*r)*Math.sin(dLo/2)**2; return 2*R*Math.asin(Math.min(1, Math.sqrt(s))); }
 function cumDist(co){ const c = [0]; for (let i = 1; i < co.length; i++) c.push(c[i-1] + hav(co[i-1], co[i])); return c; }
-function segArray(n, details, fill){ const a = new Array(Math.max(0, n-1)).fill(fill); for (const [f, t, v] of (details||[])) for (let i = f; i < t && i < a.length; i++) a[i] = v; return a; }
 function segAt(cum, d){ let lo = 0, hi = cum.length - 2; while (lo < hi){ const m = (lo + hi + 1) >> 1; if (cum[m] <= d) lo = m; else hi = m - 1; } return Math.max(0, lo); }
 function pointAt(co, cum, d){ const i = segAt(cum, d), L = (cum[i+1] - cum[i]) || 1, f = Math.min(1, Math.max(0, (d - cum[i]) / L)); return [co[i][0] + f*(co[i+1][0]-co[i][0]), co[i][1] + f*(co[i+1][1]-co[i][1])]; }
 
 /* Pins become Apple Maps stops. Apple re-routes freely between them, so they go where
    arrow's route leaves the plain one (Apple would cut across there), after each turn
    inside those stretches, and at both ends (pull away and arrive on the right side). */
-function choosePins(path, cum, edge, cls, carE){
-  const co = path.points.coordinates, total = cum[cum.length-1], ins = path.instructions || [];
-  const okAt = d => d > 60 && d < total - 60 && !FWY.has(cls[segAt(cum, d)] || '');
-  const div = edge.map(e => carE ? !carE.has(e) : false);
+function choosePins(R, cum, carSet){
+  const co = R.coords, total = cum[cum.length-1];
+  const okAt = d => d > 60 && d < total - 60 && !FWY.has(R.segCls[segAt(cum, d)]);
+  const div = R.segDE.map(de => carSet ? !carSet.has(de) : false);
   const C = [];
   const add = (d, prio, why) => { if (okAt(d)) C.push({d, prio, why}); };
   for (let i = 0; i < div.length; i++){
@@ -544,12 +1165,11 @@ function choosePins(path, cum, edge, cls, carE){
     let j = i; while (j < div.length && div[j]) j++;
     add(Math.min(cum[i] + 40, (cum[i] + cum[j]) / 2), 1, 'leaves the plain route');
   }
-  ins.forEach((it, k)=>{
-    if (k === 0 || it.sign === 0 || it.sign === 4 || it.sign === 5 || !Array.isArray(it.interval)) return;
-    const s = Math.min(it.interval[0], cum.length - 1), d0 = cum[s];
-    const d1 = k + 1 < ins.length && Array.isArray(ins[k+1].interval) ? cum[Math.min(ins[k+1].interval[0], cum.length-1)] : total;
-    const inDiv = div[Math.min(s, div.length - 1)] || (s > 0 && div[s-1]);
-    add(Math.min(d0 + 40, (d0 + d1) / 2), inDiv ? 2 : 4, it.text);
+  R.turns.forEach((t, k)=>{
+    const ci = Math.min(t.ci, cum.length - 1), d0 = cum[ci];
+    const d1 = k + 1 < R.turns.length ? cum[Math.min(R.turns[k+1].ci, cum.length - 1)] : total;
+    const inDiv = div[Math.min(ci, div.length - 1)] || (ci > 0 && div[ci-1]);
+    add(Math.min(d0 + 40, (d0 + d1) / 2), inDiv ? 2 : 4, t.kind + (t.wl ? ' on an arrow' : ''));
   });
   add(total - 80, 3, 'final approach');
   add(80, 3, 'pull away');
@@ -574,32 +1194,26 @@ function appleURL(o, d, pins){
   return 'https://maps.apple.com/directions?' + q.join('&');
 }
 function buildModel(main, car, o, d, profile){
-  const co = main.points.coordinates, n = co.length, cum = cumDist(co);
-  const edge = segArray(n, main.details.edge_id, null);
-  const cls = segArray(n, main.details.road_class, '');
-  if (edge.some(e=>e == null)) fail('model', 'an edge id on every segment', `${edge.filter(e=>e==null).length} gaps`);
-  const carE = car ? new Set(car.details.edge_id.map(x=>x[2])) : null;
-  const pins = choosePins(main, cum, edge, cls, carE);
-  const lefts = (main.instructions||[]).filter(it=>(it.sign === -2 || it.sign === -3) && Array.isArray(it.interval) && !FWY.has(cls[Math.min(it.interval[0], cls.length-1)]))
-    .map(it=>{ const c = co[Math.min(it.interval[0], n-1)]; return [c[0], c[1]]; });
-  let climb = 0;
-  for (const [f, t, v] of (main.details.average_slope||[])) if (typeof v === 'number' && cum[Math.min(t, n-1)] - cum[f] >= 40 && v > climb) climb = v;
-  let div = 0; if (carE) for (let i = 0; i < edge.length; i++) if (!carE.has(edge[i])) div += cum[i+1] - cum[i];
-  return {coords:co, pins, lefts, climb:Math.round(climb), km:main.distance/1000, ms:main.time, carMs:car ? car.time : null,
-    divergedKm:carE ? +(div/1000).toFixed(2) : null, url:appleURL(o, d, pins), profile, at:Date.now()};
+  const co = main.coords, n = co.length, cum = cumDist(co);
+  const carSet = car ? new Set(car.segDE) : null;
+  const pins = choosePins(main, cum, carSet);
+  if (pins.some(p=>!isFinite(p.at[0]) || !isFinite(p.at[1]))) fail('model', 'finite pin coordinates', JSON.stringify(pins).slice(0, 200));
+  const lefts = main.turns.filter(t=>t.kind === 'left' && t.wl).map(t=>[t.lon, t.lat]);
+  let div = 0;
+  if (carSet) for (let i = 0; i < n - 1; i++) if (!carSet.has(main.segDE[i])) div += cum[i+1] - cum[i];
+  return {coords:co, pins, lefts, climb:main.climb, km:main.dist/1000, ms:main.time*1000, carMs:car ? car.time*1000 : null,
+    divergedKm:carSet ? +(div/1000).toFixed(2) : null, url:appleURL(o, d, pins), profile, at:Date.now()};
 }
 function explain(e){
-  const m = String(e.ghMessage || e.got || e.message || '');
-  if (e.stage === 'plan') return {title:'Add your server', body:'arrow needs the address of your routing server.', action:'settings'};
+  const c = e.code || '', w = e.which === 'origin' ? 'start' : 'destination';
   if (e.stage === 'origin') return {title:'Location is off', body:`Your phone didn’t give a position (${e.got}).`, action:'from'};
-  if (/^route\./.test(e.stage || '')){
-    if (e.status === 0) return {title:'Can’t reach the server', body:`${cfg.server||'The server'} isn’t answering. Quick-tunnel URLs change every time the server restarts.`, action:'settings'};
-    if (/out of bounds/i.test(m)) return {title:'Outside the map', body:'The routing server covers LA County.', action:null};
-    if (/cannot find point/i.test(m)) return {title:'No road there', body:'The server found no drivable road near that spot.', action:null};
-    if (/connection between locations not found|not found/i.test(m)) return {title:'No way there without an unprotected left', body:'Every route to this spot needs a left with no arrow. A point on the next street over usually works.', action:null};
-    if (e.status) return {title:'Routing failed', body:`The server said: ${m}`, action:null};
-    return {title:'The server answered strangely', body:`${e.message}. Settings → Log → Dump has the response.`, action:'settings'};
-  }
+  if (c === 'nodata') return {title:'The LA roads aren’t published yet', body:'GitHub builds them by itself, about 15 minutes after a change. Try again in a bit.', action:'retry'};
+  if (c === 'offline') return {title:'Can’t download the LA roads', body:'No connection to GitHub right now. They download once, then routes work without a connection.', action:'retry'};
+  if (/^data/.test(e.stage || '')) return {title:'The LA roads didn’t load', body:`${e.message}. Settings → Log → Dump has the details.`, action:'retry'};
+  if (c === 'outside') return {title:'Outside the map', body:`The ${w} is outside LA County, and LA County is all arrow knows.`, action:e.which === 'origin' ? 'from' : null};
+  if (c === 'nosnap') return {title:'No road there', body:`There’s no drivable street near the ${w}.`, action:null};
+  if (c === 'noroute') return {title:'No way there without an unprotected left', body:'Every route to this spot needs a left with no arrow. A point on the next street over usually works.', action:null};
+  if (c === 'nograph' || c === 'crash') return {title:'The router stopped', body:`${e.got || e.message}. Try again: it reloads the roads from this phone.`, action:'retry'};
   return {title:'Something broke', body:`${e.message}. Settings → Log → Dump has the details.`, action:'settings'};
 }
 let PLANSEQ = 0;
@@ -609,22 +1223,24 @@ async function plan(){
   S.mode = 'route'; S.route = null; S.err = null; S.busy = true;
   setPanel('half'); renderPanel(); drawRoute();
   try {
-    if (!cfg.server) fail('plan', 'a server URL in Settings', 'none');
+    await ensureData();
+    if (my !== PLANSEQ) return;
+    renderData();
     const o = await stage('origin', async ()=>{
       if (S.origin) return S.origin;
       if (S.here && Date.now() - S.here.at < 120000) return {...S.here, here:true};
       const fix = await locateOnce(); S.here = fix; return {...fix, here:true};
     }, o=>({here:!!o.here, lat:+o.lat.toFixed(5), lon:+o.lon.toFixed(5)}));
+    if (my !== PLANSEQ) return;
     const profile = S.flat ? 'arrow_flat' : 'arrow';
-    const [main, car] = await Promise.all([
-      stage('route.'+profile, ()=>gh(o, S.dest, profile, true), sumRoute),
-      stage('route.car', ()=>gh(o, S.dest, 'car', false), sumRoute).catch(()=>{ log('route.car', 'no comparison route: pins fall back to the turns near both ends'); return null; }),
-    ]);
+    const main = await stage('route.'+profile, ()=>route(o, S.dest, profile), sumRoute);
+    const car = await stage('route.car', ()=>route(o, S.dest, 'car'), sumRoute)
+      .catch(()=>{ log('route.car', 'no plain route to compare: pins fall back to the turns and both ends'); return null; });
     if (my !== PLANSEQ) return;
     const R = await stage('model', async ()=>buildModel(main, car, o, S.dest, profile),
       R=>({pins:R.pins.length, lefts:R.lefts.length, climb:R.climb, divergedKm:R.divergedKm, urlLen:R.url.length}));
     S.route = R;
-    try { localStorage.setItem(APP.key+'-base', JSON.stringify({at:new Date().toISOString(), profile, km:+R.km.toFixed(2), min:+(R.ms/60000).toFixed(1), pins:R.pins.length, lefts:R.lefts.length, climb:R.climb})); } catch(_){}
+    try { localStorage.setItem(APP.key+'-base', JSON.stringify({at:new Date().toISOString(), profile, km:+R.km.toFixed(2), min:+(R.ms/60000).toFixed(1), pins:R.pins.length, lefts:R.lefts.length, climb:R.climb, data:DATA.meta && DATA.meta.version})); } catch(_){}
     const rec = {lat:S.dest.lat, lon:S.dest.lon, name:S.dest.name, sub:S.dest.sub};
     cfg.recents = [rec, ...(cfg.recents||[]).filter(x=>Math.abs(x.lat-rec.lat) > 1e-5 || Math.abs(x.lon-rec.lon) > 1e-5)].slice(0, 6); saveCfg();
   } catch(e){
@@ -656,6 +1272,7 @@ function renderPanel(){
   if (S.mode === 'search'){
     c.innerHTML = `<div class="search">${ICON.mag}<input id="q" type="search" enterkeyhint="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="${S.picking==='origin'?'Starting point':'Search Maps'}" value="${esc(S.query)}"><button class="clr" aria-label="Clear" ${S.query?'':'hidden'}>${ICON.xs}</button></div>`
       + (S.picking === 'origin' ? `<div class="pick">Starting point for ${esc(S.dest?S.dest.name:'the route')} · <button class="link" data-act="cancelpick">Cancel</button></div>` : '')
+      + `<div id="dstat">${dataLine()}</div>`
       + `<div id="plist" class="list"></div>`;
     const q = c.querySelector('#q'), clr = c.querySelector('.clr');
     q.addEventListener('focus', ()=>setPanel('full'));
@@ -665,16 +1282,19 @@ function renderPanel(){
     clr.onclick = ()=>{ q.value = ''; clr.hidden = true; onQuery(''); q.focus(); };
     const cp = c.querySelector('[data-act=cancelpick]');
     if (cp) cp.onclick = ()=>{ S.picking = 'dest'; S.mode = S.dest ? 'route' : 'search'; S.query = ''; renderPanel(); setPanel(S.dest ? 'half' : 'peek'); };
+    wireActs(c.querySelector('#dstat'));
     renderList();
+    renderData();
     return;
   }
   c.innerHTML = routeHTML();
-  c.querySelectorAll('[data-act]').forEach(b=>b.onclick = ()=>act(b.dataset.act));
+  wireActs(c);
   const flat = c.querySelector('#flat');
   if (flat) flat.onchange = ()=>{ S.flat = cfg.flat = flat.checked; saveCfg(); log('opt', 'avoid hills '+(S.flat?'on':'off')); plan(); };
   const go = c.querySelector('#goApple');
   if (go) go.onclick = ()=>log('apple', {pins:S.route.pins.length, url:S.route.url});
   if (S.route && !S.route.shown){ S.route.shown = true; countTo(c.querySelector('#bigmin'), Math.round(S.route.ms/60000), m=>fmtDur(m*60000)); }
+  renderData();
 }
 function renderList(){
   const el = document.getElementById('plist'); if (!el) return;
@@ -709,15 +1329,16 @@ function routeHTML(){
   let html = `<div class="rhead"><div class="t"><h2>${esc(d.name)}</h2><p>${esc(d.sub||'')}</p></div><button class="x" data-act="close" aria-label="Close">${ICON.x}</button></div>
     <div class="group"><button class="from" data-act="from"><span class="k">From</span><span class="v">${esc(S.origin ? S.origin.name : 'My Location')}</span>${ICON.chev}</button>
     <div class="opt"><span class="ol">${ICON.hill}<span>Avoid hills</span></span><label class="switch"><input type="checkbox" id="flat" ${S.flat?'checked':''}><span></span></label></div></div>`;
-  if (S.busy) return html + `<div class="busy empty">Finding a way with no unprotected lefts</div>`;
+  if (S.busy) return html + `<div id="dstat">${dataLine()}</div><div class="busy empty" id="busyw"${DATA.state === 'ready' ? '' : ' hidden'}>Finding a way with no unprotected lefts</div>`;
   if (S.err) return html + `<div class="err"><b>${esc(S.err.title)}</b><p>${esc(S.err.body)}</p>`
     + (S.err.action === 'settings' ? `<button class="sec wide" data-act="settings">Settings</button>` : '')
+    + (S.err.action === 'retry' ? `<button class="sec wide" data-act="retry">Try again</button>` : '')
     + (S.err.action === 'from' ? `<button class="sec wide" data-act="from">Choose a starting point</button>` : '') + `</div>`;
   if (!R) return html;
   const L = R.lefts.length;
   const extra = R.carMs == null ? '' : (R.ms - R.carMs >= 60000 ? `That’s ${fmtDur(R.ms - R.carMs)} more than the plain route.` : 'Same time as the plain route.');
   return html + `<div class="sum"><div class="big" id="bigmin">${fmtDur(R.ms)}</div>
-      <div class="facts">${fmtMi(R.km)} · ${L ? `${L} left${L>1?'s':''} on an arrow` : 'no lefts'} · steepest climb ${R.climb}%</div>
+      <div class="facts">${fmtMi(R.km)} · ${L ? `${L} left${L>1?'s':''} on an arrow` : 'no lefts across traffic'} · steepest climb ${R.climb}%</div>
       ${capt('No unprotected lefts on this route.', extra)}</div>
     <a class="go" id="goApple" href="${esc(R.url)}">${ICON.car}<span>Open in Apple Maps</span></a>
     <div class="note">Apple Maps will show ${R.pins.length} stop${R.pins.length===1?'':'s'} on the way. They hold it to this route.</div>
@@ -727,19 +1348,23 @@ function act(a){
   if (a === 'close'){ PLANSEQ++; S.mode = 'search'; S.dest = null; S.route = null; S.err = null; S.busy = false; S.origin = null; S.picking = 'dest'; renderPanel(); drawRoute(); setPanel('peek'); return; }
   if (a === 'from'){ S.mode = 'search'; S.picking = 'origin'; S.query = ''; S.results = []; renderPanel(); setPanel('full'); setTimeout(()=>{ const q = document.getElementById('q'); if (q) q.focus(); }, 60); return; }
   if (a === 'settings'){ openSettings(); return; }
+  if (a === 'retry'){ if (S.mode === 'route' && S.dest) plan(); else loadData(); return; }
   if (a === 'copy' && S.route){
     navigator.clipboard.writeText(S.route.url).then(()=>toast('Link copied'), e=>{ log('copy', 'FAIL '+e.message); toast('Couldn’t copy', 'bad'); });
   }
 }
 
 function openSettings(){
-  const look = cfg.look || 'system';
+  const look = cfg.look || 'system', m = DATA.meta, w = (m && m.whitelist) || {};
+  const n = v => v == null ? '?' : Number(v).toLocaleString('en-US');
   sheet(`<div class="sh"><h3>Settings</h3></div>
     <div class="group">
-      <div class="row col"><span class="k">Routing server</span>
-        <input id="srv" type="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://….trycloudflare.com" value="${esc(cfg.server||'')}">
-        <div class="rowbtns"><button class="sec" data-s="save">Save</button><button class="sec" data-s="test">Test</button></div>
-        <div id="srvmsg" class="mini"></div></div>
+      <div class="row"><span class="k">LA roads</span><span class="mono dim" id="sdata">${esc(dataStatus())}</span></div>
+      ${m ? `<div class="row"><span class="k">Road segments</span><span class="mono dim">${n(m.edges)}</span></div>
+      <div class="row"><span class="k">Green-arrow approaches</span><span class="mono dim">${n(w.wl_approaches)}</span></div>` : ''}
+      <div class="row"><span class="k">Map data</span><button class="sec" data-s="update">Check for new</button></div>
+    </div>
+    <div class="group">
       <div class="row"><span class="k">Look</span><div class="seg">${['light','dark','system'].map(l=>`<button data-look="${l}" aria-pressed="${look===l}">${l[0].toUpperCase()+l.slice(1)}</button>`).join('')}</div></div>
       <div class="row"><span class="k">Build</span><span class="mono dim">${BUILD}</span></div>
       <div class="row"><span class="k">Reload app</span><button class="sec" data-s="reload">Reload</button></div>
@@ -748,35 +1373,12 @@ function openSettings(){
       <div class="row"><span class="k">Log</span><span class="rowbtns"><button class="sec" data-s="copylog">Copy</button><button class="sec" data-s="dump">Dump</button></span></div>
       <pre class="log">${esc(LOG.slice(-200).join('\n'))}</pre>
     </div>
-    <div class="mini">Map © OpenFreeMap, OpenMapTiles, OpenStreetMap contributors. Search: Photon. Routes: your server, LA County.</div>`, s=>{
-    const srv = s.querySelector('#srv'), msg = s.querySelector('#srvmsg');
-    const norm = v=>v.trim().replace(/\/+$/, '');
-    const save = ()=>{
-      const v = norm(srv.value);
-      if (v){ try { const u = new URL(v); if (u.protocol !== 'https:' && !/^(localhost|127\.)/.test(u.hostname)){ msg.className = 'mini bad'; msg.textContent = 'Needs https:// (the app lives on https).'; return false; } } catch(e){ msg.className = 'mini bad'; msg.textContent = 'That isn’t a URL.'; return false; } }
-      cfg.server = v || undefined; saveCfg(); log('cfg', 'server ' + (v ? 'saved' : 'cleared')); return true;
-    };
-    s.querySelector('[data-s=save]').onclick = ()=>{ if (save()){ msg.className = 'mini good'; msg.textContent = 'Saved.'; } };
-    s.querySelector('[data-s=test]').onclick = async ()=>{
-      if (!save() || !cfg.server) return;
-      msg.className = 'mini empty'; msg.textContent = 'Asking the server';
-      try {
-        const info = await stage('server.test', async ()=>{
-          const u = cfg.server + '/info', r = await fetchT(u, 12000);
-          if (!r.ok) fail('server.test', 'HTTP 200 from /info', r.status, {url:u, body:(await r.text()).slice(0,400)});
-          const j = await r.json();
-          const names = (j.profiles||[]).map(p=>p.name);
-          if (!['arrow','arrow_flat','car'].every(n=>names.includes(n))) fail('server.test', 'profiles arrow, arrow_flat, car', names.join(',')||'none', {url:u});
-          return j;
-        }, j=>({profiles:(j.profiles||[]).map(p=>p.name), data_date:j.data_date, version:j.version}));
-        msg.className = 'mini good'; msg.textContent = `Connected · GraphHopper ${info.version||''} · map data ${String(info.data_date||'?').slice(0,10)}`;
-      } catch(e){ msg.className = 'mini bad'; msg.textContent = e.got ? `No: ${e.got}` : e.message; redEdge(); }
-    };
+    <div class="mini">Map © OpenFreeMap, OpenMapTiles, OpenStreetMap contributors. Search: Photon. Routes are worked out on this phone from OpenStreetMap roads, LADOT double-left signs and USGS elevation${m ? `, built ${esc(fmtDay(m.built))}` : ''}.</div>`, s=>{
+    s.querySelector('[data-s=update]').onclick = ()=>{ if (DATA.state === 'ready') checkUpdate(true); else { loadData(); toast('Loading LA roads'); } };
     s.querySelectorAll('[data-look]').forEach(b=>b.onclick = ()=>{ cfg.look = b.dataset.look; saveCfg(); applyLook(); s.querySelectorAll('[data-look]').forEach(x=>x.setAttribute('aria-pressed', x === b)); });
     s.querySelector('[data-s=reload]').onclick = reloadApp;
     s.querySelector('[data-s=copylog]').onclick = ()=>navigator.clipboard.writeText(LOG.join('\n')).then(()=>toast('Log copied'), ()=>toast('Couldn’t copy', 'bad'));
     s.querySelector('[data-s=dump]').onclick = ()=>download(`${APP.key}-dump-${Date.now()}.json`, dumpJSON());
-    srv.addEventListener('blur', ()=>setTimeout(()=>window.scrollTo(0, 0), 50));
   });
 }
 async function reloadApp(){
@@ -830,13 +1432,15 @@ function envViewport(){
 }
 
 /* ---- boot ---- */
-log('boot', `${APP.name} ${BUILD} · server ${cfg.server ? 'set' : 'not set'}`);
+log('boot', `${APP.name} ${BUILD} · routes on this phone`);
 try { const lf = JSON.parse(localStorage.getItem(APP.key+'-lastfail')||'null'); if (lf) log('lastfail', lf); } catch(_){}
 applyLook();
 initMap();
 startWatch();
+startWorker();
 renderPanel();
 setPanel('peek');
+loadData();
 requestAnimationFrame(envViewport);
 window.addEventListener('focus', ()=>scrollTo(0, 0));
 </script>
