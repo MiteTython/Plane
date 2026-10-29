@@ -19,7 +19,7 @@ try{var _c=JSON.parse(localStorage.getItem('arrow-cfg')||'{}');var _l=_c.look||'
   --bg:#000; --surface:#1c1c1e; --surface2:#2c2c2e; --fg:#f2f2f7; --muted:#8e8e93; --line:rgba(84,84,88,.55);
   --panel:rgba(28,28,30,.86); --field:rgba(118,118,128,.24);
   --blue:#0a84ff; --green:#30d158; --amber:#ffd60a; --red:#ff453a;
-  --route:#0a84ff; --casing:#0a3d7a;
+  --route:#0a84ff; --casing:#021a33; --usual:#98989d;
   --font:-apple-system,system-ui,sans-serif; --mono:ui-monospace,Menlo,monospace;
   --sat:env(safe-area-inset-top); --sab:env(safe-area-inset-bottom);
   color-scheme:dark;
@@ -28,7 +28,7 @@ try{var _c=JSON.parse(localStorage.getItem('arrow-cfg')||'{}');var _l=_c.look||'
   --bg:#f2f2f7; --surface:#fff; --surface2:#f2f2f7; --fg:#000; --muted:#6c6c70; --line:rgba(60,60,67,.18);
   --panel:rgba(249,249,251,.9); --field:rgba(118,118,128,.12);
   --blue:#007aff; --green:#34c759; --amber:#ff9f0a; --red:#ff3b30;
-  --route:#007aff; --casing:#ffffff;
+  --route:#007aff; --casing:#ffffff; --usual:#8e8e93;
   color-scheme:light;
 }
 
@@ -92,7 +92,10 @@ a{-webkit-tap-highlight-color:transparent}
 .rhead h2{margin:0;font-size:21px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rhead p{margin:2px 0 0;color:var(--muted);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .x{width:30px;height:30px;border-radius:50%;background:var(--field);display:grid;place-items:center;color:var(--muted);flex:none}
-.big{font-size:34px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.1;margin-top:4px}
+.big{display:flex;align-items:center;gap:10px;font-size:34px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.1;margin-top:6px}
+.dot{display:inline-block;width:11px;height:11px;border-radius:50%;flex:none}
+.dot.b{background:var(--route)}.dot.g{background:var(--usual)}
+.usual{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:14px;margin-top:8px}
 .facts{color:var(--muted);font-size:15px;margin-top:3px}
 .from{display:flex;align-items:center;gap:10px;min-height:44px;width:100%;text-align:left;border-top:1px solid var(--line);margin-top:4px}
 .from .k{color:var(--muted);font-size:15px;width:44px;flex:none}
@@ -128,6 +131,17 @@ a{-webkit-tap-highlight-color:transparent}
 .row{display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:46px;border-bottom:1px solid var(--line)}
 .row:last-child{border-bottom:0}
 .row .k{font-size:16px}
+.row.col{flex-direction:column;align-items:stretch;padding:10px 0;gap:8px}
+/* the gauntlet and the hell list */
+.gsum{font-weight:700;font-size:18px;margin:2px 0 10px}
+.gsum.good{color:var(--green)}.gsum.warn{color:var(--amber)}.gsum.bad{color:var(--red)}
+.grow{padding:9px 0;border-bottom:1px solid var(--line);font-size:14px;line-height:1.35}
+.grow:last-child{border-bottom:0}
+.grow b{font:700 11px var(--mono);margin-right:6px}
+.grow b.fail{color:var(--red)}.grow b.warn{color:var(--amber)}
+.hell{display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--line);font-size:15px;line-height:1.35}
+.hell:last-child{border-bottom:0}
+.hell input{width:22px;height:22px;flex:none;margin:0;accent-color:var(--green)}
 .rowbtns{display:flex;gap:8px}
 .seg{display:flex;background:var(--field);border-radius:9px;padding:2px}
 .seg button{padding:6px 12px;border-radius:7px;font-size:14px;color:var(--muted);font-weight:600}
@@ -502,7 +516,7 @@ function cut(e, f0, f1){                      // [lon, lat] points from fraction
 function describe(r, S, T){
   const g = P, des = r.des, coords = [], segDE = [], segCls = [], turns = [];
   const TS = g.TURN.signal, TR = g.TURN.right, TL = g.TURN.left, TU = g.TURN.uturn;
-  let dist = 0, time = 0, climb = 0;
+  let dist = 0, time = 0, climb = 0, unprot = 0;
   for (let i = 0; i < des.length; i++){
     const de = des[i], e = de >> 1, dir = de & 1;
     let f0 = 0, f1 = 1;
@@ -518,13 +532,14 @@ function describe(r, S, T){
       const d = (g.DEP[de] - g.ARR[a] + 540) % 360 - 180;
       const kind = (a >> 1) === e ? 'uturn' : d > 35 ? 'right' : d < -35 ? 'left' : 'straight';
       time += ((g.nflag[n] & 1) ? TS : 0) + (kind === 'uturn' ? TU : kind === 'right' ? TR : kind === 'left' ? TL : 0);
-      if (kind !== 'straight'){
-        const a0 = g.AST[n], dg = g.AST[n + 1] - a0;
-        let pos = -1;
-        for (let k = 0; k < dg; k++) if (g.ADJ[a0 + k] === de){ pos = k; break; }
-        turns.push({ci: coords.length - 1, kind, deg: Math.round(d), wl: pos >= 0 && pos < 16 && ((g.mwl[a] >> pos) & 1) === 1,
-          sig: (g.nflag[n] & 1) === 1, lat: g.lat[n] / 1e6, lon: g.lon[n] / 1e6});
-      }
+      const a0 = g.AST[n], dg = g.AST[n + 1] - a0;
+      let pos = -1;
+      for (let k = 0; k < dg; k++) if (g.ADJ[a0 + k] === de){ pos = k; break; }
+      const bit = pos >= 0 && pos < 16 ? 1 << pos : 0;
+      const blocked = bit !== 0 && (g.mcar[a] & bit) !== 0 && (g.marr[a] & bit) === 0;   // allowed for cars, not for arrow
+      if (blocked) unprot++;
+      if (kind !== 'straight') turns.push({ci: coords.length - 1, kind, deg: Math.round(d), wl: bit !== 0 && (g.mwl[a] & bit) !== 0,
+        unprot: blocked, sig: (g.nflag[n] & 1) === 1, lat: g.lat[n] / 1e6, lon: g.lon[n] / 1e6});
     }
     for (let k = coords.length ? 1 : 0; k < pts.length; k++){
       coords.push(pts[k]);
@@ -535,7 +550,7 @@ function describe(r, S, T){
     time += g.WT[de] * frac;
     if (g.elen[e] >= 40){ const up = g.egrade[3 * e + 1 + dir]; if (up > climb) climb = up; }
   }
-  return {coords, segDE, segCls, turns, dist: Math.round(dist), time: Math.round(time), cost: Math.round(r.cost * 10) / 10, climb};
+  return {coords, segDE, segCls, turns, unprot, dist: Math.round(dist), time: Math.round(time), cost: Math.round(r.cost * 10) / 10, climb};
 }
 
 function routeReq(o, d, profile){
@@ -571,7 +586,7 @@ function routeReq(o, d, profile){
 /* =====================================================================
    SLOT 1 — APP: identity
    ===================================================================== */
-const BUILD = 'build 4';
+const BUILD = 'build 5';
 const APP = {
   key: 'arrow',
   name: 'arrow',
@@ -589,9 +604,9 @@ const CONF = {
   center: [-118.33, 34.06], zoom: 10.3,
   data: 'data/',                               // GitHub Pages, next to this file
   raw: 'https://raw.githubusercontent.com/MiteTython/Plane/main/arrow/data/',   // the same files when Pages lags
-  maxPins: 12,           // Apple Maps tops out around 13 stops per route
+  maxPins: 8,            // stops only go where the usual way would leave this route; Apple allows about 13
   pinGap: 70,            // metres between pins along the route
-  quietPins: 6,          // cap when arrow's route matches the plain one (pins become stops)
+  quietPins: 4,          // cap when there's no usual way to compare against
   fwy: [0, 1, 3, 5, 7, 9],   // road classes no pin lands on: motorway, motorway_link, trunk_link, primary/secondary/tertiary links
   routeTimeout: 60000, loadTimeout: 120000,
   holdMs: 700,           // press and hold the magnifying glass this long: Settings
@@ -641,7 +656,7 @@ function dumpJSON(){
       err:de ? {stage:de.stage||null, message:de.message, code:de.code||null, evidence:de.evidence||null} : null},
     state:{origin:S.origin, dest:S.dest, picking:S.picking, searching:S.searching, here:S.here ? {acc:S.here.acc, age_s:Math.round((Date.now()-S.here.at)/1000)} : null,
       route:S.route ? {km:S.route.km, ms:S.route.ms, pins:S.route.pins.length, url:S.route.url} : null},
-    stages:STAGES, baseline:base, lastfail:last, log:LOG}, null, 2);
+    stages:STAGES, baseline:base, lastfail:last, gauntlet:lastGauntlet(), log:LOG}, null, 2);
 }
 function download(name, text){
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text],{type:'application/json'})); a.download = name; a.click();
@@ -728,6 +743,7 @@ function initMap(){
   MAP.__look = look;
   MAP.touchZoomRotate.disableRotation();
   MAP.addControl(new maplibregl.AttributionControl({compact:true}), 'top-right');
+  MAP.once('load', ()=>document.querySelectorAll('.maplibregl-ctrl-attrib').forEach(a=>{ a.classList.remove('maplibregl-compact-show'); a.removeAttribute('open'); }));
   MAP.on('style.load', ()=>{ STYLE_READY = true; ensureLayers(); drawRoute(); log('map', `style ${MAP.__look} loaded`); });
   MAP.on('error', e=>log('map', 'error '+((e.error&&e.error.message)||e.message||'?')));
   // press and hold the map: route there
@@ -739,18 +755,41 @@ function initMap(){
   ['touchend','touchcancel','dragstart','zoomstart'].forEach(ev=>MAP.on(ev, cancel));
   MAP.on('contextmenu', e=>drop(e.lngLat));
 }
+// Two lines: the usual way in grey underneath, this route in blue on top. Each draws itself in once.
+const lineGrad = (color, p) => p >= 1 ? ['interpolate', ['linear'], ['line-progress'], 0, color, 1, color]
+  : ['step', ['line-progress'], color, Math.max(0.0001, p), 'rgba(0,0,0,0)'];
 function ensureLayers(){
   if (!MAP || !STYLE_READY) return false;
   try {
     const before = ((MAP.getStyle().layers||[]).find(l=>l.type==='symbol')||{}).id;
-    if (!MAP.getSource('route')) MAP.addSource('route', {type:'geojson', data:EMPTY});
-    if (!MAP.getLayer('route-casing')) MAP.addLayer({id:'route-casing', type:'line', source:'route', layout:{'line-cap':'round','line-join':'round'},
-      paint:{'line-color':cssv('--casing'), 'line-width':['interpolate',['linear'],['zoom'],9,5,13,9,17,17]}}, before);
-    if (!MAP.getLayer('route-line')) MAP.addLayer({id:'route-line', type:'line', source:'route', layout:{'line-cap':'round','line-join':'round'},
-      paint:{'line-color':cssv('--route'), 'line-width':['interpolate',['linear'],['zoom'],9,3,13,6,17,12]}}, before);
+    const lay = (id, src, color, w)=>{ if (!MAP.getLayer(id)) MAP.addLayer({id, type:'line', source:src, layout:{'line-cap':'round','line-join':'round'},
+      paint:{'line-gradient':lineGrad(color, 1), 'line-width':['interpolate',['linear'],['zoom'],9,w[0],13,w[1],17,w[2]]}}, before); };
+    if (!MAP.getSource('route-car')) MAP.addSource('route-car', {type:'geojson', data:EMPTY, lineMetrics:true});
+    if (!MAP.getSource('route')) MAP.addSource('route', {type:'geojson', data:EMPTY, lineMetrics:true});
+    lay('route-car', 'route-car', cssv('--usual'), [3, 6, 11]);
+    lay('route-casing', 'route', cssv('--casing'), [6.5, 11, 18]);
+    lay('route-line', 'route', cssv('--route'), [4, 7, 12.5]);
     return true;
   } catch(e){ log('map', 'layers '+e.message); return false; }
 }
+let RAF = 0;
+function revealRoutes(animate){
+  cancelAnimationFrame(RAF);
+  if (!MAP || !STYLE_READY) return;
+  const col = {'route-car':cssv('--usual'), 'route-casing':cssv('--casing'), 'route-line':cssv('--route')};
+  const set = (id, p)=>{ try { if (MAP.getLayer(id)) MAP.setPaintProperty(id, 'line-gradient', lineGrad(col[id], p)); } catch(e){ log('map', `reveal ${id}: ${e.message}`); } };
+  const both = (pg, pb)=>{ set('route-car', pg); set('route-casing', pb); set('route-line', pb); };
+  if (!animate || reduced){ both(1, 1); return; }
+  const t0 = performance.now(), G = 700, B = 1000, LAG = 450, ease = x=>1 - Math.pow(1 - x, 3);
+  const tick = now=>{
+    const e = now - t0, pg = Math.min(1, e / G), pb = Math.min(1, Math.max(0, (e - LAG) / B));
+    both(ease(pg), ease(pb));
+    if (pg < 1 || pb < 1) RAF = requestAnimationFrame(tick);
+  };
+  both(0, 0);
+  RAF = requestAnimationFrame(tick);
+}
+const lineGeo = co => ({type:'Feature', properties:{}, geometry:{type:'LineString', coordinates:co.map(c=>[c[0], c[1]])}});
 function setMarker(key, lngLat, cls){
   if (!MAP) return;
   if (!lngLat){ if (MK[key]){ MK[key].remove(); MK[key] = null; } return; }
@@ -766,12 +805,17 @@ function drawRoute(){
   const R = S.route;
   if (R) R.lefts.forEach(l=>{ const el = document.createElement('div'); el.className = 'mk-left'; el.innerHTML = ICON.left; MK.lefts.push(new maplibregl.Marker({element:el}).setLngLat(l).addTo(MAP)); });
   if (!ensureLayers()) return;
-  MAP.getSource('route').setData(R ? {type:'Feature', properties:{}, geometry:{type:'LineString', coordinates:R.coords.map(c=>[c[0], c[1]])}} : EMPTY);
+  const real = R && R.km > 0.005;
+  MAP.getSource('route').setData(real ? lineGeo(R.coords) : EMPTY);
+  MAP.getSource('route-car').setData(real && R.car && !R.same && R.car.km > 0.005 ? lineGeo(R.car.coords) : EMPTY);
+  revealRoutes(!!real && !R.drawn);
+  if (R) R.drawn = true;
 }
 function fitRoute(){
   if (!MAP || !S.route) return;
   const b = new maplibregl.LngLatBounds();
   S.route.coords.forEach(c=>b.extend([c[0], c[1]]));
+  if (S.route.car && !S.route.same) S.route.car.coords.forEach(c=>b.extend([c[0], c[1]]));
   const card = document.getElementById('card');
   const top = Math.round(document.querySelector('#top .sbar').getBoundingClientRect().bottom + 20);
   const bottom = Math.round((card.hidden ? 0 : card.offsetHeight) + 24);
@@ -1169,33 +1213,38 @@ function cumDist(co){ const c = [0]; for (let i = 1; i < co.length; i++) c.push(
 function segAt(cum, d){ let lo = 0, hi = cum.length - 2; while (lo < hi){ const m = (lo + hi + 1) >> 1; if (cum[m] <= d) lo = m; else hi = m - 1; } return Math.max(0, lo); }
 function pointAt(co, cum, d){ const i = segAt(cum, d), L = (cum[i+1] - cum[i]) || 1, f = Math.min(1, Math.max(0, (d - cum[i]) / L)); return [co[i][0] + f*(co[i+1][0]-co[i][0]), co[i][1] + f*(co[i+1][1]-co[i][1])]; }
 
-/* Pins become Apple Maps stops. Apple re-routes freely between them, so they go where
-   arrow's route leaves the plain one (Apple would cut across there), after each turn
-   inside those stretches, and at both ends (pull away and arrive on the right side). */
+/* Pins become Apple Maps stops, and stops are a nuisance, so there are as few as possible: only
+   where the usual way leaves this route (Apple would follow the usual way there), at the start of
+   each detour and after every turn inside one. Where the two routes agree, Apple gets no stop.
+   With no usual way to compare against, a few hold Apple near both ends instead. */
 function choosePins(R, cum, carSet){
   const co = R.coords, total = cum[cum.length-1];
   const okAt = d => d > 60 && d < total - 60 && !FWY.has(R.segCls[segAt(cum, d)]);
-  const div = R.segDE.map(de => carSet ? !carSet.has(de) : false);
   const C = [];
   const add = (d, prio, why) => { if (okAt(d)) C.push({d, prio, why}); };
-  for (let i = 0; i < div.length; i++){
-    if (!div[i] || (i > 0 && div[i-1])) continue;
-    let j = i; while (j < div.length && div[j]) j++;
-    add(Math.min(cum[i] + 40, (cum[i] + cum[j]) / 2), 1, 'leaves the plain route');
-  }
-  R.turns.forEach((t, k)=>{
-    const ci = Math.min(t.ci, cum.length - 1), d0 = cum[ci];
+  const turnAt = (t, k)=>{ const ci = Math.min(t.ci, cum.length - 1), d0 = cum[ci];
     const d1 = k + 1 < R.turns.length ? cum[Math.min(R.turns[k+1].ci, cum.length - 1)] : total;
-    const inDiv = div[Math.min(ci, div.length - 1)] || (ci > 0 && div[ci-1]);
-    add(Math.min(d0 + 40, (d0 + d1) / 2), inDiv ? 2 : 4, t.kind + (t.wl ? ' on an arrow' : ''));
-  });
-  add(total - 80, 3, 'final approach');
-  add(80, 3, 'pull away');
-  const cap = C.some(c=>c.prio === 1) ? CONF.maxPins : CONF.quietPins;
+    return [ci, Math.min(d0 + 40, (d0 + d1) / 2)]; };
+  if (carSet){
+    const div = R.segDE.map(de => !carSet.has(de));
+    for (let i = 0; i < div.length; i++){
+      if (!div[i] || (i > 0 && div[i-1])) continue;
+      let j = i; while (j < div.length && div[j]) j++;
+      add(Math.min(cum[i] + 40, (cum[i] + cum[j]) / 2), 1, 'leaves the usual way');
+    }
+    R.turns.forEach((t, k)=>{
+      const [ci, d] = turnAt(t, k);
+      if (div[Math.min(ci, div.length - 1)] || (ci > 0 && div[ci-1])) add(d, 2, t.kind + (t.wl ? ' on an arrow' : ''));
+    });
+  } else {
+    add(80, 3, 'pull away');
+    add(total - 80, 3, 'final approach');
+    R.turns.forEach((t, k)=>add(turnAt(t, k)[1], 4, t.kind + (t.wl ? ' on an arrow' : '')));
+  }
   C.sort((a, b)=> a.prio - b.prio || (a.prio === 4 ? Math.min(a.d, total-a.d) - Math.min(b.d, total-b.d) : a.d - b.d));
-  const pick = [];
+  const cap = carSet ? CONF.maxPins : CONF.quietPins, pick = [];
   for (const c of C){
-    if (pick.length >= (c.prio <= 3 ? CONF.maxPins : cap)) continue;
+    if (pick.length >= cap) break;
     if (pick.some(p=>Math.abs(p.d - c.d) < CONF.pinGap)) continue;
     pick.push(c);
   }
@@ -1213,14 +1262,17 @@ function appleURL(o, d, pins){
 }
 function buildModel(main, car, o, d, profile){
   const co = main.coords, n = co.length, cum = cumDist(co);
+  if (main.unprot) fail('model', `no unprotected lefts on the ${profile} route`, `${main.unprot}: the router and the turn rules disagree`);
   const carSet = car ? new Set(car.segDE) : null;
   const pins = choosePins(main, cum, carSet);
   if (pins.some(p=>!isFinite(p.at[0]) || !isFinite(p.at[1]))) fail('model', 'finite pin coordinates', JSON.stringify(pins).slice(0, 200));
   const lefts = main.turns.filter(t=>t.kind === 'left' && t.wl).map(t=>[t.lon, t.lat]);
   let div = 0;
   if (carSet) for (let i = 0; i < n - 1; i++) if (!carSet.has(main.segDE[i])) div += cum[i+1] - cum[i];
-  return {coords:co, pins, lefts, climb:main.climb, km:main.dist/1000, ms:main.time*1000, carMs:car ? car.time*1000 : null,
-    divergedKm:carSet ? +(div/1000).toFixed(2) : null, url:appleURL(o, d, pins), profile, at:Date.now()};
+  return {coords:co, cum, pins, lefts, climb:main.climb, km:main.dist/1000, ms:main.time*1000,
+    car:car ? {coords:car.coords, km:car.dist/1000, ms:car.time*1000, unprot:car.unprot || 0} : null,
+    same:carSet ? div < 30 : false, divergedKm:carSet ? +(div/1000).toFixed(2) : null,
+    url:appleURL(o, d, pins), profile, at:Date.now()};
 }
 // Every error card: a title, one plain sentence or two, and the buttons that fix it (acts, see ACT_LABEL).
 function explain(e){
@@ -1265,7 +1317,7 @@ async function plan(){
       .catch(()=>{ log('route.car', 'no plain route to compare: pins fall back to the turns and both ends'); return null; });
     if (my !== PLANSEQ) return;
     const R = await stage('model', async ()=>buildModel(main, car, o, S.dest, profile),
-      R=>({pins:R.pins.length, lefts:R.lefts.length, climb:R.climb, divergedKm:R.divergedKm, carMin:R.carMs == null ? null : +(R.carMs/60000).toFixed(1), urlLen:R.url.length}));
+      R=>({pins:R.pins.length, lefts:R.lefts.length, climb:R.climb, divergedKm:R.divergedKm, usualKm:R.car ? +R.car.km.toFixed(2) : null, usualUnprotected:R.car ? R.car.unprot : null, urlLen:R.url.length}));
     S.route = R;
     try { localStorage.setItem(APP.key+'-base', JSON.stringify({at:new Date().toISOString(), profile, km:+R.km.toFixed(2), min:+(R.ms/60000).toFixed(1), pins:R.pins.length, lefts:R.lefts.length, climb:R.climb, data:DATA.meta && DATA.meta.version})); } catch(_){}
     const rec = {lat:S.dest.lat, lon:S.dest.lon, name:S.dest.name, sub:S.dest.sub};
@@ -1388,12 +1440,16 @@ function cardHTML(){
   if (S.err) return head + from + `<div class="err"><b>${esc(S.err.title)}</b><p>${esc(S.err.body)}</p>`
     + ((S.err.acts || []).length ? `<div class="btns">${S.err.acts.map(a=>`<button class="sec wide" data-act="${a}">${ACT_LABEL[a]}</button>`).join('')}</div>` : '') + `</div>` + hills;
   if (!R) return head + from + hills;
-  const L = R.lefts.length;
-  return head + from + `<div class="big" id="bigmin">${fmtDur(R.ms)}</div>`
-    + `<div class="facts">${fmtMi(R.km)} · ${L ? `${L} left${L>1?'s':''} on a green arrow` : 'no lefts across traffic'} · steepest climb ${R.climb}%</div>`
-    + hills
+  const L = R.lefts.length, U = R.car ? R.car.unprot : 0, P = R.pins.length;
+  const mi = km => `${(km/1.609344).toFixed(1)} mi`;
+  const usual = !R.car ? ''
+    : R.same ? `<div class="usual"><i class="dot g"></i>Same road as the usual way</div>`
+    : `<div class="usual"><i class="dot g"></i>Usual way: ${mi(R.car.km)}, ${U ? `${U} unprotected left${U>1?'s':''}` : 'no unprotected lefts'}</div>`;
+  return head + from + `<div class="big"><i class="dot b"></i><span>${mi(R.km)}</span></div>`
+    + `<div class="facts">${L ? `${L} left${L>1?'s':''}, on a green arrow` : 'No lefts across traffic'} · steepest climb ${R.climb}%</div>`
+    + usual + hills
     + `<a class="go" id="goApple" href="${esc(R.url)}">${ICON.car}<span>Open in Apple Maps</span></a>`
-    + (R.pins.length ? `<div class="note">Apple Maps will show ${R.pins.length} stop${R.pins.length===1?'':'s'} on the way. They keep it on this route.</div>` : '');
+    + `<div class="note">${P ? `Apple Maps gets ${P} stop${P===1?'':'s'}, only where the usual way would leave this route.` : 'Apple Maps gets just the destination.'}</div>`;
 }
 function renderCard(){
   const el = document.getElementById('card');
@@ -1405,7 +1461,6 @@ function renderCard(){
   if (flat) flat.onchange = ()=>{ S.flat = cfg.flat = flat.checked; saveCfg(); log('opt', 'avoid hills '+(S.flat?'on':'off')); plan(); };
   const go = el.querySelector('#goApple');
   if (go) go.onclick = ()=>log('apple', {pins:S.route.pins.length, url:S.route.url});
-  if (S.route && !S.route.shown){ S.route.shown = true; countTo(el.querySelector('#bigmin'), Math.round(S.route.ms/60000), m=>fmtDur(m*60000)); }
 }
 function act(a){
   if (a === 'close'){ PLANSEQ++; S.dest = null; S.route = null; S.err = null; S.busy = false; renderCard(); drawRoute(); return; }
@@ -1421,7 +1476,7 @@ function act(a){
 }
 
 function openSettings(){
-  const look = cfg.look || 'system', m = DATA.meta, w = (m && m.whitelist) || {};
+  const look = cfg.look || 'system', m = DATA.meta, w = (m && m.whitelist) || {}, g = lastGauntlet();
   const n = v => v == null ? '?' : Number(v).toLocaleString('en-US');
   log('settings', 'opened');
   sheet(`<div class="sh"><h3>Settings</h3></div>
@@ -1430,6 +1485,11 @@ function openSettings(){
       <div class="row"><span class="k">LA roads</span><span class="mono dim" id="sdata">${esc(dataStatus())}</span></div>
       <div class="row"><span class="k">Map data</span><button class="sec" data-s="update">Check for new</button></div>
       <div class="row"><span class="k">Reload app</span><button class="sec" data-s="reload">Reload</button></div>
+    </div>
+    <div class="group">
+      <div class="row"><span class="k">Gauntlet</span><button class="sec" data-s="gauntlet">Run</button></div>
+      <div class="row"><span class="k">Hell list</span><button class="sec" data-s="hell">Open</button></div>
+      ${g ? `<div class="row"><span class="mini">Last run ${esc(fmtWhen(g.at))}: ${g.pass} pass · ${g.warn} warn · ${g.fail} fail</span></div>` : ''}
     </div>
     <div class="group">
       <div class="row"><span class="k">Build</span><span class="mono dim">${BUILD}${m ? ` · data ${esc(m.version)}` : ''}</span></div>
@@ -1442,6 +1502,8 @@ function openSettings(){
     s.querySelector('[data-s=update]').onclick = ()=>{ if (DATA.state === 'ready') checkUpdate(true); else { loadData(); toast('Loading LA roads'); } };
     s.querySelectorAll('[data-look]').forEach(b=>b.onclick = ()=>{ cfg.look = b.dataset.look; saveCfg(); applyLook(); s.querySelectorAll('[data-look]').forEach(x=>x.setAttribute('aria-pressed', x === b)); });
     s.querySelector('[data-s=reload]').onclick = reloadApp;
+    s.querySelector('[data-s=gauntlet]').onclick = openGauntlet;
+    s.querySelector('[data-s=hell]').onclick = openHell;
     s.querySelector('[data-s=copylog]').onclick = ()=>navigator.clipboard.writeText(LOG.join('\n')).then(()=>toast('Log copied'), ()=>toast('Couldn’t copy', 'bad'));
     s.querySelector('[data-s=dump]').onclick = ()=>download(`${APP.key}-dump-${Date.now()}.json`, dumpJSON());
   });
@@ -1449,6 +1511,250 @@ function openSettings(){
 async function reloadApp(){
   try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k); } catch(e){}
   location.href = location.pathname + '?r=' + Date.now();
+}
+
+/* =====================================================================
+   THE GAUNTLET — drives across the county, run through every check the app makes for real,
+   on this phone: the router, the turn rules, the Apple Maps hand-off, bad input, eight routes
+   at once, a killed router, and races on the screen. Plus the hell list: what a script can't do.
+   Settings (hold the magnifying glass) → Gauntlet / Hell list. The last report rides in Dump.
+   ===================================================================== */
+const GAUNTLET = [   // name, start [lat, lon], destination [lat, lon]
+  ['Sherman Oaks → Union Station', [34.15130, -118.44890], [34.05620, -118.23650]],
+  ['Union Station → Sherman Oaks', [34.05620, -118.23650], [34.15130, -118.44890]],
+  ['Santa Monica → Pasadena', [34.01600, -118.49600], [34.14780, -118.14430]],
+  ['Long Beach → Burbank airport', [33.77010, -118.19370], [34.19750, -118.35850]],
+  ['LAX → Hollywood & Highland', [33.94420, -118.40280], [34.10170, -118.33870]],
+  ['Laurel Canyon hills → Studio City', [34.12950, -118.37840], [34.14300, -118.39600]],
+  ['Silver Lake → Echo Park', [34.09600, -118.26100], [34.07260, -118.26060]],
+  ['Palos Verdes → Torrance', [33.74450, -118.38700], [33.83580, -118.34060]],
+  ['Malibu → Calabasas', [34.02590, -118.77980], [34.13670, -118.66150]],
+  ['Santa Clarita → San Fernando', [34.39170, -118.54260], [34.28190, -118.43900]],
+  ['Lancaster → Palmdale', [34.68680, -118.15420], [34.57940, -118.11650]],
+  ['Pomona → West Covina', [34.05510, -117.75000], [34.06860, -117.93900]],
+  ['Whittier → Downey', [33.97920, -118.03280], [33.94010, -118.13320]],
+  ['SoFi Stadium → Culver City', [33.95350, -118.33920], [34.02110, -118.39650]],
+  ['Koreatown → USC', [34.06180, -118.30050], [34.02240, -118.28510]],
+  ['Venice → UCLA', [33.98500, -118.46950], [34.06890, -118.44520]],
+  ['Glendale → Eagle Rock', [34.14620, -118.25500], [34.13920, -118.21280]],
+  ['San Pedro → Wilmington', [33.73610, -118.29230], [33.78010, -118.26200]],
+  ['Bel Air → Beverly Hills', [34.08800, -118.44600], [34.07360, -118.40040]],
+  ['Monterey Hills → Highland Park', [34.08900, -118.18500], [34.11150, -118.19200]],
+  ['DTLA one-ways: 7th & Fig → Grand Central Market', [34.04840, -118.26030], [34.05070, -118.24890]],
+  ['Straight across Ventura Blvd', [34.15060, -118.44950], [34.14930, -118.44950]],
+  ['Burbank → Glendale', [34.18080, -118.30900], [34.14250, -118.25510]],
+  ['Altadena → Sierra Madre', [34.18970, -118.13120], [34.16170, -118.05280]],
+  ['Compton → Watts Towers', [33.89580, -118.22010], [33.93870, -118.24130]],
+  ['Marina del Rey → Playa Vista', [33.98030, -118.45170], [33.97330, -118.42800]],
+  ['CSUN → Van Nuys airport', [34.24100, -118.52770], [34.20980, -118.48970]],
+  ['Topanga → Woodland Hills', [34.09370, -118.60150], [34.16830, -118.60590]],
+];
+const GAUNTLET_EDGES = [   // name, start, destination, the answers that count as right
+  ['A destination in Santa Monica Bay', [34.05620, -118.23650], [33.95000, -118.60000], ['nosnap']],
+  ['A destination in San Diego', [34.05620, -118.23650], [32.71570, -117.16110], ['outside']],
+  ['A start in Oakland', [37.80440, -122.27120], [34.05620, -118.23650], ['outside']],
+  ['A destination on Catalina', [34.05620, -118.23650], [33.34280, -118.32820], ['outside']],
+  ['Start and destination the same', [34.05620, -118.23650], [34.05620, -118.23650], ['ok', 'noroute']],
+  ['A start on the 405', [34.07700, -118.47300], [34.06890, -118.44520], ['ok']],
+  ['Up at Mount Wilson', [34.22360, -118.06140], [34.14780, -118.14430], ['ok', 'noroute', 'nosnap']],
+];
+const HELL = [
+  'Delete the arrow icon, add it again from Safari, open it on cellular: the roads download and “LA roads saved on this phone” shows',
+  'Swipe the app away halfway through that download, open it again: it finishes',
+  'Airplane mode after the download: hold a finger on the map, a route still comes back (search needs signal)',
+  'Location: tap Don’t Allow, then Turn on location. Then block it in iPhone Settings: the card shows where to fix it',
+  'Routes from a searched place, from Recents, and from a pin dropped by holding the map',
+  'Change From to a place, then back to My Location',
+  'Flip Avoid hills five times fast: it settles on the right route',
+  'Tap × while it says “Finding a way”: nothing pops back later',
+  'Search nonsense (“qqqq”), then something real: no stale results',
+  'Switch the phone between light and dark with the app open',
+  'Leave it in the background an hour, come back, route again',
+  'Low Power Mode on: routes still come back in a few seconds',
+  'Hold the magnifying glass: Settings opens; Check for new; Reload',
+  'Open in Apple Maps: the stop count matches, and Apple keeps to the blue line past the first stop',
+  'Drive Sherman Oaks → DTLA for real: every left had a green arrow',
+];
+
+function fmtWhen(iso){ const d = new Date(iso); return isNaN(d) ? String(iso) : d.toLocaleString('en-US', {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}); }
+function lastGauntlet(){ try { return JSON.parse(localStorage.getItem(APP.key + '-gauntlet') || 'null'); } catch(_){ return null; } }
+
+async function runGauntlet(progress, stopped){
+  const rep = {at:new Date().toISOString(), build:BUILD, data:null, checks:[], routes:[], ms:0};
+  const t0 = performance.now();
+  const check = (name, ok, level, detail)=>rep.checks.push({name, ok:!!ok, level:ok ? 'pass' : level, detail:ok ? '' : String(detail == null ? '' : detail).slice(0, 300)});
+  const at = p=>({lat:p[0], lon:p[1]});
+  const brief = r=>r.err ? {err:r.err} : {km:+(r.dist/1000).toFixed(2), min:+(r.time/60).toFixed(1), unprot:r.unprot, arrows:r.turns.filter(t=>t.wl).length, climb:r.climb, ms:r.wall, tries:r.tries, pops:r.pops};
+  const total = GAUNTLET.length * 3 + GAUNTLET_EDGES.length + 4;
+  let step = 0;
+  const tick = what=>progress(++step, total, what);
+  log('gauntlet', `START ${GAUNTLET.length} drives × 3, ${GAUNTLET_EDGES.length} bad inputs`);
+
+  // the roads themselves
+  try { await ensureData(); } catch(e){}
+  check('LA roads loaded', DATA.state === 'ready', 'fail', DATA.err ? DATA.err.message : DATA.state);
+  if (DATA.state !== 'ready') return finishGauntlet(rep, t0);
+  rep.data = DATA.meta.version;
+  let kept = null; try { kept = await idbGet('graph'); } catch(e){}
+  check('LA roads kept on this phone', kept && kept.buf && kept.buf.byteLength === DATA.meta.bytes_raw, 'warn', kept ? 'the stored copy is the wrong size' : 'no copy in IndexedDB: it downloads again next launch');
+
+  // drives across the county: plain, green-arrow, avoid-hills
+  let differs = 0;
+  for (const [name, o, d] of GAUNTLET){
+    if (stopped()) break;
+    const r = {};
+    for (const prof of ['car', 'arrow', 'arrow_flat']){
+      tick(`${name} · ${prof}`);
+      const t = performance.now();
+      try { r[prof] = await route(at(o), at(d), prof); r[prof].wall = Math.round(performance.now() - t); }
+      catch(e){ r[prof] = {err:e.code || 'crash', msg:e.message, wall:Math.round(performance.now() - t)}; }
+    }
+    const car = r.car, arrow = r.arrow, flat = r.arrow_flat;
+    rep.routes.push({name, car:brief(car), arrow:brief(arrow), flat:brief(flat)});
+    check(`${name}: plain route`, !car.err, 'fail', car.msg);
+    check(`${name}: green-arrow route`, !arrow.err, arrow.err === 'noroute' ? 'warn' : 'fail', arrow.msg);
+    check(`${name}: avoid-hills route`, !flat.err, flat.err === 'noroute' ? 'warn' : 'fail', flat.msg);
+    check(`${name}: fast enough`, Math.max(car.wall, arrow.wall, flat.wall) < 4000, 'warn', `slowest took ${Math.max(car.wall, arrow.wall, flat.wall)} ms`);
+    if (car.err || arrow.err) continue;
+    check(`${name}: no unprotected lefts`, arrow.unprot === 0, 'fail', `${arrow.unprot} on the green-arrow route`);
+    if (!flat.err) check(`${name}: no unprotected lefts, avoiding hills`, flat.unprot === 0, 'fail', `${flat.unprot} on the avoid-hills route`);
+    if (car.tries === 1 && arrow.tries === 1)
+      check(`${name}: never quicker than the plain route`, arrow.cost >= car.cost - 0.5, 'fail', `green-arrow ${arrow.cost} s beats plain ${car.cost} s: the plain search missed something`);
+    const s0 = arrow.coords[0], s1 = arrow.coords[arrow.coords.length - 1];
+    check(`${name}: starts at the start`, hav(s0, [o[1], o[0]]) <= 1000, 'fail', `${Math.round(hav(s0, [o[1], o[0]]))} m away`);
+    check(`${name}: ends at the destination`, hav(s1, [d[1], d[0]]) <= 1000, 'fail', `${Math.round(hav(s1, [d[1], d[0]]))} m away`);
+    let jump = 0; for (let i = 1; i < arrow.coords.length; i++) jump = Math.max(jump, hav(arrow.coords[i-1], arrow.coords[i]));
+    check(`${name}: no jumps in the line`, jump < 2500, 'warn', `one straight piece is ${Math.round(jump)} m`);
+    if (!flat.err) check(`${name}: avoid hills climbs no more`, flat.climb <= arrow.climb + 1, 'warn', `${flat.climb}% avoiding hills vs ${arrow.climb}%`);
+    let m = null;
+    try { m = buildModel(arrow, car, at(o), at(d), 'arrow'); }
+    catch(e){ check(`${name}: Apple Maps hand-off`, false, 'fail', e.message); continue; }
+    if (!m.same) differs++;
+    const bad = m.pins.find(p=>FWY.has(arrow.segCls[segAt(m.cum, p.d)]));
+    check(`${name}: stops stay off freeways and ramps`, !bad, 'fail', bad && `a stop ${bad.d} m along`);
+    check(`${name}: stops within the cap`, m.pins.length <= CONF.maxPins, 'fail', `${m.pins.length} stops`);
+    let u = null; try { u = new URL(m.url); } catch(e){}
+    check(`${name}: Apple Maps link is right`, u && u.hostname === 'maps.apple.com' && u.searchParams.get('destination') && u.searchParams.get('source')
+      && u.searchParams.getAll('waypoint').length === m.pins.length && m.url.length < 2000, 'fail', m.url.slice(0, 180));
+  }
+  check('the green-arrow route differs from the plain one somewhere', differs > 0 || stopped(), 'fail', 'identical on every drive: the turn rules did nothing');
+
+  // bad input gets the right answer, not a crash
+  for (const [name, o, d, want] of GAUNTLET_EDGES){
+    if (stopped()) break;
+    tick(name);
+    let got = 'ok', msg = '';
+    try { await route(at(o), at(d), 'arrow'); } catch(e){ got = e.code || 'crash'; msg = e.message; }
+    check(`${name} → ${want.join(' or ')}`, want.includes(got), 'fail', `got ${got}${msg ? `: ${msg}` : ''}`);
+  }
+
+  // eight at once
+  if (!stopped()){
+    tick('eight routes at once');
+    const [, o, d] = GAUNTLET[14];
+    const res = await Promise.allSettled(Array.from({length:8}, ()=>route(at(o), at(d), 'arrow')));
+    const bad = res.filter(x=>x.status === 'rejected');
+    check('eight routes at once', !bad.length, 'fail', bad.map(x=>x.reason && x.reason.message).join(' · '));
+  }
+
+  // kill the router, then route
+  if (!stopped()){
+    tick('router killed mid-session');
+    restartWorker('gauntlet: killed on purpose');
+    let ok = false, msg = '';
+    try { await ensureData(); const [, o, d] = GAUNTLET[0]; await route(at(o), at(d), 'arrow'); ok = true; } catch(e){ msg = e.message; }
+    check('router killed mid-session comes back from this phone', ok, 'fail', msg);
+  }
+
+  // the screen: three replans fired back to back, then × while it's still working
+  if (!stopped()){
+    tick('three quick replans, then ×');
+    const keep = {origin:S.origin, dest:S.dest, route:S.route, err:S.err, recents:cfg.recents, base:localStorage.getItem(APP.key + '-base')};
+    const o = GAUNTLET[2][1], A = GAUNTLET[0][2], B = GAUNTLET[1][2], C = GAUNTLET[3][2];
+    S.origin = {lat:o[0], lon:o[1], name:'Gauntlet start', sub:''};
+    S.dest = {lat:A[0], lon:A[1], name:'Race A'}; plan();
+    S.dest = {lat:B[0], lon:B[1], name:'Race B'}; plan();
+    S.dest = {lat:C[0], lon:C[1], name:'Race C'}; await plan();
+    const end = S.route && S.route.coords[S.route.coords.length - 1];
+    check('three quick replans: only the last one shows', end && hav(end, [C[1], C[0]]) < 1000, 'fail',
+      end ? `the route ends ${Math.round(hav(end, [C[1], C[0]]))} m from the last destination` : `no route (${S.err ? S.err.title : 'nothing'})`);
+    S.dest = {lat:A[0], lon:A[1], name:'Race A'};
+    const p = plan(); act('close'); await p;
+    check('× while finding a way: nothing comes back', !S.route && !S.dest, 'fail', S.route ? 'a route reappeared' : 'a destination reappeared');
+    S.origin = keep.origin; S.dest = keep.dest; S.route = keep.route; S.err = keep.err; cfg.recents = keep.recents; saveCfg();
+    try { if (keep.base) localStorage.setItem(APP.key + '-base', keep.base); } catch(_){}
+    if (S.route) S.route.drawn = true;
+    renderCard(); drawRoute();
+  }
+  return finishGauntlet(rep, t0);
+}
+function finishGauntlet(rep, t0){
+  rep.ms = Math.round(performance.now() - t0);
+  const bad = rep.checks.filter(c=>!c.ok);
+  rep.fail = bad.filter(c=>c.level === 'fail').length; rep.warn = bad.length - rep.fail; rep.pass = rep.checks.length - bad.length;
+  log('gauntlet', `DONE ${rep.pass} pass · ${rep.warn} warn · ${rep.fail} fail · ${rep.ms} ms`);
+  bad.forEach(c=>log('gauntlet', `${c.level.toUpperCase()} ${c.name} — ${c.detail}`));
+  try { localStorage.setItem(APP.key + '-gauntlet', JSON.stringify(rep)); }
+  catch(_){ try { localStorage.setItem(APP.key + '-gauntlet', JSON.stringify({...rep, routes:[]})); } catch(__){} }
+  return rep;
+}
+function openGauntlet(){
+  let stop = false;
+  sheet(`<div class="sh"><h3>The gauntlet</h3></div>
+    <div class="mini" style="margin:-6px 0 12px">${GAUNTLET.length} drives across the county, three ways each, ${GAUNTLET_EDGES.length} bad inputs, eight routes at once, a killed router, and races on the screen. Every check is one the app makes for real. Keep the screen on; it takes under a minute.</div>
+    <div class="group"><div class="row col"><span id="gstat" class="mono dim">Starting</span><div class="bar"><i id="gbar"></i></div></div></div>
+    <div id="gout"><button class="sec wide" data-g="stop">Stop</button></div>`, s=>{
+    s.querySelector('[data-g=stop]').onclick = ()=>{ stop = true; };
+    runGauntlet((i, n, what)=>{
+      const st = document.getElementById('gstat'), bar = document.getElementById('gbar');
+      if (st) st.textContent = `${i} of ${n} · ${what}`;
+      if (bar) bar.style.width = `${Math.round(i / n * 100)}%`;
+    }, ()=>stop).then(rep=>{
+      const out = document.getElementById('gout');
+      if (!out){ toast(rep.fail ? `Gauntlet: ${rep.fail} failed` : 'Gauntlet passed', rep.fail ? 'bad' : ''); return; }
+      const st = document.getElementById('gstat'), bar = document.getElementById('gbar');
+      if (st) st.textContent = stop ? 'Stopped early' : 'Done';
+      if (bar) bar.style.width = '100%';
+      out.innerHTML = gauntletHTML(rep);
+      wireGauntlet(out, rep);
+      if (rep.fail) redEdge();
+    }, e=>{
+      log('gauntlet', 'CRASH ' + e.message);
+      const out = document.getElementById('gout');
+      if (out) out.innerHTML = `<div class="gsum bad">The gauntlet itself crashed: ${esc(e.message)}</div>`;
+    });
+  });
+}
+function gauntletHTML(rep){
+  const bad = rep.checks.filter(c=>!c.ok).sort((a, b)=>(a.level === 'fail' ? 0 : 1) - (b.level === 'fail' ? 0 : 1));
+  const cls = rep.fail ? 'bad' : rep.warn ? 'warn' : 'good';
+  return `<div class="gsum ${cls}">${rep.fail ? `${rep.fail} failed` : rep.warn ? 'Passed, with warnings' : 'All clear'}</div>`
+    + `<div class="mini" style="margin:-6px 0 10px">${rep.pass} pass · ${rep.warn} warn · ${rep.fail} fail · ${Math.round(rep.ms/1000)} s · ${esc(fmtWhen(rep.at))}</div>`
+    + (bad.length ? `<div class="group">${bad.map(c=>`<div class="grow"><b class="${c.level}">${c.level.toUpperCase()}</b>${esc(c.name)}${c.detail ? `<div class="mini">${esc(c.detail)}</div>` : ''}</div>`).join('')}</div>` : '')
+    + `<div class="rowbtns"><button class="sec" data-g="copy">Copy report</button><button class="sec" data-g="dump">Dump</button><button class="sec" data-g="hell">Hell list</button></div>`;
+}
+function wireGauntlet(root, rep){
+  const text = ()=>[`arrow ${rep.build} · data ${rep.data} · ${rep.at}`, `${rep.pass} pass · ${rep.warn} warn · ${rep.fail} fail · ${Math.round(rep.ms/1000)} s`,
+    ...rep.checks.filter(c=>!c.ok).map(c=>`${c.level.toUpperCase()} ${c.name} — ${c.detail}`)].join('\n');
+  root.querySelector('[data-g=copy]').onclick = ()=>navigator.clipboard.writeText(text()).then(()=>toast('Report copied'), ()=>toast('Couldn’t copy', 'bad'));
+  root.querySelector('[data-g=dump]').onclick = ()=>download(`${APP.key}-dump-${Date.now()}.json`, dumpJSON());
+  root.querySelector('[data-g=hell]').onclick = openHell;
+}
+function openHell(){
+  let done = {};
+  try { done = JSON.parse(localStorage.getItem(APP.key + '-hell') || '{}') || {}; } catch(_){}
+  const count = ()=>`${HELL.filter((_, i)=>done[i]).length} of ${HELL.length} done. The things a script can’t do to it.`;
+  sheet(`<div class="sh"><h3>The hell list</h3></div>
+    <div class="mini" id="hcount" style="margin:-6px 0 12px">${count()}</div>
+    <div class="group">${HELL.map((h, i)=>`<label class="hell"><input type="checkbox" data-h="${i}" ${done[i] ? 'checked' : ''}><span>${esc(h)}</span></label>`).join('')}</div>
+    <div class="rowbtns"><button class="sec" data-hr="1">Start over</button></div>`, s=>{
+    s.querySelectorAll('input[data-h]').forEach(b=>b.onchange = ()=>{
+      done[b.dataset.h] = b.checked;
+      try { localStorage.setItem(APP.key + '-hell', JSON.stringify(done)); } catch(_){}
+      const c = document.getElementById('hcount'); if (c) c.textContent = count();
+    });
+    s.querySelector('[data-hr]').onclick = ()=>{ try { localStorage.removeItem(APP.key + '-hell'); } catch(_){} openHell(); };
+  });
 }
 
 /* ---- viewport line: logged once, always ---- */

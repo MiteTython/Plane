@@ -5,7 +5,7 @@
 **Data, phone:** IndexedDB `arrow` / `kv` / `graph` = the LA roads `{meta, buf}` (~18 MB); localStorage `arrow-cfg` (look, flat, recents), `arrow-base` (last good route), `arrow-lastfail`
 **Data, repo:** `arrow/data/` — `la-graph.bin.gz` + `manifest.json` (+ `report.json`, `whitelist.geojson`, `baseline/`), written only by the "arrow map data" Action
 **Built from:** app-builder skill, 2026-10-29
-**Current:** build 4 · data `20261029T021955Z` (442,005 road segments, 6.5 MB download, OSM of 2026-10-28)
+**Current:** build 5 · data `20261029T021955Z` (442,005 road segments, 6.5 MB download, OSM of 2026-10-28)
 **Settings:** no button. Press and hold the magnifying glass in the search bar until it turns blue, then let go.
 
 ## How it works
@@ -14,7 +14,9 @@
 2. **Destination:** the search bar pinned to the top (Photon, LA bbox, biased to the map center; Nominatim fallback only after typing stops; Recents when it's empty) or press-and-hold the map. **Origin:** the phone's location, or a starting point picked from the card's From row — kept on that phone (`arrow-cfg.origin`) until My Location is picked again, and handed to Apple Maps as `source=`.
 3. **Routing, on the phone** (`<script id="router">`, run as a Blob worker): A* over directed edges. Each directed edge carries a u16 turn mask for the node it arrives at — bit k = may leave by the k-th road there, roads in ascending edge id. Three masks: `car`, `arrow` (car minus every blocked left), protected-left (green chips, "lefts on an arrow"). Costs copy build.py's Router: length ÷ speed, +8 s signal, +4 right, +8 left, +25 U-turn; Avoid hills multiplies uphill edges ×1.25 (5%+ average), ×3.3 (7%+), ×20 (10%+), ×50 (15%+ climb anywhere on it).
 4. **Snapping:** the nearest point on a road within 1 km — never a freeway, ramp, bridge or tunnel. 45 s extra for pulling away or arriving with the place across a two-way street. Two candidates each end, up to four searches before "no way there".
-5. **Pins + hand-off:** where arrow's route leaves the plain `car` route, after each turn inside those stretches, 80 m after the start, 80 m before the end; none on freeways or ramps, ≥70 m apart, ≤12 (≤6 when the routes match). `maps.apple.com/directions?source&destination&waypoint…&mode=driving`.
+5. **Map:** the usual way (the plain `car` route) in grey underneath, this route in blue on top; each draws itself in once (`line-gradient` stepped on `line-progress`, sources with `lineMetrics`). The card shows miles, lefts on green arrows, steepest climb, and the usual way's miles and unprotected lefts (moves the car mask allows and the arrow mask doesn't). No minutes: they were free-flow guesses with no traffic.
+6. **Stops + hand-off:** only where the usual way leaves this route — the start of each detour and every turn inside one; none where the two agree, none on freeways or ramps, ≥70 m apart, ≤8. No usual way to compare: both ends and the nearest turns, ≤4. `maps.apple.com/directions?source&destination&waypoint…&mode=driving`.
+7. **Gauntlet:** Settings → Gauntlet runs 28 drives × car/arrow/arrow_flat through every check (no unprotected lefts, never quicker than the plain route, starts/ends within 1 km, no 2.5 km jumps, stops off freeways, valid Apple link, under 4 s), 7 bad inputs that must get the right error, 8 routes at once, a killed router, and replan races on the screen. Hell list: the 15 manual checks, ticked on the phone. Last report rides in Dump.
 
 ## The data build
 
@@ -26,6 +28,7 @@ When it breaks: the run page shows a red annotation — stage, expected vs got, 
 
 ## Decisions and why
 
+- 2026-10-29 — **Build 5.** Grey usual way under the blue route, animated. Minutes off the card until there's traffic behind them (Mapbox, build 6). Stops cut to divergences only — Charlie found six stops annoying; Apple's URL (and Shortcuts) can only carry stops, never a route or pass-through points, so fewer stops is the only lever. Trade-off: where our usual way and Apple's own route differ, Apple can stray. The gauntlet exists because Charlie wants it put through hell before his friend gets it.
 - 2026-10-29 — **From is back (build 4)** for testing: Charlie is in Oakland, his friend in LA, and GPS outside LA County can't route. One row on the card; the search bar switches to "Starting point" with My Location on top. Location failures split three ways: iOS answered in under 700 ms (no prompt shown: blocked in Settings, or refused earlier) → the Settings path and Reload arrow; refused on a prompt → Turn on location asks again from the tap; no fix → Try again.
 - 2026-10-29 — **Simpler (build 3).** Charlie couldn't see what he typed: the search field lived in a bottom sheet that jumped to full height on focus while iOS scrolled the page up for the keyboard, so the field ended up off-screen. Now the search bar is pinned to the top, is never re-rendered, and follows `visualViewport` if iOS pans anyway. The screen is a map, that bar, and one fixed route card (no dragging). Cut: the From picker, Copy link, the white stop dots, the gear and locate buttons. Settings is hidden behind a hold on the magnifying glass (released, not at the threshold, so the finger-up can't land on the sheet's scrim and close it).
 - 2026-10-29 — **No server (build 2).** Build 1 needed Docker + GraphHopper + a tunnel; Charlie: "can i just have it run by opening the app". The graph is built once a month in GitHub Actions and routed on the phone. The arrow-server bundle is retired.
@@ -58,4 +61,6 @@ When it breaks: the run page shows a red annotation — stage, expected vs got, 
 
 **2026-10-29** — build 3: Charlie opened build 2 on the phone and couldn't see what he was typing. Rebuilt the screen simpler: top search bar with Recents and results under it, one route card (destination, time, miles, lefts on arrows, steepest climb, Avoid hills, Open in Apple Maps, stop count), Settings behind a hold on the magnifying glass. An empty search now says "Nothing by that name in LA County" (build 2 said "Searching" forever). Router and data unchanged.
 
-**2026-10-29** — build 4: Charlie, testing from Oakland, got "Location is off" and needed a start in LA. Added the From row (saved per phone), Turn on location / Reload arrow / Choose a starting point on the error card, and the iOS Settings path when iOS blocks location without asking. Open: first real route, Sherman Oaks → DTLA, in the car through Apple Maps.
+**2026-10-29** — build 4: Charlie, testing from Oakland, got "Location is off" and needed a start in LA. Added the From row (saved per phone), Turn on location / Reload arrow / Choose a starting point on the error card, and the iOS Settings path when iOS blocks location without asking. 
+
+**2026-10-29** — build 5: grey/blue animated routes, distance and unprotected-left counts instead of minutes, divergence-only stops, the router counts unprotected lefts on every route (a non-zero count on the green-arrow route fails the model), the gauntlet and the hell list, attribution folded into its (i). Open: Mapbox traffic times (build 6), first real drive.
