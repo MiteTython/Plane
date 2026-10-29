@@ -50,6 +50,7 @@ a{-webkit-tap-highlight-color:transparent}
 .mk-dest{width:26px;height:26px;border-radius:50%;background:var(--red);border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35);display:grid;place-items:center}
 .mk-dest::after{content:"";width:7px;height:7px;border-radius:50%;background:#fff}
 .mk-left{width:22px;height:22px;border-radius:7px;background:var(--green);border:2px solid #fff;display:grid;place-items:center;box-shadow:0 1px 5px rgba(0,0,0,.35)}
+.mk-origin{width:14px;height:14px;border-radius:50%;background:#8e8e93;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
 
 /* ---------- the search bar: pinned to the top of what's visible; nothing moves when you type ---------- */
 #top{position:absolute;left:10px;right:10px;top:calc(var(--sat) + 8px);z-index:10;display:flex;flex-direction:column;gap:8px;transform:translateY(var(--vvt,0px))}
@@ -75,6 +76,7 @@ a{-webkit-tap-highlight-color:transparent}
 .trow{display:flex;align-items:center;gap:12px;min-height:58px;padding:7px 0;text-align:left;width:100%;border-bottom:1px solid var(--line)}
 .trow:last-child{border-bottom:0}
 .trow .ico{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;flex:none;background:var(--red);color:#fff}
+.trow .ico.blue{background:var(--blue)}
 .trow .t{display:flex;flex-direction:column;min-width:0;flex:1}
 .trow b{font-weight:600;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .trow i{font-style:normal;color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -92,6 +94,10 @@ a{-webkit-tap-highlight-color:transparent}
 .x{width:30px;height:30px;border-radius:50%;background:var(--field);display:grid;place-items:center;color:var(--muted);flex:none}
 .big{font-size:34px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.1;margin-top:4px}
 .facts{color:var(--muted);font-size:15px;margin-top:3px}
+.from{display:flex;align-items:center;gap:10px;min-height:44px;width:100%;text-align:left;border-top:1px solid var(--line);margin-top:4px}
+.from .k{color:var(--muted);font-size:15px;width:44px;flex:none}
+.from .v{flex:1;min-width:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.from svg{color:var(--muted);flex:none}
 .opt{display:flex;align-items:center;gap:10px;min-height:48px;margin-top:6px;border-top:1px solid var(--line)}
 .opt .ol{flex:1;display:flex;align-items:center;gap:10px;font-size:16px}
 .opt .ol svg{color:var(--muted)}
@@ -108,6 +114,7 @@ a{-webkit-tap-highlight-color:transparent}
 .err{padding:4px 0 8px}
 .err b{display:block;font-size:17px;margin-bottom:4px}
 .err p{margin:0 0 10px;color:var(--muted);font-size:14px;line-height:1.4}
+.err .btns{display:flex;flex-direction:column;gap:8px}
 .sec{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:0 14px;border-radius:9px;background:var(--field);color:var(--blue);font-weight:600;font-size:15px}
 .sec.wide{width:100%;min-height:44px}
 
@@ -564,7 +571,7 @@ function routeReq(o, d, profile){
 /* =====================================================================
    SLOT 1 — APP: identity
    ===================================================================== */
-const BUILD = 'build 3';
+const BUILD = 'build 4';
 const APP = {
   key: 'arrow',
   name: 'arrow',
@@ -632,7 +639,7 @@ function dumpJSON(){
     cfg:{look:cfg.look||'system', flat:!!cfg.flat, recents:(cfg.recents||[]).length},
     data:{state:DATA.state, meta:DATA.meta, got:DATA.got, total:DATA.total, updating:DATA.updating,
       err:de ? {stage:de.stage||null, message:de.message, code:de.code||null, evidence:de.evidence||null} : null},
-    state:{dest:S.dest, searching:S.searching, here:S.here ? {acc:S.here.acc, age_s:Math.round((Date.now()-S.here.at)/1000)} : null,
+    state:{origin:S.origin, dest:S.dest, picking:S.picking, searching:S.searching, here:S.here ? {acc:S.here.acc, age_s:Math.round((Date.now()-S.here.at)/1000)} : null,
       route:S.route ? {km:S.route.km, ms:S.route.ms, pins:S.route.pins.length, url:S.route.url} : null},
     stages:STAGES, baseline:base, lastfail:last, log:LOG}, null, 2);
 }
@@ -671,18 +678,23 @@ const ICON = {
   hill:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M2 19 9 8l4 6 3-4 6 9z"/></svg>',
   car:'<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17v-4l2-5.5h12l2 5.5v4z"/><path d="M6.5 17v2.5M17.5 17v2.5M4 13h16"/></svg>',
   left:'<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20v-7a4 4 0 0 0-4-4H6"/><path d="m10 5-4 4 4 4"/></svg>',
+  loc:'<svg viewBox="0 0 24 24" width="16" height="16" fill="#fff"><path d="M20.6 3.4 3.5 10.7l7.2 2.1 2.1 7.2z"/></svg>',
+  chev:'<svg class="chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>',
 };
 
 /* =====================================================================
-   state — the route always starts where the phone is
+   state
    ===================================================================== */
+const okPlace = p => p && isFinite(p.lat) && isFinite(p.lon) && typeof p.name === 'string' ? {lat:+p.lat, lon:+p.lon, name:p.name, sub:p.sub || ''} : null;
 const S = {
   query: '', results: [], doneQ: '', searchErr: null,
   searching: false,      // the search box has the keyboard
+  picking: 'dest',       // what a search result fills: dest | origin
   here: null,            // live GPS fix
+  origin: okPlace(cfg.origin),   // null = the phone's location; a chosen start is kept on this phone
   dest: null,
   flat: !!cfg.flat,
-  route: null, busy: false, err: null,
+  route: null, busy: false, busyMsg: '', err: null,
 };
 if (cfg.server){ delete cfg.server; saveCfg(); log('cfg', 'dropped the build 1 server address: routes are worked out on this phone now'); }
 
@@ -704,7 +716,7 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=>{ if (
    map
    ===================================================================== */
 let MAP = null, STYLE_READY = false;
-const MK = {here:null, dest:null, lefts:[]};
+const MK = {here:null, origin:null, dest:null, lefts:[]};
 const EMPTY = {type:'FeatureCollection', features:[]};
 function initMap(){
   if (!window.maplibregl){ log('map', 'FAIL maplibre-gl did not load (CDN unreachable)'); toast('Map didn’t load. Routing still works.', 'warn'); return; }
@@ -748,6 +760,7 @@ function setMarker(key, lngLat, cls){
 function drawRoute(){
   if (!MAP) return;
   setMarker('here', S.here ? [S.here.lon, S.here.lat] : null, 'mk-here');
+  setMarker('origin', S.origin ? [S.origin.lon, S.origin.lat] : null, 'mk-origin');
   setMarker('dest', S.dest ? [S.dest.lon, S.dest.lat] : null, 'mk-dest');
   MK.lefts.forEach(m=>m.remove()); MK.lefts = [];
   const R = S.route;
@@ -781,14 +794,35 @@ function startWatch(){
 }
 function stopWatch(){ if (WATCH != null){ navigator.geolocation.clearWatch(WATCH); WATCH = null; } }
 document.addEventListener('visibilitychange', ()=>{ document.hidden ? stopWatch() : startWatch(); });
+// geo 1 = permission denied, 2 = no position, 3 = timeout. fast = iOS said no without asking
+// (an answer from a person on a prompt takes longer than 700 ms), i.e. it's blocked in Settings.
 function locateOnce(){
   return new Promise((res, rej)=>{
-    if (!('geolocation' in navigator)) return rej(new StageError('origin', 'the geolocation API', 'none in this browser'));
+    if (!('geolocation' in navigator)){ const e = new StageError('origin', 'the geolocation API', 'none in this browser'); e.geo = 2; return rej(e); }
+    const t0 = performance.now();
     navigator.geolocation.getCurrentPosition(
-      p=>res({lat:p.coords.latitude, lon:p.coords.longitude, acc:Math.round(p.coords.accuracy), at:Date.now()}),
-      e=>rej(new StageError('origin', 'a GPS fix', `${['','permission denied','position unavailable','timeout'][e.code]||e.code}: ${e.message}`)),
+      p=>res({lat:p.coords.latitude, lon:p.coords.longitude, acc:Math.round(p.coords.accuracy), at:Date.now(), ms:Math.round(performance.now() - t0)}),
+      e=>{
+        const err = new StageError('origin', 'a GPS fix', `${['','permission denied','position unavailable','timeout'][e.code]||e.code}: ${e.message}`);
+        err.geo = e.code; err.fast = performance.now() - t0 < 700;
+        rej(err);
+      },
       {enableHighAccuracy:true, maximumAge:30000, timeout:9000});
   });
+}
+// Ask again, from a tap. Restarts the watch, which iOS stops after a refusal.
+async function askLocation(){
+  S.err = null; S.busy = true; S.busyMsg = 'Asking for your location'; renderCard();
+  try {
+    const fix = await stage('locate', locateOnce, f=>({acc:f.acc, ms:f.ms}));
+    S.here = fix; stopWatch(); startWatch(); setMarker('here', [fix.lon, fix.lat], 'mk-here');
+    S.busy = false; S.busyMsg = '';
+    if (S.dest){ plan(); return; }
+  } catch(e){
+    S.err = explain(e); redEdge();
+    log('locate', `FAIL shown as "${S.err.title}"${e.fast ? ' (iOS answered without asking)' : ''}`);
+  }
+  S.busy = false; S.busyMsg = ''; renderCard();
 }
 function photonPlace(f){
   const p = f.properties||{}, [lon, lat] = f.geometry.coordinates;
@@ -1108,7 +1142,7 @@ function renderData(){
     wireActs(el);
   }
   const bw = document.getElementById('busyw');
-  if (bw) bw.textContent = DATA.state === 'ready' ? 'Finding a way with no unprotected lefts' : 'Getting the LA roads ready';
+  if (bw && !S.busyMsg) bw.textContent = DATA.state === 'ready' ? 'Finding a way with no unprotected lefts' : 'Getting the LA roads ready';
   const sd = document.getElementById('sdata');
   if (sd) sd.textContent = dataStatus();
 }
@@ -1188,18 +1222,27 @@ function buildModel(main, car, o, d, profile){
   return {coords:co, pins, lefts, climb:main.climb, km:main.dist/1000, ms:main.time*1000, carMs:car ? car.time*1000 : null,
     divergedKm:carSet ? +(div/1000).toFixed(2) : null, url:appleURL(o, d, pins), profile, at:Date.now()};
 }
+// Every error card: a title, one plain sentence or two, and the buttons that fix it (acts, see ACT_LABEL).
 function explain(e){
   const c = e.code || '', w = e.which === 'origin' ? 'start' : 'destination';
-  if (e.stage === 'origin') return {title:'Location is off', body:`The phone didn’t say where it is (${e.got}). Allow location for this app, then try again.`, action:'retry'};
-  if (c === 'nodata') return {title:'The LA roads aren’t published yet', body:'GitHub builds them by itself, about 15 minutes after a change. Try again in a bit.', action:'retry'};
-  if (c === 'offline') return {title:'Can’t download the LA roads', body:'No connection to GitHub right now. They download once, then routes work without a connection.', action:'retry'};
-  if (/^data/.test(e.stage || '')) return {title:'The LA roads didn’t load', body:`${e.message}.`, action:'retry'};
-  if (c === 'outside') return {title:'Outside the map', body:e.which === 'origin' ? 'You’re outside LA County, and LA County is all arrow knows.' : 'That’s outside LA County, and LA County is all arrow knows.', action:null};
-  if (c === 'nosnap') return {title:'No road there', body:`There’s no drivable street near the ${w}.`, action:null};
-  if (c === 'noroute') return {title:'No way there without an unprotected left', body:'Every route to this spot needs a left with no arrow. A point on the next street over usually works.', action:null};
-  if (c === 'nograph' || c === 'crash') return {title:'The router stopped', body:'Try again: it reloads the roads from this phone.', action:'retry'};
-  return {title:'Something broke', body:`${e.message}.`, action:'retry'};
+  if (e.stage === 'origin'){
+    if (e.geo === 1 && e.fast) return {title:'iPhone is blocking location for arrow',
+      body:'In Settings → Privacy & Security → Location Services, turn Location Services on, then set Safari Websites to While Using the App. Come back and reload arrow. Or pick a starting point above.', acts:['reload']};
+    if (e.geo === 1) return {title:'Location is off', body:'arrow can’t see where you are. Tap Turn on location and choose Allow, or pick a starting point above.', acts:['loc']};
+    return {title:'Couldn’t find you', body:`The phone didn’t get a fix (${e.got}). Try again, or pick a starting point above.`, acts:['locretry']};
+  }
+  if (c === 'nodata') return {title:'The LA roads aren’t published yet', body:'GitHub builds them by itself, about 15 minutes after a change. Try again in a bit.', acts:['retry']};
+  if (c === 'offline') return {title:'Can’t download the LA roads', body:'No connection to GitHub right now. They download once, then routes work without a connection.', acts:['retry']};
+  if (/^data/.test(e.stage || '')) return {title:'The LA roads didn’t load', body:`${e.message}.`, acts:['retry']};
+  if (c === 'outside') return e.which === 'origin'
+    ? {title:'You’re outside LA County', body:'LA County is all arrow knows. Pick a starting point there.', acts:['from']}
+    : {title:'Outside the map', body:'That’s outside LA County, and LA County is all arrow knows.', acts:[]};
+  if (c === 'nosnap') return {title:'No road there', body:`There’s no drivable street near the ${w}.`, acts:e.which === 'origin' ? ['from'] : []};
+  if (c === 'noroute') return {title:'No way there without an unprotected left', body:'Every route to this spot needs a left with no arrow. A point on the next street over usually works.', acts:[]};
+  if (c === 'nograph' || c === 'crash') return {title:'The router stopped', body:'Try again: it reloads the roads from this phone.', acts:['retry']};
+  return {title:'Something broke', body:`${e.message}.`, acts:['retry']};
 }
+const ACT_LABEL = {retry:'Try again', loc:'Turn on location', locretry:'Try again', from:'Choose a starting point', reload:'Reload arrow'};
 let PLANSEQ = 0;
 async function plan(){
   if (!S.dest) return;
@@ -1211,9 +1254,10 @@ async function plan(){
     if (my !== PLANSEQ) return;
     renderData();
     const o = await stage('origin', async ()=>{
+      if (S.origin) return S.origin;
       if (S.here && Date.now() - S.here.at < 120000) return {...S.here, here:true};
       const fix = await locateOnce(); S.here = fix; return {...fix, here:true};
-    }, o=>({lat:+o.lat.toFixed(5), lon:+o.lon.toFixed(5), acc:o.acc}));
+    }, o=>({from:o.here ? 'gps' : o.name, lat:+o.lat.toFixed(5), lon:+o.lon.toFixed(5), acc:o.acc}));
     if (my !== PLANSEQ) return;
     const profile = S.flat ? 'arrow_flat' : 'arrow';
     const main = await stage('route.'+profile, ()=>route(o, S.dest, profile), sumRoute);
@@ -1252,7 +1296,7 @@ function wireSearch(){
   Q.addEventListener('focus', ()=>{ S.searching = true; renderDrop(); renderCard(); });
   Q.addEventListener('blur', ()=>setTimeout(()=>{
     if (document.activeElement === Q) return;
-    S.searching = false; renderDrop(); renderCard(); window.scrollTo(0, 0);
+    S.searching = false; pickDest(); renderDrop(); renderCard(); window.scrollTo(0, 0);
   }, 220));
   Q.addEventListener('input', ()=>{ CLR.hidden = !Q.value; onQuery(Q.value); });
   Q.addEventListener('keydown', e=>{ if (e.key === 'Enter'){ e.preventDefault(); clearTimeout(STIMER); if (Q.value.trim()) runSearch(Q.value); } });
@@ -1289,17 +1333,27 @@ function fitVV(){
   const fit = ()=>{ r.style.setProperty('--vvt', `${Math.max(0, Math.round(vv.offsetTop))}px`); r.style.setProperty('--vvh', `${Math.round(vv.height)}px`); };
   vv.addEventListener('resize', fit); vv.addEventListener('scroll', fit); fit();
 }
+// The search bar fills the destination, or — after a tap on From — the starting point.
+function pickOrigin(){
+  S.picking = 'origin'; Q.placeholder = 'Starting point';
+  Q.value = ''; CLR.hidden = true; S.query = ''; S.results = []; S.doneQ = ''; S.searchErr = null;
+}
+function pickDest(){ if (S.picking !== 'dest'){ S.picking = 'dest'; Q.placeholder = 'Where to?'; } }
 function renderDrop(){
   const el = document.getElementById('drop');
   if (!S.searching){ el.hidden = true; el.innerHTML = ''; return; }
   const q = S.query.trim(), rows = []; let eyebrow = '';
+  if (S.picking === 'origin') rows.push({here:true, name:'My Location', sub:S.here ? `GPS, ±${S.here.acc} m` : 'the phone’s GPS'});
+  const lead = rows.length;
   if (q) rows.push(...S.results);
   else if ((cfg.recents||[]).length){ eyebrow = 'Recents'; rows.push(...cfg.recents); }
   const waiting = q && S.doneQ !== q && !S.searchErr;
   const none = q && S.doneQ === q && !S.results.length && !S.searchErr;
-  const html = (eyebrow ? `<div class="eyebrow">${eyebrow}</div>` : '')
+  const row = (r, i)=>`<button class="trow" data-i="${i}"><span class="ico${r.here ? ' blue' : ''}">${r.here ? ICON.loc : ICON.pin}</span><span class="t"><b>${esc(r.name)}</b><i>${esc(r.sub||'')}</i></span></button>`;
+  const html = rows.slice(0, lead).map(row).join('')
+    + (eyebrow ? `<div class="eyebrow">${eyebrow}</div>` : '')
     + (S.searchErr ? `<div class="msg bad">${esc(S.searchErr)}</div>` : '')
-    + rows.map((r, i)=>`<button class="trow" data-i="${i}"><span class="ico">${ICON.pin}</span><span class="t"><b>${esc(r.name)}</b><i>${esc(r.sub||'')}</i></span></button>`).join('')
+    + rows.slice(lead).map((r, i)=>row(r, i + lead)).join('')
     + (waiting ? `<div class="msg empty">Searching</div>` : '')
     + (none ? `<div class="msg">Nothing by that name in LA County</div>` : '');
   el.innerHTML = html;
@@ -1307,10 +1361,19 @@ function renderDrop(){
   el.querySelectorAll('.trow').forEach(b=>b.onclick = ()=>choose(rows[+b.dataset.i]));
 }
 function choose(p){
-  S.dest = {lat:p.lat, lon:p.lon, name:p.name, sub:p.sub};
+  const picking = S.picking;
   S.query = ''; S.results = []; S.doneQ = ''; S.searchErr = null;
   Q.value = ''; CLR.hidden = true;
-  S.searching = false; Q.blur(); renderDrop();
+  S.searching = false; pickDest(); Q.blur(); renderDrop();
+  if (picking === 'origin'){
+    S.origin = p.here ? null : {lat:p.lat, lon:p.lon, name:p.name, sub:p.sub || ''};
+    cfg.origin = S.origin || undefined; saveCfg();
+    log('pick', 'start ' + (S.origin ? S.origin.name : 'My Location'));
+    drawRoute();
+    if (S.dest) plan(); else renderCard();
+    return;
+  }
+  S.dest = {lat:p.lat, lon:p.lon, name:p.name, sub:p.sub};
   log('pick', 'destination ' + p.name);
   plan();
 }
@@ -1320,12 +1383,13 @@ function cardHTML(){
   const R = S.route, d = S.dest;
   const head = `<div class="rhead"><div class="t"><h2>${esc(d.name)}</h2>${d.sub ? `<p>${esc(d.sub)}</p>` : ''}</div><button class="x" data-act="close" aria-label="Close">${ICON.x}</button></div>`;
   const hills = `<div class="opt"><span class="ol">${ICON.hill}<span>Avoid hills</span></span><label class="switch"><input type="checkbox" id="flat" ${S.flat?'checked':''}><span></span></label></div>`;
-  if (S.busy) return head + `<div class="busy empty" id="busyw">${DATA.state === 'ready' ? 'Finding a way with no unprotected lefts' : 'Getting the LA roads ready'}</div>` + hills;
-  if (S.err) return head + `<div class="err"><b>${esc(S.err.title)}</b><p>${esc(S.err.body)}</p>`
-    + (S.err.action === 'retry' ? `<button class="sec wide" data-act="retry">Try again</button>` : '') + `</div>` + hills;
-  if (!R) return head + hills;
+  const from = `<button class="from" data-act="from"><span class="k">From</span><span class="v">${esc(S.origin ? S.origin.name : 'My Location')}</span>${ICON.chev}</button>`;
+  if (S.busy) return head + from + `<div class="busy empty" id="busyw">${esc(S.busyMsg) || (DATA.state === 'ready' ? 'Finding a way with no unprotected lefts' : 'Getting the LA roads ready')}</div>` + hills;
+  if (S.err) return head + from + `<div class="err"><b>${esc(S.err.title)}</b><p>${esc(S.err.body)}</p>`
+    + ((S.err.acts || []).length ? `<div class="btns">${S.err.acts.map(a=>`<button class="sec wide" data-act="${a}">${ACT_LABEL[a]}</button>`).join('')}</div>` : '') + `</div>` + hills;
+  if (!R) return head + from + hills;
   const L = R.lefts.length;
-  return head + `<div class="big" id="bigmin">${fmtDur(R.ms)}</div>`
+  return head + from + `<div class="big" id="bigmin">${fmtDur(R.ms)}</div>`
     + `<div class="facts">${fmtMi(R.km)} · ${L ? `${L} left${L>1?'s':''} on a green arrow` : 'no lefts across traffic'} · steepest climb ${R.climb}%</div>`
     + hills
     + `<a class="go" id="goApple" href="${esc(R.url)}">${ICON.car}<span>Open in Apple Maps</span></a>`
@@ -1346,6 +1410,14 @@ function renderCard(){
 function act(a){
   if (a === 'close'){ PLANSEQ++; S.dest = null; S.route = null; S.err = null; S.busy = false; renderCard(); drawRoute(); return; }
   if (a === 'retry'){ if (S.dest) plan(); else loadData(); return; }
+  if (a === 'from'){
+    pickOrigin();
+    Q.focus();                                        // inside the tap, so iOS brings the keyboard up
+    if (document.activeElement !== Q){ S.searching = true; renderDrop(); renderCard(); }
+    return;
+  }
+  if (a === 'loc' || a === 'locretry'){ askLocation(); return; }
+  if (a === 'reload'){ reloadApp(); return; }
 }
 
 function openSettings(){
