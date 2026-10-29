@@ -8,10 +8,20 @@
 <meta name="theme-color" content="#000000">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css">
 <title>arrow</title>
 <script>
-try{var _c=JSON.parse(localStorage.getItem('arrow-cfg')||'{}');var _l=_c.look||'system';document.documentElement.dataset.look=_l==='light'?'dawn':_l==='dark'?'native':(matchMedia('(prefers-color-scheme: dark)').matches?'native':'dawn');}catch(e){}
+// Before paint: the look; a Mapbox key handed over in a link (…/arrow/#mapbox=pk…), saved and wiped from the
+// address bar; and which map library loads. A phone with a key gets Mapbox's own map, because Mapbox's
+// traffic times may only be shown on a Mapbox map. No key: MapLibre and OpenFreeMap, as before.
+window.ARROW_GL='maplibre';
+try{var _c=JSON.parse(localStorage.getItem('arrow-cfg')||'{}');
+var _h=location.hash.match(/mapbox=(pk\.[\w-]+\.[\w-]+)/);
+if(_h){_c.mapbox=_h[1];localStorage.setItem('arrow-cfg',JSON.stringify(_c));history.replaceState(null,'',location.pathname+location.search);}
+if(_c.mapbox&&/^pk\.[\w-]+\.[\w-]+$/.test(_c.mapbox))window.ARROW_GL='mapbox';
+var _l=_c.look||'system';document.documentElement.dataset.look=_l==='light'?'dawn':_l==='dark'?'native':(matchMedia('(prefers-color-scheme: dark)').matches?'native':'dawn');}catch(e){}
+document.write(window.ARROW_GL==='mapbox'
+  ?'<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mapbox-gl@3.33.0/dist/mapbox-gl.css">'
+  :'<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css">');
 </script>
 <style>
 /* ---------- looks: Native (dark) + Dawn (light), following the system ---------- */
@@ -40,8 +50,9 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 a{-webkit-tap-highlight-color:transparent}
 #app{position:fixed;inset:0;height:100dvh;overflow:hidden}
 #map{position:absolute;inset:0;background:var(--surface2);z-index:1;-webkit-touch-callout:none}
-.maplibregl-ctrl-top-right{top:calc(var(--sat) + 66px)}
-.maplibregl-ctrl-attrib{font:11px var(--font)}
+.maplibregl-ctrl-top-right,.mapboxgl-ctrl-top-right{top:calc(var(--sat) + 66px)}
+.maplibregl-ctrl-attrib,.mapboxgl-ctrl-attrib{font:11px var(--font)}
+.mapboxgl-ctrl-bottom-left{bottom:max(var(--cardh,0px),var(--sab));transition:bottom .3s var(--ease)}
 .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .glass{background:var(--panel);-webkit-backdrop-filter:saturate(180%) blur(22px);backdrop-filter:saturate(180%) blur(22px);box-shadow:0 2px 14px rgba(0,0,0,.22)}
 
@@ -132,6 +143,7 @@ a{-webkit-tap-highlight-color:transparent}
 .row:last-child{border-bottom:0}
 .row .k{font-size:16px}
 .row.col{flex-direction:column;align-items:stretch;padding:10px 0;gap:8px}
+.row input{font:16px var(--font);color:var(--fg);background:var(--field);border:0;border-radius:9px;padding:10px;outline:none;width:100%;box-sizing:border-box}
 /* the gauntlet and the hell list */
 .gsum{font-weight:700;font-size:18px;margin:2px 0 10px}
 .gsum.good{color:var(--green)}.gsum.warn{color:var(--amber)}.gsum.bad{color:var(--red)}
@@ -147,6 +159,7 @@ a{-webkit-tap-highlight-color:transparent}
 .seg button{padding:6px 12px;border-radius:7px;font-size:14px;color:var(--muted);font-weight:600}
 .seg button[aria-pressed=true]{background:var(--surface);color:var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.15)}
 .mini{font-size:13px;color:var(--muted);line-height:1.4}
+.mini.good{color:var(--green)}.mini.bad{color:var(--red)}
 .dim{color:var(--muted)}
 pre.log{font:11px/1.35 var(--mono);white-space:pre-wrap;word-break:break-all;max-height:40vh;overflow:auto;margin:0 0 12px;color:var(--muted);-webkit-user-select:text;user-select:text}
 
@@ -580,13 +593,15 @@ function routeReq(o, d, profile){
   throw new RErr('noroute', `a ${profile} route`, `none from ${tries} snap pairs, ${pops} states searched`, {tries, pops});
 }
 </script>
-<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+<script>document.write(window.ARROW_GL==='mapbox'
+  ?'<script src="https://cdn.jsdelivr.net/npm/mapbox-gl@3.33.0/dist/mapbox-gl.js"><\/script>'
+  :'<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js"><\/script>');</script>
 <script>
 'use strict';
 /* =====================================================================
    SLOT 1 — APP: identity
    ===================================================================== */
-const BUILD = 'build 5';
+const BUILD = 'build 6';
 const APP = {
   key: 'arrow',
   name: 'arrow',
@@ -597,7 +612,10 @@ const APP = {
    SLOT 2 — CONF
    ===================================================================== */
 const CONF = {
-  styles: { dawn: 'https://tiles.openfreemap.org/styles/liberty', native: 'https://tiles.openfreemap.org/styles/dark' },
+  styles: {
+    maplibre: { dawn: 'https://tiles.openfreemap.org/styles/liberty', native: 'https://tiles.openfreemap.org/styles/dark' },
+    mapbox:   { dawn: 'mapbox://styles/mapbox/navigation-day-v1', native: 'mapbox://styles/mapbox/navigation-night-v1' },   // live traffic on the roads
+  },
   photon: 'https://photon.komoot.io/api/',
   nominatim: 'https://nominatim.openstreetmap.org/search',
   bbox: [-118.96, 33.70, -117.64, 34.83],      // LA County: what the road graph covers (build.py BBOX)
@@ -612,6 +630,9 @@ const CONF = {
   holdMs: 700,           // press and hold the magnifying glass this long: Settings
 };
 const FWY = new Set(CONF.fwy);
+const GL = window.mapboxgl || window.maplibregl || null;           // whichever the head script loaded
+const ENGINE = window.mapboxgl ? 'mapbox' : 'maplibre';
+const STY = CONF.styles[ENGINE];
 
 /* =====================================================================
    ENGINE — log, fail, stage, cfg, dump. Domain-free.
@@ -651,7 +672,7 @@ function dumpJSON(){
   try { base = JSON.parse(localStorage.getItem(APP.key+'-base')||'null'); last = JSON.parse(localStorage.getItem(APP.key+'-lastfail')||'null'); } catch(_){}
   const de = DATA.err;
   return JSON.stringify({app:APP.key, build:BUILD, runtime:'js', at:new Date().toISOString(), env:ENV,
-    cfg:{look:cfg.look||'system', flat:!!cfg.flat, recents:(cfg.recents||[]).length},
+    cfg:{look:cfg.look||'system', flat:!!cfg.flat, recents:(cfg.recents||[]).length, mapbox:cfg.mapbox ? 'set' : 'none', engine:ENGINE},
     data:{state:DATA.state, meta:DATA.meta, got:DATA.got, total:DATA.total, updating:DATA.updating,
       err:de ? {stage:de.stage||null, message:de.message, code:de.code||null, evidence:de.evidence||null} : null},
     state:{origin:S.origin, dest:S.dest, picking:S.picking, searching:S.searching, here:S.here ? {acc:S.here.acc, age_s:Math.round((Date.now()-S.here.at)/1000)} : null,
@@ -723,7 +744,7 @@ function applyLook(){
   if (r.dataset.look && r.dataset.look !== look && !reduced){ r.classList.add('looking'); setTimeout(()=>r.classList.remove('looking'), 500); }
   r.dataset.look = look;
   document.querySelector('meta[name=theme-color]').content = cssv('--bg');
-  if (MAP && MAP.__look !== look){ MAP.__look = look; STYLE_READY = false; MAP.setStyle(CONF.styles[look]); log('map', 'style → '+look); }
+  if (MAP && MAP.__look !== look){ MAP.__look = look; STYLE_READY = false; MAP.setStyle(STY[look]); log('map', 'style → '+look); }
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=>{ if ((cfg.look||'system')==='system') applyLook(); });
 
@@ -734,18 +755,25 @@ let MAP = null, STYLE_READY = false;
 const MK = {here:null, origin:null, dest:null, lefts:[]};
 const EMPTY = {type:'FeatureCollection', features:[]};
 function initMap(){
-  if (!window.maplibregl){ log('map', 'FAIL maplibre-gl did not load (CDN unreachable)'); toast('Map didn’t load. Routing still works.', 'warn'); return; }
+  if (!GL){ log('map', `FAIL ${window.ARROW_GL} did not load (CDN unreachable)`); toast('Map didn’t load. Routing still works.', 'warn'); return; }
   const look = document.documentElement.dataset.look;
   try {
-    MAP = new maplibregl.Map({container:'map', style:CONF.styles[look], center:CONF.center, zoom:CONF.zoom,
+    if (ENGINE === 'mapbox') GL.accessToken = cfg.mapbox;
+    MAP = new GL.Map({container:'map', style:STY[look], center:CONF.center, zoom:CONF.zoom,
       attributionControl:false, dragRotate:false, pitchWithRotate:false, touchPitch:false});
   } catch(e){ log('map', 'FAIL '+e.message); MAP = null; toast('Map didn’t start. Routing still works.', 'warn'); return; }
   MAP.__look = look;
   MAP.touchZoomRotate.disableRotation();
-  MAP.addControl(new maplibregl.AttributionControl({compact:true}), 'top-right');
-  MAP.once('load', ()=>document.querySelectorAll('.maplibregl-ctrl-attrib').forEach(a=>{ a.classList.remove('maplibregl-compact-show'); a.removeAttribute('open'); }));
+  MAP.addControl(new GL.AttributionControl({compact:true}), 'top-right');
+  MAP.once('load', ()=>document.querySelectorAll('.maplibregl-ctrl-attrib,.mapboxgl-ctrl-attrib').forEach(a=>{
+    a.classList.remove('maplibregl-compact-show', 'mapboxgl-compact-show'); a.removeAttribute('open'); }));
   MAP.on('style.load', ()=>{ STYLE_READY = true; ensureLayers(); drawRoute(); log('map', `style ${MAP.__look} loaded`); });
-  MAP.on('error', e=>log('map', 'error '+((e.error&&e.error.message)||e.message||'?')));
+  let keyWarned = false;
+  MAP.on('error', e=>{
+    const err = e.error || {}, st = err.status || 0;
+    log('map', `error ${st ? `HTTP ${st} ` : ''}${err.message || e.message || '?'}`);
+    if (ENGINE === 'mapbox' && (st === 401 || st === 403) && !keyWarned){ keyWarned = true; toast('Mapbox turned the key down. Hold the magnifying glass → Settings to fix it.', 'bad'); }
+  });
   // press and hold the map: route there
   let t = null, p0 = null, lastDrop = 0;
   const cancel = ()=>{ clearTimeout(t); t = null; };
@@ -793,7 +821,7 @@ const lineGeo = co => ({type:'Feature', properties:{}, geometry:{type:'LineStrin
 function setMarker(key, lngLat, cls){
   if (!MAP) return;
   if (!lngLat){ if (MK[key]){ MK[key].remove(); MK[key] = null; } return; }
-  if (!MK[key]){ const el = document.createElement('div'); el.className = cls; MK[key] = new maplibregl.Marker({element:el}).setLngLat(lngLat).addTo(MAP); }
+  if (!MK[key]){ const el = document.createElement('div'); el.className = cls; MK[key] = new GL.Marker({element:el}).setLngLat(lngLat).addTo(MAP); }
   else MK[key].setLngLat(lngLat);
 }
 function drawRoute(){
@@ -803,7 +831,7 @@ function drawRoute(){
   setMarker('dest', S.dest ? [S.dest.lon, S.dest.lat] : null, 'mk-dest');
   MK.lefts.forEach(m=>m.remove()); MK.lefts = [];
   const R = S.route;
-  if (R) R.lefts.forEach(l=>{ const el = document.createElement('div'); el.className = 'mk-left'; el.innerHTML = ICON.left; MK.lefts.push(new maplibregl.Marker({element:el}).setLngLat(l).addTo(MAP)); });
+  if (R) R.lefts.forEach(l=>{ const el = document.createElement('div'); el.className = 'mk-left'; el.innerHTML = ICON.left; MK.lefts.push(new GL.Marker({element:el}).setLngLat(l).addTo(MAP)); });
   if (!ensureLayers()) return;
   const real = R && R.km > 0.005;
   MAP.getSource('route').setData(real ? lineGeo(R.coords) : EMPTY);
@@ -813,7 +841,7 @@ function drawRoute(){
 }
 function fitRoute(){
   if (!MAP || !S.route) return;
-  const b = new maplibregl.LngLatBounds();
+  const b = new GL.LngLatBounds();
   S.route.coords.forEach(c=>b.extend([c[0], c[1]]));
   if (S.route.car && !S.route.same) S.route.car.coords.forEach(c=>b.extend([c[0], c[1]]));
   const card = document.getElementById('card');
@@ -1269,10 +1297,69 @@ function buildModel(main, car, o, d, profile){
   const lefts = main.turns.filter(t=>t.kind === 'left' && t.wl).map(t=>[t.lon, t.lat]);
   let div = 0;
   if (carSet) for (let i = 0; i < n - 1; i++) if (!carSet.has(main.segDE[i])) div += cum[i+1] - cum[i];
-  return {coords:co, cum, pins, lefts, climb:main.climb, km:main.dist/1000, ms:main.time*1000,
-    car:car ? {coords:car.coords, km:car.dist/1000, ms:car.time*1000, unprot:car.unprot || 0} : null,
+  return {coords:co, cum, pins, lefts, climb:main.climb, km:main.dist/1000, ms:main.time*1000, turnCi:main.turns.map(t=>t.ci),
+    car:car ? {coords:car.coords, cum:cumDist(car.coords), turnCi:car.turns.map(t=>t.ci), km:car.dist/1000, ms:car.time*1000, unprot:car.unprot || 0} : null,
     same:carSet ? div < 30 : false, divergedKm:carSet ? +(div/1000).toFixed(2) : null,
     url:appleURL(o, d, pins), profile, at:Date.now()};
+}
+/* ---- live-traffic times from Mapbox: Map Matching (driving-traffic) on points sampled along each
+   route, so the time belongs to this exact line, not to whatever Mapbox would have picked. Only on a
+   Mapbox map (their terms), only with this phone's key, never blocking the route. ---- */
+function trafficSample(co, cum, turnCi){
+  const L = cum[cum.length - 1];
+  if (!(L > 50)) return null;
+  const must = new Set([0, L]);
+  turnCi.forEach(ci=>{ const d = cum[Math.min(ci, cum.length - 1)] + 25; if (d > 0 && d < L) must.add(d); });  // just past each turn
+  const gap = Math.max(200, L / 70), all = [...must].map(d=>({d, must:true}));
+  for (let d = gap; d < L; d += gap) all.push({d, must:false});
+  all.sort((a, b)=>a.d - b.d);
+  let pts = [];
+  for (const p of all){
+    const last = pts[pts.length - 1];
+    if (last && p.d - last.d < 20){ if (p.must && !last.must) pts[pts.length - 1] = p; continue; }
+    pts.push(p);
+  }
+  while (pts.length > 100){                                    // Mapbox takes 100 points: fill goes first
+    const fills = pts.filter(p=>!p.must);
+    if (fills.length){ const drop = new Set(fills.filter((_, i)=>i % 2 === 0).slice(0, pts.length - 100)); pts = pts.filter(p=>!drop.has(p)); continue; }
+    pts = pts.filter((p, i)=>i === 0 || i === pts.length - 1 || i % 2 === 1);
+  }
+  return pts.map(p=>pointAt(co, cum, p.d));
+}
+async function mapboxMatch(pts, name){
+  const coords = pts.map(p=>`${p[0].toFixed(6)},${p[1].toFixed(6)}`).join(';');
+  const u = `https://api.mapbox.com/matching/v5/mapbox/driving-traffic/${coords}?access_token=${encodeURIComponent(cfg.mapbox)}&overview=false&tidy=false&radiuses=${pts.map(()=>12).join(';')}`;
+  const ev = {points:pts.length, url:u.replace(/access_token=[^&]+/, 'access_token=…')};
+  let r;
+  try { r = await fetchT(u, 12000); }
+  catch(e){ fail(`traffic.${name}`, 'an answer from Mapbox', e.name === 'AbortError' ? 'none in 12 s' : `${e.name}: ${e.message}`, ev); }
+  let j = null; try { j = await r.json(); } catch(_){}
+  if (!r.ok || !j || j.code !== 'Ok') fail(`traffic.${name}`, 'code Ok from Mapbox Map Matching', `HTTP ${r.status} ${j ? `${j.code || ''} ${j.message || ''}` : 'not JSON'}`, {...ev, status:r.status});
+  const ms = Array.isArray(j.matchings) ? j.matchings : [];
+  if (!ms.length) fail(`traffic.${name}`, 'at least one matching', 'none', ev);
+  return {s:ms.reduce((a, m)=>a + (m.duration || 0), 0), dist:ms.reduce((a, m)=>a + (m.distance || 0), 0),
+    conf:Math.min(...ms.map(m=>typeof m.confidence === 'number' ? m.confidence : 0)), parts:ms.length, pts:pts.length};
+}
+async function addTraffic(R, my){
+  if (!cfg.mapbox || ENGINE !== 'mapbox') return;
+  const jobs = [['this', R.coords, R.cum, R.turnCi, R.km]];
+  if (R.car && !R.same) jobs.push(['usual', R.car.coords, R.car.cum, R.car.turnCi, R.car.km]);
+  const got = {};
+  for (const [name, co, cum, tci, km] of jobs){
+    const pts = trafficSample(co, cum, tci);
+    if (!pts) continue;
+    try {
+      const t = await stage(`traffic.${name}`, ()=>mapboxMatch(pts, name), t=>({min:+(t.s/60).toFixed(1), km:+(t.dist/1000).toFixed(2), conf:+t.conf.toFixed(2), parts:t.parts, points:t.pts}));
+      const ratio = t.dist / (km * 1000), v = t.dist / Math.max(1, t.s);
+      if (ratio < 0.85 || ratio > 1.15){ log(`traffic.${name}`, `dropped: Mapbox matched ${(t.dist/1000).toFixed(1)} km of a ${km.toFixed(1)} km route`); continue; }
+      if (!(v > 1 && v < 40)){ log(`traffic.${name}`, `dropped: ${v.toFixed(1)} m/s on average`); continue; }
+      got[name] = t.s * 1000;
+    } catch(e){ /* the stage logged it; the card keeps miles */ }
+  }
+  if (my !== PLANSEQ || S.route !== R) return;
+  if (R.same && got.this != null) got.usual = got.this;
+  R.traffic = got;
+  renderCard();
 }
 // Every error card: a title, one plain sentence or two, and the buttons that fix it (acts, see ACT_LABEL).
 function explain(e){
@@ -1319,6 +1406,7 @@ async function plan(){
     const R = await stage('model', async ()=>buildModel(main, car, o, S.dest, profile),
       R=>({pins:R.pins.length, lefts:R.lefts.length, climb:R.climb, divergedKm:R.divergedKm, usualKm:R.car ? +R.car.km.toFixed(2) : null, usualUnprotected:R.car ? R.car.unprot : null, urlLen:R.url.length}));
     S.route = R;
+    addTraffic(R, my);
     try { localStorage.setItem(APP.key+'-base', JSON.stringify({at:new Date().toISOString(), profile, km:+R.km.toFixed(2), min:+(R.ms/60000).toFixed(1), pins:R.pins.length, lefts:R.lefts.length, climb:R.climb, data:DATA.meta && DATA.meta.version})); } catch(_){}
     const rec = {lat:S.dest.lat, lon:S.dest.lon, name:S.dest.name, sub:S.dest.sub};
     cfg.recents = [rec, ...(cfg.recents||[]).filter(x=>Math.abs(x.lat-rec.lat) > 1e-5 || Math.abs(x.lon-rec.lon) > 1e-5)].slice(0, 6); saveCfg();
@@ -1444,18 +1532,21 @@ function cardHTML(){
   const mi = km => `${(km/1.609344).toFixed(1)} mi`;
   const usual = !R.car ? ''
     : R.same ? `<div class="usual"><i class="dot g"></i>Same road as the usual way</div>`
-    : `<div class="usual"><i class="dot g"></i>Usual way: ${mi(R.car.km)}, ${U ? `${U} unprotected left${U>1?'s':''}` : 'no unprotected lefts'}</div>`;
-  return head + from + `<div class="big"><i class="dot b"></i><span>${mi(R.km)}</span></div>`
-    + `<div class="facts">${L ? `${L} left${L>1?'s':''}, on a green arrow` : 'No lefts across traffic'} · steepest climb ${R.climb}%</div>`
+    : `<div class="usual"><i class="dot g"></i>Usual way: ${R.traffic && R.traffic.usual != null ? `${fmtDur(R.traffic.usual)}, ` : ''}${mi(R.car.km)}, ${U ? `${U} unprotected left${U>1?'s':''}` : 'no unprotected lefts'}</div>`;
+  const T = R.traffic || {}, tm = T.this != null;
+  return head + from + `<div class="big"><i class="dot b"></i><span>${tm ? fmtDur(T.this) : mi(R.km)}</span></div>`
+    + `<div class="facts">${tm ? `${mi(R.km)} · ` : ''}${L ? `${L} left${L>1?'s':''}, on a green arrow` : 'No lefts across traffic'} · steepest climb ${R.climb}%</div>`
     + usual + hills
     + `<a class="go" id="goApple" href="${esc(R.url)}">${ICON.car}<span>Open in Apple Maps</span></a>`
-    + `<div class="note">${P ? `Apple Maps gets ${P} stop${P===1?'':'s'}, only where the usual way would leave this route.` : 'Apple Maps gets just the destination.'}</div>`;
+    + `<div class="note">${tm ? 'Times are with traffic right now, from Mapbox. ' : ''}${P ? `Apple Maps gets ${P} stop${P===1?'':'s'}, only where the usual way would leave this route.` : 'Apple Maps gets just the destination.'}</div>`;
 }
 function renderCard(){
   const el = document.getElementById('card');
-  if (!S.dest || S.searching){ el.hidden = true; return; }
+  const lift = ()=>document.documentElement.style.setProperty('--cardh', el.hidden ? '0px' : `${el.offsetHeight}px`);   // Mapbox's wordmark rides above the card
+  if (!S.dest || S.searching){ el.hidden = true; lift(); return; }
   el.innerHTML = cardHTML();
   el.hidden = false;
+  lift();
   wireActs(el);
   const flat = el.querySelector('#flat');
   if (flat) flat.onchange = ()=>{ S.flat = cfg.flat = flat.checked; saveCfg(); log('opt', 'avoid hills '+(S.flat?'on':'off')); plan(); };
@@ -1482,6 +1573,10 @@ function openSettings(){
   sheet(`<div class="sh"><h3>Settings</h3></div>
     <div class="group">
       <div class="row"><span class="k">Look</span><div class="seg">${['light','dark','system'].map(l=>`<button data-look="${l}" aria-pressed="${look===l}">${l[0].toUpperCase()+l.slice(1)}</button>`).join('')}</div></div>
+      <div class="row col"><span class="k">Mapbox key</span>
+        <input id="mbk" type="text" inputmode="url" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="pk.… (public key)" value="${esc(cfg.mapbox || '')}">
+        <div class="rowbtns"><button class="sec" data-s="mbsave">Save</button>${cfg.mapbox ? `<button class="sec" data-s="mblink">Link for another phone</button>` : ''}</div>
+        <div class="mini" id="mbmsg">${cfg.mapbox ? (ENGINE === 'mapbox' ? 'On: Mapbox map with live traffic, and times with traffic.' : 'Saved, not in use yet: Reload.') : 'Off: OpenFreeMap map, miles instead of minutes.'}</div></div>
       <div class="row"><span class="k">LA roads</span><span class="mono dim" id="sdata">${esc(dataStatus())}</span></div>
       <div class="row"><span class="k">Map data</span><button class="sec" data-s="update">Check for new</button></div>
       <div class="row"><span class="k">Reload app</span><button class="sec" data-s="reload">Reload</button></div>
@@ -1500,6 +1595,26 @@ function openSettings(){
     </div>
     <div class="mini">Map © OpenFreeMap, OpenMapTiles, OpenStreetMap contributors. Search: Photon. Routes are worked out on this phone from OpenStreetMap roads, LADOT double-left signs and USGS elevation${m ? `, built ${esc(fmtDay(m.built))}` : ''}.</div>`, s=>{
     s.querySelector('[data-s=update]').onclick = ()=>{ if (DATA.state === 'ready') checkUpdate(true); else { loadData(); toast('Loading LA roads'); } };
+    const mbk = s.querySelector('#mbk'), mbmsg = s.querySelector('#mbmsg');
+    mbk.addEventListener('blur', ()=>setTimeout(()=>window.scrollTo(0, 0), 50));
+    s.querySelector('[data-s=mbsave]').onclick = async ()=>{
+      const k = mbk.value.trim();
+      const say = (t, cls)=>{ mbmsg.className = 'mini' + (cls ? ' ' + cls : ''); mbmsg.textContent = t; };
+      if (!k){ delete cfg.mapbox; saveCfg(); log('cfg', 'Mapbox key removed'); say('Removed. Reloading.'); setTimeout(reloadApp, 700); return; }
+      if (/^sk\./.test(k)){ say('That’s a secret key (sk.). Never put one in an app: use a public key, pk.', 'bad'); return; }
+      if (!/^pk\.[\w-]+\.[\w-]+$/.test(k)){ say('That doesn’t look like a Mapbox public key (pk.….…).', 'bad'); return; }
+      say('Asking Mapbox about it');
+      try {
+        const r = await fetchT(`https://api.mapbox.com/tokens/v2?access_token=${encodeURIComponent(k)}`, 10000);
+        const j = await r.json().catch(()=>null);
+        if (!j || j.code !== 'TokenValid'){ say(`Mapbox says: ${(j && j.code) || `HTTP ${r.status}`}.`, 'bad'); log('cfg', `Mapbox key refused: ${(j && j.code) || r.status}`); return; }
+      } catch(e){ say(`Couldn’t reach Mapbox to check it (${e.name}). Try again with signal.`, 'bad'); return; }
+      cfg.mapbox = k; saveCfg(); log('cfg', 'Mapbox key saved');
+      say('Good key. Reloading onto the Mapbox map.', 'good'); setTimeout(reloadApp, 900);
+    };
+    const mbl = s.querySelector('[data-s=mblink]');
+    if (mbl) mbl.onclick = ()=>navigator.clipboard.writeText(`${location.origin}${location.pathname}#mapbox=${cfg.mapbox}`)
+      .then(()=>toast('Link copied: open it once on the other phone'), ()=>toast('Couldn’t copy', 'bad'));
     s.querySelectorAll('[data-look]').forEach(b=>b.onclick = ()=>{ cfg.look = b.dataset.look; saveCfg(); applyLook(); s.querySelectorAll('[data-look]').forEach(x=>x.setAttribute('aria-pressed', x === b)); });
     s.querySelector('[data-s=reload]').onclick = reloadApp;
     s.querySelector('[data-s=gauntlet]').onclick = openGauntlet;
@@ -1585,7 +1700,7 @@ async function runGauntlet(progress, stopped){
   const check = (name, ok, level, detail)=>rep.checks.push({name, ok:!!ok, level:ok ? 'pass' : level, detail:ok ? '' : String(detail == null ? '' : detail).slice(0, 300)});
   const at = p=>({lat:p[0], lon:p[1]});
   const brief = r=>r.err ? {err:r.err} : {km:+(r.dist/1000).toFixed(2), min:+(r.time/60).toFixed(1), unprot:r.unprot, arrows:r.turns.filter(t=>t.wl).length, climb:r.climb, ms:r.wall, tries:r.tries, pops:r.pops};
-  const total = GAUNTLET.length * 3 + GAUNTLET_EDGES.length + 4;
+  const total = GAUNTLET.length * 3 + GAUNTLET_EDGES.length + 5;
   let step = 0;
   const tick = what=>progress(++step, total, what);
   log('gauntlet', `START ${GAUNTLET.length} drives × 3, ${GAUNTLET_EDGES.length} bad inputs`);
@@ -1638,6 +1753,23 @@ async function runGauntlet(progress, stopped){
       && u.searchParams.getAll('waypoint').length === m.pins.length && m.url.length < 2000, 'fail', m.url.slice(0, 180));
   }
   check('the green-arrow route differs from the plain one somewhere', differs > 0 || stopped(), 'fail', 'identical on every drive: the turn rules did nothing');
+
+  // live-traffic times
+  if (!stopped()){
+    tick('traffic times from Mapbox');
+    if (!cfg.mapbox) check('Mapbox traffic times', false, 'warn', 'no Mapbox key on this phone: the card shows miles, not minutes');
+    else if (ENGINE !== 'mapbox') check('Mapbox traffic times', false, 'fail', 'a key is saved but the map isn’t Mapbox yet: Reload');
+    else {
+      const [, o, d] = GAUNTLET[0];
+      try {
+        const r = await route(at(o), at(d), 'arrow');
+        const m = buildModel(r, null, at(o), at(d), 'arrow');
+        const t = await mapboxMatch(trafficSample(m.coords, m.cum, m.turnCi), 'gauntlet');
+        const ratio = t.dist / (m.km * 1000), v = t.dist / Math.max(1, t.s);
+        check('Mapbox traffic times', ratio > 0.85 && ratio < 1.15 && v > 1 && v < 40, 'fail', `matched ${(t.dist/1000).toFixed(1)} of ${m.km.toFixed(1)} km at ${v.toFixed(1)} m/s`);
+      } catch(e){ check('Mapbox traffic times', false, 'fail', e.message); }
+    }
+  }
 
   // bad input gets the right answer, not a crash
   for (const [name, o, d, want] of GAUNTLET_EDGES){
@@ -1769,7 +1901,7 @@ function envViewport(){
 }
 
 /* ---- boot ---- */
-log('boot', `${APP.name} ${BUILD} · routes on this phone`);
+log('boot', `${APP.name} ${BUILD} · routes on this phone · map ${ENGINE}${cfg.mapbox ? ' · Mapbox key set' : ''}`);
 try { const lf = JSON.parse(localStorage.getItem(APP.key+'-lastfail')||'null'); if (lf) log('lastfail', lf); } catch(_){}
 applyLook();
 initMap();
