@@ -5,7 +5,7 @@
 **Data, phone:** IndexedDB `arrow` / `kv` / `graph` = the LA roads `{meta, buf}` (~18 MB); localStorage `arrow-cfg` (look, flat, recents, origin, mapbox — the phone's own public Mapbox key, never in the repo), `arrow-base` (last good route), `arrow-lastfail`
 **Data, repo:** `arrow/data/` — `la-graph.bin.gz` + `manifest.json` (+ `report.json`, `whitelist.geojson`, `baseline/`), written only by the "arrow map data" Action
 **Built from:** app-builder skill, 2026-10-29
-**Current:** build 7 · data `20261029T021955Z` (442,005 road segments, 6.5 MB download, OSM of 2026-10-28)
+**Current:** build 8 · data `20261029T021955Z` (442,005 road segments, 6.5 MB download, OSM of 2026-10-28)
 **Settings:** the small grey gear at the right end of the search bar (the clear × takes its place while typing). The build is the first line under the Settings title.
 
 ## How it works
@@ -72,4 +72,6 @@ When it breaks: the run page shows a red annotation — stage, expected vs got, 
 
 **2026-10-29** — build 6: Mapbox key support (Settings, or the setup link for another phone), Mapbox map with live traffic on keyed phones, live-traffic minutes for both routes via Map Matching, Mapbox wordmark kept above the card, a Mapbox check in the gauntlet. 
 
-**2026-10-29** — build 7: gear in the search bar replaces the hold gesture, build shown atop Settings, the app updates itself to the live build when idle. Open: Charlie to paste his key, run the gauntlet, work the hell list; first real drive.
+**2026-10-29** — build 7: gear in the search bar replaces the hold gesture, build shown atop Settings, the app updates itself to the live build when idle. 
+
+**2026-10-29** — build 8: Settings → Voice → Hear it speaks four sample directions with the best English voice on the phone (Premium, then Enhanced, then the default) through the Web Speech API, and names the voice it used; tells you where to download Ava (Premium) when it had to use a plain one. Siri's voices aren't available to apps. Open: decide on turn-by-turn (web Drive mode vs a TestFlight app), street names in the data, paste the Mapbox key, run the gauntlet, first real drive.

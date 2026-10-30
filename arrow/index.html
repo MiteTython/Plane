@@ -603,7 +603,7 @@ function routeReq(o, d, profile){
 /* =====================================================================
    SLOT 1 — APP: identity
    ===================================================================== */
-const BUILD = 'build 7';
+const BUILD = 'build 8';
 const APP = {
   key: 'arrow',
   name: 'arrow',
@@ -1550,6 +1550,44 @@ function act(a){
   if (a === 'reload'){ reloadApp(); return; }
 }
 
+/* ---- voice: the iPhone's own text-to-speech (Siri's voice is off-limits to apps), best English voice
+   installed: Premium, then Enhanced, then whatever's there. The first sentence must start inside a tap. ---- */
+const SAMPLE_DIRECTIONS = [
+  'In half a mile, turn left onto Van Nuys Boulevard, on the green arrow.',
+  'In 500 feet, turn right onto Ventura Boulevard.',
+  'Turn right, then turn left onto Riverside Drive.',
+  'You’ve arrived. Dickens Street is on your right.',
+];
+function bestVoice(){
+  let vs = [];
+  try { vs = (window.speechSynthesis && speechSynthesis.getVoices()) || []; } catch(_){}
+  const tag = v => `${v.voiceURI || ''} ${v.name || ''}`;
+  const rank = v => (/premium/i.test(tag(v)) ? 30 : /enhanced/i.test(tag(v)) ? 20 : 10) + (/^en[-_]US/i.test(v.lang) ? 5 : 0) + (/\bAva\b/i.test(v.name) ? 1 : 0);
+  return vs.filter(v=>/^en/i.test(v.lang || '')).sort((a, b)=>rank(b) - rank(a))[0] || null;
+}
+function voiceNote(v, spoke){
+  if (!window.speechSynthesis) return 'This browser can’t speak.';
+  const good = v && /premium|enhanced/i.test(`${v.voiceURI} ${v.name}`);
+  const name = v ? v.name : 'the phone’s default voice';
+  const tip = ' For the natural-sounding one: Settings → Accessibility → Read & Speak (Spoken Content on older iOS) → Voices → English → Ava, download Ava (Premium), then reopen arrow.';
+  return (spoke ? `Speaking with ${name}.` : `Will speak with ${name}.`) + (good ? '' : tip) + (spoke ? ' Nothing? Turn the volume up.' : '');
+}
+function sayLines(lines){
+  const ss = window.speechSynthesis;
+  if (!ss){ toast('This browser can’t speak', 'warn'); return null; }
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch(_){}   // play through Silent mode where Safari allows it
+  if (ss.speaking || ss.pending) ss.cancel();                  // a bare cancel() right before speak() can swallow the first line
+  const v = bestVoice();
+  lines.forEach(t=>{
+    const u = new SpeechSynthesisUtterance(t);
+    if (v){ u.voice = v; u.lang = v.lang; } else u.lang = 'en-US';
+    u.onerror = e=>log('voice', `FAIL ${e.error || 'unknown'} on “${t.slice(0, 40)}”`);
+    ss.speak(u);
+  });
+  log('voice', `speaking ${lines.length} lines with ${v ? `${v.name} (${v.voiceURI})` : 'the default voice'}`);
+  return v;
+}
+try { if (window.speechSynthesis){ speechSynthesis.getVoices(); speechSynthesis.addEventListener('voiceschanged', ()=>log('voice', `${speechSynthesis.getVoices().length} voices on this phone`)); } } catch(_){}
 function openSettings(){
   const look = cfg.look || 'system', m = DATA.meta, w = (m && m.whitelist) || {}, g = lastGauntlet();
   const n = v => v == null ? '?' : Number(v).toLocaleString('en-US');
@@ -1563,6 +1601,8 @@ function openSettings(){
         <div class="mini" id="mbmsg">${cfg.mapbox ? (ENGINE === 'mapbox' ? 'On: Mapbox map with live traffic, and times with traffic.' : 'Saved, not in use yet: Reload.') : 'Off: OpenFreeMap map, miles instead of minutes.'}</div></div>
       <div class="row"><span class="k">LA roads</span><span class="mono dim" id="sdata">${esc(dataStatus())}</span></div>
       <div class="row"><span class="k">Map data</span><button class="sec" data-s="update">Check for new</button></div>
+      <div class="row col"><div style="display:flex;justify-content:space-between;align-items:center"><span class="k">Voice</span><button class="sec" data-s="hear">Hear it</button></div>
+        <div class="mini" id="vmsg">${esc(voiceNote(bestVoice(), false))}</div></div>
       <div class="row"><span class="k">Reload app</span><button class="sec" data-s="reload">Reload</button></div>
     </div>
     <div class="group">
@@ -1601,6 +1641,10 @@ function openSettings(){
       .then(()=>toast('Link copied: open it once on the other phone'), ()=>toast('Couldn’t copy', 'bad'));
     s.querySelectorAll('[data-look]').forEach(b=>b.onclick = ()=>{ cfg.look = b.dataset.look; saveCfg(); applyLook(); s.querySelectorAll('[data-look]').forEach(x=>x.setAttribute('aria-pressed', x === b)); });
     s.querySelector('[data-s=reload]').onclick = reloadApp;
+    s.querySelector('[data-s=hear]').onclick = ()=>{
+      const v = sayLines(SAMPLE_DIRECTIONS);                     // inside the tap: iPhones only let a page speak after one
+      const m = s.querySelector('#vmsg'); if (m) m.textContent = voiceNote(v, true);
+    };
     s.querySelector('[data-s=gauntlet]').onclick = openGauntlet;
     s.querySelector('[data-s=hell]').onclick = openHell;
     s.querySelector('[data-s=copylog]').onclick = ()=>navigator.clipboard.writeText(LOG.join('\n')).then(()=>toast('Log copied'), ()=>toast('Couldn’t copy', 'bad'));
