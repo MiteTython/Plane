@@ -1,52 +1,52 @@
 {
- "version": "20261029T021955Z",
+ "version": "20261102T202434Z",
  "counts": {
   "selftest": "ok",
-  "signals": 29691,
-  "ways_in_file": 963639,
-  "car_ways": 282137,
-  "service_ways_left_out": 373092,
+  "signals": 29700,
+  "ways_in_file": 965031,
+  "car_ways": 282186,
+  "service_ways_left_out": 373152,
   "car_forbidden_ways": 12600,
   "ways_missing_nodes": 0,
-  "existing_restrictions": 32780,
-  "junctions": 293809,
-  "pieces": 443162,
+  "existing_restrictions": 32795,
+  "junctions": 293847,
+  "pieces": 443205,
   "isolated_rings_dropped": 9,
-  "osm_dual_left_unsignalized": 943,
+  "osm_dual_left_unsignalized": 946,
   "osm_dual_left_not_at_junction": 4,
-  "wl_osm_dual_left": 4046,
+  "wl_osm_dual_left": 4050,
   "wl_ladot_signs_in": 243,
   "wl_ladot_matched": 215,
   "wl_ladot_unmatched": 28,
   "wl_hand_rows": 0,
   "wl_hand_matched": 0,
-  "wl_approaches": 3330,
+  "wl_approaches": 3334,
   "wl_pocket_moves": 248,
-  "blocked_geo": 4777,
-  "blocked_permissive": 279701,
+  "blocked_geo": 4778,
+  "blocked_permissive": 279704,
   "blocked_yield": 114746,
-  "ex_continuation": 7840,
+  "ex_continuation": 7839,
   "ex_freeway": 548,
-  "ex_no_conflict": 11320,
-  "ex_roundabout": 1383,
-  "ex_whitelist": 3566,
-  "leftish": 423881,
+  "ex_no_conflict": 11322,
+  "ex_roundabout": 1387,
+  "ex_whitelist": 3570,
+  "leftish": 423894,
   "blocked_share_of_leftish": 0.9418,
   "osm_restr_ignored_value": 10,
-  "osm_restr_unresolved": 18691,
-  "osm_restr_applied_no": 5053,
-  "osm_restr_via_way_skipped": 5264,
-  "osm_restr_applied_only": 1758,
+  "osm_restr_unresolved": 18697,
+  "osm_restr_applied_no": 5057,
+  "osm_restr_via_way_skipped": 5268,
+  "osm_restr_applied_only": 1759,
   "osm_restr_via_not_in_graph": 657,
   "osm_restr_not_for_cars": 1197,
   "osm_restr_malformed": 153,
-  "dead_ends": 50619,
+  "dead_ends": 50617,
   "nodes_over_16_roads": 0,
-  "arrow_moves_open": 1075226,
-  "car_moves_open": 1470972,
+  "arrow_moves_open": 1075305,
+  "car_moves_open": 1471051,
   "islands_dropped": 481,
   "edges_in_islands": 1157,
-  "largest_component_edges": 442005
+  "largest_component_edges": 442048
  },
  "blocked_sample": [
   {
@@ -57,17 +57,17 @@
    "class": "geo"
   },
   {
-   "lat": 33.96823,
-   "lon": -117.72604,
-   "from": "Shantung Avenue",
-   "to": "Shantung Court",
-   "class": "permissive"
+   "lat": 34.006646,
+   "lon": -117.716886,
+   "from": "Tano Street",
+   "to": "Van Horn Circle East",
+   "class": "yield"
   },
   {
-   "lat": 34.281473,
-   "lon": -118.878828,
+   "lat": 34.281465,
+   "lon": -118.875275,
    "from": "Susan Avenue",
-   "to": "Millard Street",
+   "to": "Harry Street",
    "class": "yield"
   },
   {
@@ -80,9 +80,9 @@
   {
    "lat": 34.06889,
    "lon": -118.407722,
-   "from": "Santa Monica Boulevard",
-   "to": "North Roxbury Drive",
-   "class": "permissive"
+   "from": "North Roxbury Drive",
+   "to": "Santa Monica Boulevard",
+   "class": "geo"
   },
   {
    "lat": 34.037087,
@@ -94,51 +94,51 @@
   {
    "lat": 34.05274,
    "lon": -117.785348,
-   "from": "West Brea Canyon Road",
-   "to": "Westmont Avenue",
+   "from": "Westmont Avenue",
+   "to": "West Brea Canyon Road",
    "class": "permissive"
   },
   {
-   "lat": 33.806222,
-   "lon": -118.212198,
+   "lat": 33.806199,
+   "lon": -118.211109,
    "from": "West 27th Street",
-   "to": "Caspian Avenue",
+   "to": "Delta Avenue",
    "class": "permissive"
   },
   {
-   "lat": 33.881003,
-   "lon": -117.867906,
-   "from": "West Madison Avenue",
-   "to": "North Bradford Avenue",
+   "lat": 34.146518,
+   "lon": -118.446841,
+   "from": "Roblar Place",
+   "to": "Valley Vista Boulevard",
    "class": "permissive"
   },
   {
    "lat": 34.276413,
    "lon": -118.523454,
-   "from": "Zelzah Avenue",
-   "to": "Simonds Street",
-   "class": "permissive"
+   "from": "Simonds Street",
+   "to": "Zelzah Avenue",
+   "class": "yield"
   },
   {
-   "lat": 34.686792,
-   "lon": -118.182057,
-   "from": "Ruth Lane",
-   "to": "Chaplin Drive",
-   "class": "yield"
+   "lat": 33.798391,
+   "lon": -118.099456,
+   "from": "North Studebaker Road",
+   "to": "El Salvador Street",
+   "class": "permissive"
   },
   {
    "lat": 34.458804,
    "lon": -118.647047,
-   "from": "Hasley Canyon Road",
-   "to": "Trotters Lane",
-   "class": "permissive"
+   "from": "Trotters Lane",
+   "to": "Hasley Canyon Road",
+   "class": "yield"
   },
   {
-   "lat": 33.779236,
-   "lon": -118.043568,
-   "from": "Violet Street",
-   "to": "Fir Avenue",
-   "class": "yield"
+   "lat": 33.77708,
+   "lon": -118.044391,
+   "from": "Candleberry Avenue",
+   "to": "Violet Street",
+   "class": "permissive"
   },
   {
    "lat": 33.862841,
@@ -157,16 +157,16 @@
   {
    "lat": 34.300603,
    "lon": -118.460228,
-   "from": "Oswald Street",
-   "to": "San Fernando Road",
-   "class": "yield"
+   "from": "San Fernando Road",
+   "to": "Oswald Street",
+   "class": "permissive"
   },
   {
    "lat": 34.803563,
    "lon": -118.583434,
-   "from": "West Avenue B",
-   "to": "Taney Street",
-   "class": "permissive"
+   "from": "Taney Street",
+   "to": "West Avenue B",
+   "class": "yield"
   },
   {
    "lat": 33.73947,
@@ -176,227 +176,227 @@
    "class": "permissive"
   },
   {
-   "lat": 34.066285,
-   "lon": -117.936056,
-   "from": "South Evanwood Avenue",
-   "to": "West Camila Road",
+   "lat": 34.066827,
+   "lon": -117.935464,
+   "from": "West Service Avenue",
+   "to": "South Evanwood Avenue",
    "class": "permissive"
   },
   {
-   "lat": 33.781991,
-   "lon": -117.984086,
-   "from": "Robinet Lane",
-   "to": "Dale Street",
-   "class": "yield"
+   "lat": 34.070813,
+   "lon": -118.388699,
+   "from": "Dayton Way",
+   "to": "North Wetherly Drive",
+   "class": "permissive"
   },
   {
    "lat": 33.770277,
    "lon": -118.014774,
-   "from": "La Pata Street",
-   "to": "Kiowa Road",
-   "class": "yield"
+   "from": "Kiowa Road",
+   "to": "La Pata Street",
+   "class": "permissive"
   },
   {
-   "lat": 33.887884,
+   "lat": 33.88764,
    "lon": -118.06946,
-   "from": "Alondra Boulevard",
-   "to": "Madris Avenue",
-   "class": "yield"
+   "from": "Madris Avenue",
+   "to": "Alondra Boulevard",
+   "class": "permissive"
   },
   {
-   "lat": 34.014621,
-   "lon": -117.963309,
-   "from": "Galemont Avenue",
-   "to": "East Clarkgrove Street",
-   "class": "yield"
+   "lat": 33.988127,
+   "lon": -118.030333,
+   "from": "Beverly Boulevard",
+   "to": "Alta Avenue",
+   "class": "permissive"
   },
   {
-   "lat": 33.834816,
-   "lon": -118.318115,
-   "from": "Cravens Avenue",
+   "lat": 33.833662,
+   "lon": -118.319617,
+   "from": "Arlington Avenue",
    "to": "Post Avenue",
    "class": "permissive"
   },
   {
-   "lat": 33.952905,
-   "lon": -118.01471,
-   "from": "Highland Avenue",
-   "to": "Whittier Boulevard",
+   "lat": 34.003468,
+   "lon": -118.476894,
+   "from": "Raymond Avenue",
+   "to": "Highland Avenue",
+   "class": "permissive"
+  },
+  {
+   "lat": 34.451548,
+   "lon": -118.545857,
+   "from": "Northpark Drive",
+   "to": "Tamarind Way",
+   "class": "permissive"
+  },
+  {
+   "lat": 33.976277,
+   "lon": -118.339997,
+   "from": "East Park Way",
+   "to": "East 67th Street",
    "class": "yield"
   },
   {
-   "lat": 34.011243,
-   "lon": -118.171857,
-   "from": "Noakes Street",
-   "to": "South Duncan Avenue",
+   "lat": 34.003913,
+   "lon": -117.930254,
+   "from": "Railroad Street",
+   "to": "South Azusa Avenue",
    "class": "permissive"
   },
   {
-   "lat": 34.069921,
-   "lon": -118.09181,
-   "from": "Hellman Avenue",
-   "to": "Alanreed Avenue",
-   "class": "permissive"
-  },
-  {
-   "lat": 34.02981,
-   "lon": -117.879431,
-   "from": "Colina Drive",
-   "to": "Venado Way",
-   "class": "permissive"
-  },
-  {
-   "lat": 33.870558,
-   "lon": -118.200515,
-   "from": "East Bort Street",
+   "lat": 33.87127,
+   "lon": -118.200517,
+   "from": "East Forhan Street",
    "to": "Muriel Avenue",
    "class": "permissive"
   },
   {
-   "lat": 34.038209,
-   "lon": -118.137992,
-   "from": "Findlay Avenue",
-   "to": "West Floral Drive",
-   "class": "permissive"
+   "lat": 34.098356,
+   "lon": -118.124869,
+   "from": "Elgin Street",
+   "to": "North Chapel Avenue",
+   "class": "yield"
   },
   {
-   "lat": 33.994291,
-   "lon": -118.4748,
-   "from": "Vernon Avenue",
+   "lat": 33.993642,
+   "lon": -118.474158,
+   "from": "Indiana Avenue",
    "to": "Hampton Drive",
    "class": "yield"
   },
   {
-   "lat": 34.803353,
-   "lon": -118.475511,
+   "lat": 34.803691,
+   "lon": -118.466643,
    "from": "West Avenue B",
-   "to": "195th Street West",
+   "to": "190th Street West",
    "class": "yield"
   },
   {
-   "lat": 34.112489,
-   "lon": -117.794134,
-   "from": "North San Dimas Canyon Road",
+   "lat": 34.11249,
+   "lon": -117.794973,
+   "from": "Norwood Drive",
    "to": "Payson Street",
-   "class": "permissive"
-  },
-  {
-   "lat": 34.087679,
-   "lon": -118.28689,
-   "from": "North Virgil Avenue",
-   "to": "Burns Avenue",
-   "class": "permissive"
-  },
-  {
-   "lat": 33.893818,
-   "lon": -118.320548,
-   "from": "Purche Avenue",
-   "to": "West 152nd Street",
    "class": "yield"
   },
   {
-   "lat": 33.899278,
-   "lon": -118.123143,
-   "from": "Cabel Avenue",
-   "to": "Maplewood Street",
+   "lat": 33.943876,
+   "lon": -118.142918,
+   "from": "Burns Avenue",
+   "to": "Rives Avenue",
    "class": "permissive"
   },
   {
-   "lat": 34.243691,
-   "lon": -118.366506,
-   "from": "Stonehurst Avenue",
-   "to": "Stonehurst Avenue",
+   "lat": 33.893786,
+   "lon": -118.335762,
+   "from": "West 152nd Street",
+   "to": "Yukon Avenue",
    "class": "permissive"
   },
   {
-   "lat": 33.982745,
-   "lon": -118.057434,
-   "from": "Rincon Drive",
-   "to": "Hadley Street",
-   "class": "permissive"
-  },
-  {
-   "lat": 34.149331,
-   "lon": -118.18085,
-   "from": "Woodcliffe Road",
-   "to": "Patrician Way",
+   "lat": 34.410541,
+   "lon": -118.480796,
+   "from": "Kinglet Place",
+   "to": "Via Princessa",
    "class": "yield"
   },
   {
-   "lat": 34.67114,
-   "lon": -118.236552,
-   "from": "60th Street West",
-   "to": "West Avenue K 4",
+   "lat": 34.201209,
+   "lon": -118.392152,
+   "from": "Sherman Way",
+   "to": "Radford Avenue",
    "class": "permissive"
   },
   {
-   "lat": 33.952126,
-   "lon": -118.018604,
-   "from": "Hayward Street",
-   "to": "Gunn Avenue",
-   "class": "permissive"
-  },
-  {
-   "lat": 34.040037,
-   "lon": -118.286396,
-   "from": "West Washington Boulevard",
-   "to": "Magnolia Avenue",
-   "class": "permissive"
-  },
-  {
-   "lat": 34.135776,
-   "lon": -118.151826,
-   "from": "West California Boulevard",
-   "to": "Fairmount Avenue",
-   "class": "permissive"
-  },
-  {
-   "lat": 34.09557,
-   "lon": -118.291757,
-   "from": "Fountain Avenue",
-   "to": "North Vermont Avenue",
-   "class": "permissive"
-  },
-  {
-   "lat": 34.421108,
-   "lon": -118.520262,
-   "from": "Riverrock Way",
-   "to": "Santa Clarita Parkway",
-   "class": "permissive"
-  },
-  {
-   "lat": 33.880107,
-   "lon": -118.369978,
-   "from": "Vail Avenue",
-   "to": "West Robinson Street",
-   "class": "permissive"
-  },
-  {
-   "lat": 33.991089,
-   "lon": -118.219384,
-   "from": "Soto Street",
-   "to": "East 57th Street",
-   "class": "permissive"
-  },
-  {
-   "lat": 34.090333,
-   "lon": -117.887933,
-   "from": "San Bernardino Road",
-   "to": "North 2nd Avenue",
-   "class": "permissive"
-  },
-  {
-   "lat": 34.528293,
-   "lon": -117.992516,
-   "from": "East Avenue U",
-   "to": "77th Street East",
-   "class": "permissive"
-  },
-  {
-   "lat": 34.028933,
-   "lon": -118.021266,
-   "from": "Crossroads Parkway South",
+   "lat": 34.527755,
+   "lon": -118.220263,
+   "from": "Shannon View Road",
    "to": "",
+   "class": "permissive"
+  },
+  {
+   "lat": 34.096222,
+   "lon": -118.28459,
+   "from": "",
+   "to": "West Sunset Boulevard",
+   "class": "yield"
+  },
+  {
+   "lat": 34.45267,
+   "lon": -118.580504,
+   "from": "Hercules Street",
+   "to": "Rye Canyon Road",
+   "class": "permissive"
+  },
+  {
+   "lat": 33.94566,
+   "lon": -118.021442,
+   "from": "Lanning Drive",
+   "to": "Mills Avenue",
+   "class": "yield"
+  },
+  {
+   "lat": 34.048793,
+   "lon": -118.273265,
+   "from": "Grattan Street",
+   "to": "West Olympic Boulevard",
+   "class": "permissive"
+  },
+  {
+   "lat": 34.132042,
+   "lon": -118.237996,
+   "from": "Palmer Drive",
+   "to": "Oberlin Drive",
+   "class": "yield"
+  },
+  {
+   "lat": 34.104097,
+   "lon": -118.273369,
+   "from": "Hyperion Avenue",
+   "to": "Tracy Street",
+   "class": "permissive"
+  },
+  {
+   "lat": 34.463001,
+   "lon": -118.516346,
+   "from": "Agajanian Drive",
+   "to": "Maged Court",
+   "class": "permissive"
+  },
+  {
+   "lat": 33.713798,
+   "lon": -117.764546,
+   "from": "Savannah",
+   "to": "Northwood",
+   "class": "yield"
+  },
+  {
+   "lat": 34.045621,
+   "lon": -118.368125,
+   "from": "Airdrome Street",
+   "to": "South Fairfax Avenue",
+   "class": "permissive"
+  },
+  {
+   "lat": 34.09942,
+   "lon": -117.86325,
+   "from": "",
+   "to": "East Covina Boulevard",
+   "class": "yield"
+  },
+  {
+   "lat": 33.943586,
+   "lon": -118.000425,
+   "from": "Ashley Court",
+   "to": "",
+   "class": "yield"
+  },
+  {
+   "lat": 33.981894,
+   "lon": -118.18863,
+   "from": "Pine Avenue",
+   "to": "Randolph Street",
    "class": "permissive"
   }
  ],
@@ -411,7 +411,7 @@
     "max_climb": 10,
     "edges": 145,
     "pops": 28890,
-    "s": 0.1
+    "s": 0.2
    },
    "arrow": {
     "min": 21.5,
@@ -443,8 +443,8 @@
     "protected_lefts": 1,
     "max_climb": 12,
     "edges": 144,
-    "pops": 32361,
-    "s": 0.2
+    "pops": 32369,
+    "s": 0.3
    },
    "arrow": {
     "min": 21.0,
@@ -453,7 +453,7 @@
     "protected_lefts": 2,
     "max_climb": 12,
     "edges": 151,
-    "pops": 24455,
+    "pops": 24461,
     "s": 0.1
    },
    "arrow_flat": {
@@ -463,8 +463,8 @@
     "protected_lefts": 2,
     "max_climb": 12,
     "edges": 153,
-    "pops": 43959,
-    "s": 0.2
+    "pops": 43962,
+    "s": 0.3
    }
   },
   {
@@ -475,9 +475,9 @@
     "cost": 2009.8,
     "protected_lefts": 1,
     "max_climb": 10,
-    "edges": 236,
-    "pops": 93174,
-    "s": 0.4
+    "edges": 237,
+    "pops": 93186,
+    "s": 0.6
    },
    "arrow": {
     "min": 33.7,
@@ -485,9 +485,9 @@
     "cost": 2020.1,
     "protected_lefts": 1,
     "max_climb": 10,
-    "edges": 227,
-    "pops": 80935,
-    "s": 0.4
+    "edges": 228,
+    "pops": 80941,
+    "s": 0.5
    },
    "arrow_flat": {
     "min": 33.7,
@@ -495,9 +495,9 @@
     "cost": 2172.9,
     "protected_lefts": 1,
     "max_climb": 10,
-    "edges": 227,
-    "pops": 95794,
-    "s": 0.4
+    "edges": 228,
+    "pops": 95811,
+    "s": 0.6
    }
   },
   {
@@ -509,8 +509,8 @@
     "protected_lefts": 0,
     "max_climb": 7,
     "edges": 251,
-    "pops": 98443,
-    "s": 0.5
+    "pops": 98450,
+    "s": 0.8
    },
    "arrow": {
     "min": 42.4,
@@ -519,8 +519,8 @@
     "protected_lefts": 0,
     "max_climb": 7,
     "edges": 269,
-    "pops": 101727,
-    "s": 0.5
+    "pops": 101734,
+    "s": 0.7
    },
    "arrow_flat": {
     "min": 42.4,
@@ -529,8 +529,8 @@
     "protected_lefts": 0,
     "max_climb": 7,
     "edges": 269,
-    "pops": 120430,
-    "s": 0.5
+    "pops": 120443,
+    "s": 0.8
    }
   }
  ]

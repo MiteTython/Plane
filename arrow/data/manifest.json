@@ -1,21 +1,21 @@
 {
  "format": 1,
- "version": "20261029T021955Z",
+ "version": "20261102T202434Z",
  "file": "la-graph.bin.gz",
- "sha256": "1f4e91d5e53e45c45cc638a31a9a75f21d7b2935eee2936ba82c8bde8f14ab0c",
- "bytes_gz": 6788846,
- "bytes_raw": 17697612,
- "nodes": 343822,
- "edges": 442005,
- "geom_points": 225213,
+ "sha256": "e0c77c8fe5e023cf898b381c896e94076317f6c93acbf85a1b5fcb03f3fade96",
+ "bytes_gz": 6789186,
+ "bytes_raw": 17699328,
+ "nodes": 343858,
+ "edges": 442048,
+ "geom_points": 225230,
  "bbox": [
   -118.96,
   33.7,
   -117.64,
   34.83
  ],
- "osm_timestamp": "2026-10-28T20:20:04Z",
- "built": "2026-10-29T02:23:09+00:00",
+ "osm_timestamp": "2026-11-01T21:05:57Z",
+ "built": "2026-11-02T20:31:41+00:00",
  "turn_costs_s": {
   "signal": 8.0,
   "right": 4.0,
@@ -24,10 +24,10 @@
  },
  "vmax_mps": 30.6,
  "whitelist": {
-  "wl_osm_dual_left": 4046,
+  "wl_osm_dual_left": 4050,
   "wl_ladot_matched": 215,
   "wl_hand_matched": 0,
-  "wl_approaches": 3330
+  "wl_approaches": 3334
  },
  "probes": [
   {
