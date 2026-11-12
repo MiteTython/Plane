@@ -167,6 +167,11 @@ pre.log{font:11px/1.35 var(--mono);white-space:pre-wrap;word-break:break-all;max
 .pg .pk{position:absolute;left:0;right:0;bottom:0;font:10px/1.7 var(--mono);background:rgba(0,0,0,.62);color:#fff;text-align:center;white-space:nowrap;overflow:hidden}
 .pg.cut img{opacity:.25;filter:grayscale(1)}
 .pg.cut .pk{background:var(--bad)}
+.pbar{height:4px;border-radius:2px;background:var(--rule);overflow:hidden;margin-top:6px}
+.pbar i{display:block;height:100%;width:0;background:var(--accent);border-radius:inherit;transition:width .4s var(--ease)}
+.pbar.big{height:8px;border-radius:4px}
+.pcard{padding:12px var(--pad)}.pcard .prow+.prow{margin-top:12px}
+.pdet{font:12px/1.35 var(--mono);color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* off switch — keep last */
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.lfoot .anim,.canim{clip-path:none}.canim2,.lfoot .pl,.heat .hc{opacity:1;transform:none}.lfoot .brk{transform:none}}
 </style>
@@ -203,7 +208,7 @@ return ret;
 /* =====================================================================
    SLOT 1 — APP
    ===================================================================== */
-const BUILD='build 3';                       // bump every push; shown in Settings
+const BUILD='build 4';                       // bump every push; shown in Settings
 const APP={key:'bookbinder',name:'Bookbinder',answer:'Old EPUBs and comics in. Clean ones out.'};
 const PARSER='p1';                           // bump when extraction changes: saved chapter maps then re-plan
 const COMIC_PARSER='c1';                     // bump when page reading changes: saved page maps then re-sort
@@ -236,6 +241,7 @@ const CONF={
   blankStd:5,                // luminance spread under this reads as a blank page (rules)
   comicDBs:['comics.org','metron.cloud','comicvine.gamespot.com','leagueofcomicgeeks.com'],
   searchUses:3,fetchUses:2,fetchTokens:6000,searchPrice:.01,   // per comic; $ per web search
+  crcChunk:8*1048576,        // ZIP packing reads files in pieces this big
   // keep (true) or cut (false) by kind of page; the page grid overrides any page
   pagePolicy:{cover:true,story:true,chapter:true,credits:true,letters:true,text:true,extra:true,variant:true,ad:false,preview:false,scanner:false,blank:false},
 };
@@ -307,6 +313,7 @@ async function saveRec(r){try{await DB.put('books',r)}catch(e){log('store','FAIL
 const ENC=new TextEncoder();
 const CRC_T=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
 function crc32(u8){let c=0xFFFFFFFF;for(let i=0;i<u8.length;i++)c=CRC_T[(c^u8[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0}
+function crcUp(c,u8){for(let i=0;i<u8.length;i++)c=CRC_T[(c^u8[i])&255]^(c>>>8);return c}     // running CRC: start 0xFFFFFFFF, finish with ^0xFFFFFFFF
 let RAW_OK=null;
 function rawSupported(){if(RAW_OK===null){try{new DecompressionStream('deflate-raw');new CompressionStream('deflate-raw');RAW_OK=true}catch(e){RAW_OK=false;log('zip','deflate-raw unavailable: using gzip framing')}}return RAW_OK}
 async function pipeBytes(u8,ts){return new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(ts)).arrayBuffer())}
@@ -353,23 +360,27 @@ function dosStamp(d=new Date()){return{time:(d.getHours()<<11)|(d.getMinutes()<<
 function localHeader(nm,method,crc,cs,us,time,date,utf){const h=new Uint8Array(30+nm.length),v=new DataView(h.buffer);v.setUint32(0,0x04034b50,true);v.setUint16(4,20,true);v.setUint16(6,utf?0x0800:0,true);v.setUint16(8,method,true);v.setUint16(10,time,true);v.setUint16(12,date,true);v.setUint32(14,crc,true);v.setUint32(18,cs,true);v.setUint32(22,us,true);v.setUint16(26,nm.length,true);v.setUint16(28,0,true);h.set(nm,30);return h}
 function centralHeader(nm,method,crc,cs,us,time,date,off,utf){const h=new Uint8Array(46+nm.length),v=new DataView(h.buffer);v.setUint32(0,0x02014b50,true);v.setUint16(4,20,true);v.setUint16(6,20,true);v.setUint16(8,utf?0x0800:0,true);v.setUint16(10,method,true);v.setUint16(12,time,true);v.setUint16(14,date,true);v.setUint32(16,crc,true);v.setUint32(20,cs,true);v.setUint32(24,us,true);v.setUint16(28,nm.length,true);v.setUint32(42,off,true);h.set(nm,46);return h}
 function endRecord(n,size,off){const h=new Uint8Array(22),v=new DataView(h.buffer);v.setUint32(0,0x06054b50,true);v.setUint16(8,n,true);v.setUint16(10,n,true);v.setUint32(12,size,true);v.setUint32(16,off,true);return h}
-async function zipWrite(files,type='application/epub+zip'){
-  const parts=[],central=[];let off=0;const {time,date}=dosStamp();
+async function zipWrite(files,type='application/epub+zip',onp){
+  const parts=[],central=[];let off=0;const {time,date}=dosStamp();const total=files.reduce((s,f)=>s+f.data.length,0);let done=0;
   for(const f of files){
     const nm=ENC.encode(f.name),u8=f.data,crc=crc32(u8);let data=u8,method=0;
     if(!f.store&&u8.length>64){try{const c=await deflate(u8);if(c&&c.length<u8.length){data=c;method=8}}catch(e){log('zip',`deflate failed, storing ${f.name}: ${e.message}`)}}
     const utf=/[^\x00-\x7f]/.test(f.name);const lh=localHeader(nm,method,crc,data.length,u8.length,time,date,utf);
     parts.push(lh,data);central.push(centralHeader(nm,method,crc,data.length,u8.length,time,date,off,utf));off+=lh.length+data.length;
+    done+=u8.length;if(onp){onp(done,total);if(u8.length>1048576)await tick()}
   }
   const size=central.reduce((s,c)=>s+c.length,0);
   return new Blob([...parts,...central,endRecord(files.length,size,off)],{type});
 }
-async function zipBlobs(entries){      // [{path,blob}] → a stored zip; paths may hold folders. Built without holding every file in memory.
-  const parts=[],central=[];let off=0;const {time,date}=dosStamp();
-  for(const f of entries){
-    const u8=new Uint8Array(await f.blob.arrayBuffer());const crc=crc32(u8);const nm=ENC.encode(f.path);const utf=/[^\x00-\x7f]/.test(f.path);
-    const lh=localHeader(nm,0,crc,u8.length,u8.length,time,date,utf);parts.push(lh,f.blob);central.push(centralHeader(nm,0,crc,u8.length,u8.length,time,date,off,utf));off+=lh.length+u8.length;await tick();
+async function zipBlobs(entries,onp){  // [{path,blob}] → a stored zip; paths may hold folders. Read in 8 MB pieces for the CRC, so no file sits in memory whole.
+  const parts=[],central=[];let off=0;const {time,date}=dosStamp();const total=entries.reduce((s,f)=>s+f.blob.size,0);let done=0;
+  for(let i=0;i<entries.length;i++){
+    const f=entries[i],size=f.blob.size;let c=0xFFFFFFFF;
+    for(let at=0;at<size;at+=CONF.crcChunk){const u=new Uint8Array(await f.blob.slice(at,Math.min(size,at+CONF.crcChunk)).arrayBuffer());c=crcUp(c,u);done+=u.length;if(onp)onp(i,entries.length,done,total,f.path);await tick()}
+    const crc=(c^0xFFFFFFFF)>>>0,nm=ENC.encode(f.path),utf=/[^\x00-\x7f]/.test(f.path);
+    const lh=localHeader(nm,0,crc,size,size,time,date,utf);parts.push(lh,f.blob);central.push(centralHeader(nm,0,crc,size,size,time,date,off,utf));off+=lh.length+size;
   }
+  if(onp)onp(entries.length,entries.length,total,total,'');
   return new Blob([...parts,...central,endRecord(entries.length,central.reduce((s,c)=>s+c.length,0),off)],{type:'application/zip'});
 }
 /* the same reader over a Blob: only the directory and the entries asked for leave storage, so a 300 MB CBZ never sits in memory whole */
@@ -743,7 +754,7 @@ async function parseEpub(buf,ctx,rec){
     if(fileIdx.has(it.path))continue;
     if(!/html|xml/i.test(it.type)&&!/\.x?html?$/i.test(it.path)){ctx.warn.push(`skipped spine item ${it.path.split('/').pop()} (${it.type||'no type'})`);continue}
     const t=await zip.text(it.path);if(t==null){ctx.warn.push(`spine file missing: ${it.path}`);continue}
-    const {doc}=parseX(t,'xhtml');fileIdx.set(it.path,docs.length);docs.push({path:it.path,dir:dirOf(it.path),doc,name:it.path.split('/').pop()});
+    const {doc}=parseX(t,'xhtml');fileIdx.set(it.path,docs.length);docs.push({path:it.path,dir:dirOf(it.path),doc,name:it.path.split('/').pop()});prog(ctx,docs.length,pk.spine.length,'files read',0,.4);
     if(docs.length%6===0)await tick();
   }
   if(!docs.length)fail('spine','readable XHTML in the spine','none');
@@ -757,7 +768,7 @@ async function parseEpub(buf,ctx,rec){
   for(let i=0;i<docs.length;i++){
     const d=docs[i];X.fi=i;X.path=d.path;X.dir=d.dir;
     const local=new Map(cls);for(const st of els(d.doc,'style'))cssInto(local,st.textContent||'');X.cls=withCompound(local);
-    walk(els(d.doc,'body')[0]||d.doc.documentElement,X,{});
+    walk(els(d.doc,'body')[0]||d.doc.documentElement,X,{});prog(ctx,i+1,docs.length,'files cleaned',.4,1);
     if(i%4===3)await tick();
   }
   if(X.pend.length&&X.blocks.length){const lb=X.blocks[X.blocks.length-1];lb.post=[...(lb.post||[]),...X.pend];X.pend=[]}
@@ -1055,12 +1066,12 @@ async function claudeCall(ctx,key,{system,user,schema,maxTokens,effort}){
   if(effort&&EFFORT_OK)body.output_config.effort=effort;
   let last='no attempt';
   for(let attempt=1;attempt<=5;attempt++){
-    const t0=performance.now();let r,text;
+    const t0=performance.now();let r,text;progWait(ctx,true);
     try{r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':cfg.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(body)});text=await r.text()}
-    catch(e){last='network: '+e.message;blog(ctx,st,`attempt ${attempt} ${last}`);await sleep(1500*attempt);continue}
-    const ms=Math.round(performance.now()-t0);
+    catch(e){last='network: '+e.message;blog(ctx,st,`attempt ${attempt} ${last}`);progWait(ctx,false);await waitNote(ctx,1500*attempt,'no connection · retry');continue}
+    const ms=Math.round(performance.now()-t0);progWait(ctx,false);
     ctx.raw[st]={request:{model,max_tokens:maxTokens,output_config:body.output_config.effort?{effort:body.output_config.effort,format:'json_schema'}:{format:'json_schema'},system:clip(system,300),user:forLog(user)},status:r.status,ms,response:clip(text,60000)};
-    if(r.status===429||r.status===529||r.status>=500){last=`${r.status} ${errMsg(text)}`;const ra=+(r.headers.get('retry-after')||0);blog(ctx,st,`attempt ${attempt} ${last}; waiting`);await sleep(ra>0?ra*1000:2000*2**attempt);continue}
+    if(r.status===429||r.status===529||r.status>=500){last=`${r.status} ${errMsg(text)}`;const ra=+(r.headers.get('retry-after')||0);blog(ctx,st,`attempt ${attempt} ${last}; waiting`);await waitNote(ctx,ra>0?ra*1000:2000*2**attempt,`Claude busy (${r.status}) · retry ${attempt}`);continue}
     if(r.status===400&&body.output_config.effort&&/effort/i.test(text)){EFFORT_OK=false;delete body.output_config.effort;blog(ctx,st,'effort refused with structured output; retrying without it');attempt--;continue}
     if(!r.ok)fail(st,'200 from /v1/messages',`${r.status} ${errMsg(text)}`);
     let j;try{j=JSON.parse(text)}catch(e){fail(st,'a JSON response','an unparseable body')}
@@ -1083,11 +1094,11 @@ async function claudeSearch(ctx,key,{system,user,maxTokens}){
   const messages=[{role:'user',content:user}],turns=[];let last='no attempt',pauses=0,searches=0,fetches=0;
   const raw=extra=>{ctx.raw[st]={request:{model,max_tokens:maxTokens,tools:tools.map(t=>t.type),domains:CONF.comicDBs,system:clip(system,300),user:forLog(user)},turns,...extra}};
   for(let attempt=1;attempt<=6;attempt++){
-    const t0=performance.now();let r,text;
+    const t0=performance.now();let r,text;progWait(ctx,true,searches||fetches?`${searches} search${searches===1?'':'es'} · ${fetches} page${fetches===1?'':'s'} read so far`:'searching the comic databases');
     try{r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':cfg.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model,max_tokens:maxTokens,system,messages,tools})});text=await r.text()}
-    catch(e){last='network: '+e.message;blog(ctx,st,`attempt ${attempt} ${last}`);await sleep(1500*attempt);continue}
-    const ms=Math.round(performance.now()-t0);
-    if(r.status===429||r.status===529||r.status>=500){last=`${r.status} ${errMsg(text)}`;const ra=+(r.headers.get('retry-after')||0);blog(ctx,st,`attempt ${attempt} ${last}; waiting`);await sleep(ra>0?ra*1000:2000*2**attempt);continue}
+    catch(e){last='network: '+e.message;blog(ctx,st,`attempt ${attempt} ${last}`);progWait(ctx,false);await waitNote(ctx,1500*attempt,'no connection · retry');continue}
+    const ms=Math.round(performance.now()-t0);progWait(ctx,false);
+    if(r.status===429||r.status===529||r.status>=500){last=`${r.status} ${errMsg(text)}`;const ra=+(r.headers.get('retry-after')||0);blog(ctx,st,`attempt ${attempt} ${last}; waiting`);await waitNote(ctx,ra>0?ra*1000:2000*2**attempt,`Claude busy (${r.status}) · retry ${attempt}`);continue}
     if(!r.ok){raw({status:r.status,response:clip(text,4000)});fail(st,'200 from /v1/messages',`${r.status} ${errMsg(text)}`)}
     let j;try{j=JSON.parse(text)}catch(e){raw({status:r.status,response:clip(text,4000)});fail(st,'a JSON response','an unparseable body')}
     const u=j.usage||{},stu=u.server_tool_use||{};USAGE.add(model,u);searches+=stu.web_search_requests||0;fetches+=stu.web_fetch_requests||0;
@@ -1184,7 +1195,7 @@ async function metadata(book,plan,raw,ctx){
   const isbns=findIsbns([own.copyright,...md.identifiers].join(' '));
   const title=cleanTitle(raw.title)||md.title||cleanTitle(book.fileName);
   const author=cleanAuthor(raw.author)||md.author||'';
-  const look=cfg.lookups?await lookups(title,author,ctx):{google:[],ol:[]};
+  progNote(ctx,cfg.lookups?'checking the book catalogs':null);const look=cfg.lookups?await lookups(title,author,ctx):{google:[],ol:[]};progNote(ctx,null);
   const m=cfg.key&&raw.by==='claude'?{...(await metaClaude(book,raw,own,isbns,look,ctx)),by:'claude'}:{...metaRules(md,title,author,isbns,look),by:'rules'};
   return validateMeta(m,md,title,author);
 }
@@ -1429,7 +1440,7 @@ async function buildEpub(book,plan,m,cover,uuid,ctx){
   const spine=[];
   if(cover){files.push({name:'OEBPS/images/cover.jpg',data:cover.bytes,store:true},{name:'OEBPS/cover.xhtml',data:ENC.encode(coverXhtml(cover.w,cover.h,lang))});
     manifest.push({id:'cover-image',href:'images/cover.jpg',type:'image/jpeg',props:'cover-image'},{id:'cover',href:'cover.xhtml',type:'application/xhtml+xml',props:'svg'});spine.push('cover')}
-  for(const s of kept){const id=s.file.replace('.xhtml','');files.push({name:'OEBPS/text/'+s.file,data:ENC.encode(sectionXhtml(book,s,lang,R))});manifest.push({id,href:'text/'+s.file,type:'application/xhtml+xml'});spine.push(id);if(kept.length>40&&spine.length%20===0)await tick()}
+  let made=0;for(const s of kept){const id=s.file.replace('.xhtml','');files.push({name:'OEBPS/text/'+s.file,data:ENC.encode(sectionXhtml(book,s,lang,R))});manifest.push({id,href:'text/'+s.file,type:'application/xhtml+xml'});spine.push(id);prog(ctx,++made,kept.length,'sections');if(kept.length>40&&spine.length%20===0)await tick()}
   for(const [p,x] of imgs){const bytes=await book.zip.bytes(p);if(!bytes)fail('build',`image ${p} in the source`,'missing');files.push({name:'OEBPS/images/'+x.name,data:bytes,store:x.type!=='image/svg+xml'});manifest.push({id:'img'+x.name.replace(/\.[^.]+$/,'').slice(1),href:'images/'+x.name,type:x.type})}
   const tree=tocTree(kept.map(s=>({label:s.label,href:'text/'+s.file,level:s.level})));
   const body=kept.find(s=>BODY.has(s.kind))||kept.find(s=>!FRONTISH.has(s.kind))||kept[0];
@@ -1545,15 +1556,16 @@ function trimInfo(i){if(!i)return null;const o={};for(const [k,v] of Object.entr
 let UNRAR_WASM=null,UNRAR_LOCK=Promise.resolve();
 function b64bytes(s){const bin=atob(s);const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return u}
 function rarWhy(e){const r=e&&e.reason;if(r==='ERAR_MISSING_PASSWORD'||r==='ERAR_BAD_PASSWORD')return 'a password-locked RAR';if(r==='ERAR_BAD_DATA'||r==='ERAR_BAD_ARCHIVE'||r==='ERAR_UNKNOWN_FORMAT')return 'a damaged or unfinished RAR';if(r==='ERAR_NO_MEMORY')return 'not enough memory to unpack it';return (e&&e.message)||String(e)}
-function unrarAll(buf){
+function unrarAll(buf,onp){
   const run=UNRAR_LOCK.then(async()=>{
     if(!window.UNRAR||typeof UNRAR_WASM_B64!=='string')fail('unpack','the RAR reader built into the app','it’s missing: reload the app');
     if(!UNRAR_WASM)UNRAR_WASM=b64bytes(UNRAR_WASM_B64);
     let ex;try{ex=await window.UNRAR.createExtractorFromData({wasmBinary:UNRAR_WASM,data:buf})}catch(e){fail('unpack','a RAR archive that opens',rarWhy(e))}
-    ex.unrar.extractor=ex;      // point the shared decoder at this archive; nothing awaits from here to the end of the read
-    const out=[];
+    ex.unrar.extractor=ex;      // point the shared decoder at this archive. The lock above keeps every other archive out, so pausing between pages for the bar is safe.
+    const out=[];let packed=0;
     try{const {files}=ex.extract({files:fh=>!fh.flags.directory&&(IMG_EXT_RX.test(fh.name)||/comicinfo\.xml$/i.test(fh.name))});
-      for(const f of files){if(f.fileHeader.flags.encrypted)fail('unpack','pages without a password','a password-locked RAR');if(f.extraction)out.push({name:String(f.fileHeader.name).replace(/\\/g,'/'),bytes:f.extraction})}}
+      for(const f of files){if(f.fileHeader.flags.encrypted)fail('unpack','pages without a password','a password-locked RAR');if(f.extraction)out.push({name:String(f.fileHeader.name).replace(/\\/g,'/'),bytes:f.extraction});
+        packed+=f.fileHeader.packSize||0;if(onp){onp(packed,buf.byteLength,out.length);if(out.length%3===0)await tick()}}}
     catch(e){if(e instanceof StageError)throw e;fail('unpack','the RAR to unpack',rarWhy(e))}
     return out;
   });
@@ -1564,7 +1576,7 @@ async function openComic(src,fmt,ctx){
   const entries=[];let info=null,zip=null;
   const takeInfo=async get=>{try{info=parseComicInfo(await get())}catch(e){ctx.warn.push('the file’s ComicInfo.xml won’t parse: '+e.message)}};
   if(fmt==='cbr'){
-    for(const f of await unrarAll(await src.arrayBuffer())){const n=f.name;if(JUNK_RX.test(n))continue;
+    for(const f of await unrarAll(await src.arrayBuffer(),(d,t,k)=>{prog(ctx,d,t,'bytes');progNote(ctx,`${k} pages out`)})){const n=f.name;if(JUNK_RX.test(n))continue;
       if(/(?:^|\/)comicinfo\.xml$/i.test(n)){if(!info)await takeInfo(async()=>decodeText(f.bytes));continue}
       if(IMG_EXT_RX.test(n))entries.push({name:n,size:f.bytes.length,bytes:f.bytes})}
   }else{
@@ -1602,7 +1614,7 @@ async function scanPages(comic,ctx){
   for(const e of comic.entries){
     let bytes;try{bytes=await comic.read(e)}catch(err){ctx.warn.push(`dropped ${clip(e.name,60)}: ${err.got||err.message}`);continue}
     const type=sniffImg(bytes);if(!type){ctx.warn.push(`dropped ${clip(e.name,60)}: not an image`);continue}
-    const d=imgDims(bytes,type);const p={i:pages.length,name:e.name,type,w:d?d.w:0,h:d?d.h:0,size:bytes.length,entry:e};pages.push(p);
+    const d=imgDims(bytes,type);const p={i:pages.length,name:e.name,type,w:d?d.w:0,h:d?d.h:0,size:bytes.length,entry:e};pages.push(p);prog(ctx,pages.length,comic.entries.length,'');
     if(!cv){cv=document.createElement('canvas');cv.width=C*CW+(C+1)*G;cv.height=R*CH+(R+1)*G;g=cv.getContext('2d');g.fillStyle='#808080';g.fillRect(0,0,cv.width,cv.height);slot=0;from=pages.length}
     const x=G+(slot%C)*(CW+G),y=G+Math.floor(slot/C)*(CH+G);
     let im=null;try{im=await decodeBytes(bytes,type,p.w,p.h,CW,CH)}catch(err){}
@@ -1660,12 +1672,13 @@ const CLASSIFY_SCHEMA={type:'object',additionalProperties:false,required:['runs'
   cover_page:NUM_OR_NULL,barcode_page:NUM_OR_NULL,barcode_corner:{type:'string',enum:['bottom-left','bottom-right','bottom-center','top-left','top-right','none']},
   indicia_pages:{type:'array',items:{type:'integer'}},rtl:{type:'boolean'},format:{type:'string',enum:FORMAT_ENUM},notes:NUL('string')}};
 async function classifyClaude(pages,scan,fileName,ctx){
-  const per=CONF.sheetsPerCall,all=scan.sheets,parts=[];
+  const per=CONF.sheetsPerCall,all=scan.sheets,parts=[];progNote(ctx,`${all.length} contact sheet${all.length>1?'s':''} · ${pages.length} pages`);
   for(let s=0;s<all.length;s+=per){
     const chunk=all.slice(s,s+per),a=chunk[0].from,b=chunk[chunk.length-1].to;
     const list=pages.slice(a-1,b).map(p=>`${p.i+1}. ${clip(p.name.split('/').pop(),70)} · ${p.w&&p.h?`${p.w}×${p.h}`:'size unknown'} · ${Math.round(p.size/1024)} KB${scan.blank[p.i]!=null&&scan.blank[p.i]<CONF.blankStd?' · nearly uniform':''}`).join('\n');
     const content=[{type:'text',text:`File: ${fileName}\n${pages.length} pages in all${all.length>per?`; these sheets hold pages ${a}–${b}`:''}.\nPages in order:\n${list}`}];
     for(const sh of chunk)content.push({type:'text',text:`Contact sheet: pages ${sh.from}–${sh.to}.`},{type:'image',source:{type:'base64',media_type:'image/jpeg',data:sh.b64}});
+    if(all.length>per)prog(ctx,s,all.length,'sheets sent');
     const {out}=await claudeCall(ctx,all.length>per?`classify.${s/per+1}`:'classify',{system:CLASSIFY_SYS,user:content,schema:CLASSIFY_SCHEMA,maxTokens:8000,effort:'medium'});
     parts.push(out);
   }
@@ -1721,8 +1734,8 @@ const IDENT_SCHEMA={type:'object',additionalProperties:false,required:['series',
 async function identifyClaude(pages,cls,comic,fname,fileName,ctx){
   const n=pages.length,byNo=k=>pages[Math.max(0,Math.min(n-1,(k|0)-1))];
   const coverP=cls.cover_page?byNo(cls.cover_page):pages[0];
-  const content=[],shots=[];
-  const add=async(label,p,opt)=>{try{const x=await pageJpegB64(comic,p,opt);content.push({type:'text',text:label},{type:'image',source:{type:'base64',media_type:'image/jpeg',data:x.b64}});shots.push({page:p.i+1,label,w:x.w,h:x.h,kb:Math.round(x.bytes/1024)})}catch(e){ctx.warn.push(`page ${p.i+1} wouldn’t decode for Claude: ${e.message}`)}};
+  const content=[],shots=[];const nInd=Math.min(2,new Set((cls.indicia_pages||[]).filter(k=>k>=1&&k<=n&&k!==coverP.i+1)).size);const planned=1+(cls.barcode_corner&&CORNER[cls.barcode_corner]?1:0)+(nInd?nInd*2:n>1?1:0);let tried=0;
+  const add=async(label,p,opt)=>{try{const x=await pageJpegB64(comic,p,opt);content.push({type:'text',text:label},{type:'image',source:{type:'base64',media_type:'image/jpeg',data:x.b64}});shots.push({page:p.i+1,label,w:x.w,h:x.h,kb:Math.round(x.bytes/1024)})}catch(e){ctx.warn.push(`page ${p.i+1} wouldn’t decode for Claude: ${e.message}`)}prog(ctx,++tried,planned,'close-ups')};
   await add(`Front cover (page ${coverP.i+1}).`,coverP,{});
   if(cls.barcode_corner&&CORNER[cls.barcode_corner]){const bp=cls.barcode_page?byNo(cls.barcode_page):coverP;await add(`The ${cls.barcode_corner} corner of page ${bp.i+1}, enlarged: the barcode.`,bp,{rect:CORNER[cls.barcode_corner],upscale:2})}
   const ind=[...new Set((cls.indicia_pages||[]).filter(k=>k>=1&&k<=n&&k!==coverP.i+1))].slice(0,2).map(byNo);
@@ -1730,7 +1743,7 @@ async function identifyClaude(pages,cls,comic,fname,fileName,ctx){
   else if(n>1)await add(`Page ${Math.min(n,coverP.i+2)}, the first page after the cover.`,pages[Math.min(n-1,coverP.i+1)],{});
   if(!shots.length)fail('identify','pages that decode','none');
   content.push({type:'text',text:'About the file: '+JSON.stringify({file_name:fileName,metadata_in_the_file:trimInfo(comic.info),from_the_file_name:fname})});
-  ctx.raw['identify.shots']={shots};
+  ctx.raw['identify.shots']={shots};progNote(ctx,`${shots.length} close-up${shots.length>1?'s':''} sent`);
   const {out}=await claudeCall(ctx,'identify',{system:IDENT_SYS,user:content,schema:IDENT_SCHEMA,maxTokens:3000,effort:'medium'});
   return normIdent(out,ctx);
 }
@@ -1882,7 +1895,7 @@ async function buildCbz(comic,plan,m,cover,ctx){
   const total=order.length+(yours?1:0),pad=Math.max(3,String(total).length),files=[],info=[];let k=0;
   const push=(bytes,type,w,h,kind)=>{files.push({name:String(k+1).padStart(pad,'0')+'.'+(EXT_OF[type]||'jpg'),data:bytes,store:true});info.push({image:k,type:k===0?'FrontCover':(CI_PAGE[kind]||'Story'),w,h,size:bytes.length,dbl:!!(w&&h&&w>h*1.15)});k++};
   if(yours)push(cover.bytes,'jpeg',cover.w,cover.h,'cover');
-  for(const p of order){push(await comic.read(p),p.type,p.w,p.h,p.kind);if(k%8===0)await tick()}
+  for(const p of order){push(await comic.read(p),p.type,p.w,p.h,p.kind);prog(ctx,k,total,'pages');if(k%8===0)await tick()}
   if(!k)fail('build','pages to write','none');
   files.push({name:'ComicInfo.xml',data:ENC.encode(comicInfoXml(m,info))});
   return{files,pages:k};
@@ -1909,7 +1922,77 @@ let FLAGS=[];
 const RUN={on:false,active:new Set(),lock:null};
 const SHEET={book:null,file:null,dump:null,over:{}};
 const SAVE={groups:{},zips:{},urls:[]};
-function setStage(ctx,name){const r=BOOKS.get(ctx.id);if(r&&r.status==='working'){r.stage=name;paintLater()}}
+
+/* =====================================================================
+   PROGRESS — in memory only. Every file being worked on has a bar that
+   fills by stage, weighted by how long each stage usually takes, with the
+   page or byte count inside long stages and the seconds spent waiting on
+   Claude. The run, adding files and packing ZIPs get bars of their own.
+   ===================================================================== */
+const PW={book:{read:2,parse:10,scrub:6,candidates:4,plan:24,sections:2,meta:18,cover:6,build:12,zip:8,verify:6,store:2},
+  comic:{unpack:6,pages:22,classify:14,identify:12,match:20,cuts:1,meta:1,cover:2,build:10,zip:6,verify:4,store:2}};
+const WAIT_TAU={plan:20,meta:12,classify:18,identify:10,match:25};      // seconds a Claude wait usually takes, per stage
+const PROG=new Map();          // id → {kind,stage,t0,i,n,unit,lo,hi,wait,note,shown}
+const IMPORT={on:false,kind:'files',i:0,n:0,name:'',done:0,total:0,cur:0,phase:''};
+function progStart(ctx,kind){PROG.set(ctx.id,{kind,stage:'',t0:performance.now(),i:0,n:0,unit:'',lo:0,hi:1,wait:0,note:null,shown:0});progLater()}
+function progStage(ctx,name){const p=PROG.get(ctx.id);if(!p)return;Object.assign(p,{stage:name,t0:performance.now(),i:0,n:0,unit:'',lo:0,hi:1,wait:0,note:null});progLater()}
+function prog(ctx,i,n,unit,lo=0,hi=1){const p=PROG.get(ctx.id);if(!p)return;p.i=i;p.n=n;if(unit!=null)p.unit=unit;p.lo=lo;p.hi=hi;progLater()}
+function progWait(ctx,on,note){const p=PROG.get(ctx.id);if(!p)return;p.wait=on?performance.now():0;if(on&&note!==undefined)p.note=note;progLater()}
+function progNote(ctx,note){const p=PROG.get(ctx.id);if(!p)return;p.note=note;progLater()}
+async function waitNote(ctx,ms,label){const p=PROG.get(ctx.id),end=performance.now()+ms;
+  for(let left=ms;left>0;left=end-performance.now()){if(p){p.note=`${label} in ${Math.ceil(left/1000)}s`;progLater()}await sleep(Math.min(1000,left))}
+  if(p){p.note=null;progLater()}}
+function fileFrac(p){
+  const W=PW[p.kind]||PW.book,order=Object.keys(W),total=order.reduce((s,k)=>s+W[k],0),at=order.indexOf(p.stage);if(at<0)return 0;
+  let done=0;for(let k=0;k<at;k++)done+=W[order[k]];
+  let sub=0;
+  if(p.wait)sub=Math.min(.92,1-Math.exp(-(performance.now()-p.wait)/1000/(WAIT_TAU[p.stage]||15)));   // a curve, not a promise: the text says it's waiting
+  else if(p.n>0)sub=p.lo+(p.hi-p.lo)*Math.min(1,p.i/p.n);
+  return Math.min(1,(done+W[p.stage]*sub)/total);
+}
+function progShown(id){const p=PROG.get(id);if(!p)return 0;const f=fileFrac(p);if(f>p.shown)p.shown=f;return p.shown}     // never runs backwards
+function progText(id){
+  const p=PROG.get(id),r=BOOKS.get(id);if(!p||!r)return STAGE_WORDS[r&&r.stage]||'working';
+  const parts=[STAGE_WORDS[p.stage]||p.stage||'starting'];
+  if(p.n>0&&!p.wait)parts.push(p.unit==='bytes'?`${mb(Math.min(p.i,p.n))} of ${mb(p.n)}`:`${Math.min(p.i,p.n)} of ${p.n}${p.unit?' '+p.unit:''}`);
+  if(p.wait)parts.push(`Claude · ${Math.round((performance.now()-p.wait)/1000)}s`);
+  if(p.note)parts.push(p.note);
+  else if(!p.wait){const sec=Math.round((performance.now()-p.t0)/1000);if(sec>=3)parts.push(sec+'s')}
+  return parts.join(' · ');
+}
+function pctOf(f){return Math.round(f*1000)/10}
+function progBlockHTML(id){const f=progShown(id);return `<div class="small mono" style="margin-top:6px" data-pt="${id}">${esc(progText(id))} · ${Math.round(f*100)}%</div><div class="pbar"><i data-pb="${id}" style="width:${pctOf(f)}%"></i></div>`}
+function fmtLeft(sec){if(sec==null||!isFinite(sec))return '';if(sec<60)return 'under a minute left';const m=Math.round(sec/60);if(m<60)return `about ${m} min left`;return `about ${Math.floor(m/60)} h ${m%60} min left`}
+function runProg(){
+  const active=[...RUN.active],queued=[...BOOKS.values()].filter(r=>r.status==='queued'&&!RUN.active.has(r.k)).length,doneN=RUN.n||0;
+  const total=doneN+active.length+queued,frac=total?(doneN+active.reduce((s,id)=>s+progShown(id),0))/total:0;
+  const el=(Date.now()-(RUN.t0||Date.now()))/1000;
+  return{frac,doneN,bad:RUN.bad||0,active:active.length,queued,total,eta:frac>.05&&el>15?el*(1-frac)/frac:null};
+}
+function runText(o){if(!RUN.on&&RUN.active.size)return `pausing · ${RUN.active.size} still working · ${Math.round(o.frac*100)}%`;
+  return [`${o.doneN} of ${o.total}`,o.bad?`${o.bad} failed`:'',o.active?`${o.active} working`:'',fmtLeft(o.eta),`${Math.round(o.frac*100)}%`].filter(Boolean).join(' · ')}
+function importFrac(){return IMPORT.total?Math.min(1,(IMPORT.done+IMPORT.cur)/IMPORT.total):0}
+function importText(){const I=IMPORT;return `${I.kind==='covers'?'covers':'adding'} ${Math.min(I.i,I.n)} of ${I.n} · ${clip(I.name,36)}${I.phase?' · '+I.phase:''} · ${Math.round(importFrac()*100)}%`}
+function progRowHTML(id,text,frac,big){return `<div class="prow"><div class="pdet" id="${id}Text">${esc(text)}</div><div class="pbar${big?' big':''}"><i id="${id}Fill" style="width:${pctOf(frac)}%"></i></div></div>`}
+/* live=false gives the same markup with no moving numbers: the repaint cache keys on it, so a ticking bar never rebuilds a row */
+function progCardHTML(live){
+  const rows=[];
+  if(IMPORT.on)rows.push(progRowHTML('imp',live?importText():'',live?importFrac():0,false));
+  if(RUN.on||RUN.active.size){const o=live?runProg():null;rows.push(progRowHTML('run',live?runText(o):'',live?o.frac:0,true))}
+  return rows.length?`<div class="card pcard">${rows.join('')}</div>`:'';
+}
+let progT=0;
+function progLater(){if(progT)return;progT=setTimeout(()=>{progT=0;paintProg()},200)}
+function paintProg(){
+  for(const id of PROG.keys()){const f=progShown(id),w=pctOf(f)+'%',t=`${progText(id)} · ${Math.round(f*100)}%`;
+    document.querySelectorAll(`[data-pb="${id}"]`).forEach(el=>{if(el.style.width!==w)el.style.width=w});
+    document.querySelectorAll(`[data-pt="${id}"]`).forEach(el=>{if(el.textContent!==t)el.textContent=t})}
+  const set=(id,text,frac)=>{const a=$(id+'Text'),b=$(id+'Fill');if(a&&a.textContent!==text)a.textContent=text;if(b)b.style.width=pctOf(frac)+'%'};
+  if(IMPORT.on)set('imp',importText(),importFrac());
+  if(RUN.on||RUN.active.size){const o=runProg();set('run',runText(o),o.frac)}
+}
+setInterval(()=>{if(PROG.size||IMPORT.on)progLater()},1000);      // seconds keep counting while nothing else moves
+function setStage(ctx,name){const r=BOOKS.get(ctx.id);if(r&&r.status==='working'){r.stage=name;progStage(ctx,name);paintLater()}}
 async function saveBaselines(ctx){for(const [stage,raw] of Object.entries(ctx.raw)){const k=`base:${ctx.id}:${stage}`;try{const prev=((await DB.get('diag',k))||{}).items||[];prev.push({at:new Date().toISOString(),build:BUILD,...raw});await DB.put('diag',{k,items:prev.slice(-3)})}catch(e){log('diag','FAIL baseline '+k+': '+e.message)}}}
 async function saveDump(ctx,r,err){
   const at=new Date().toISOString();const k=`dump:${ctx.id}:${at}`;let base=null;
@@ -1922,7 +2005,7 @@ async function latestDump(id){const ks=(await DB.keys('diag')).map(String).filte
 async function processBook(id){
   const r=BOOKS.get(id);if(!r)return;
   const mode=r.mode||'full';r.mode=null;r.coverDirty=false;
-  const ctx={id,name:r.name,log:[],stages:{},raw:{},warn:[]};
+  const ctx={id,name:r.name,log:[],stages:{},raw:{},warn:[]};progStart(ctx,'book');
   r.status='working';r.stage='read';r.err=null;paintLater();
   blog(ctx,'start',`${r.name} · ${mode}`);
   try{
@@ -1944,7 +2027,7 @@ async function processBook(id){
     const fin=validateMeta({...meta,...(r.edits||{})},book.meta,meta.title,(meta.authors[0]||{}).name||'');fin.by=meta.by;
     const cover=await stg(ctx,'cover',()=>coverFor(book,id,ctx),c=>c?{src:c.src,w:c.w,h:c.h,bytes:c.bytes.length}:null);
     const files=await stg(ctx,'build',()=>buildEpub(book,plan,fin,cover,r.uuid,ctx),f=>({files:f.length,bytes:f.reduce((s,x)=>s+x.data.length,0)}));
-    const out=await stg(ctx,'zip',()=>zipWrite(files),b=>({bytes:b.size}));
+    const out=await stg(ctx,'zip',()=>zipWrite(files,undefined,(d,t)=>prog(ctx,d,t,'bytes')),b=>({bytes:b.size}));
     const v=await stg(ctx,'verify',()=>verifyEpub(out),x=>x);
     await stg(ctx,'store',async()=>{await blobPut('out:'+id,out);return out.size},n=>({bytes:n}));
     const kept=plan.secs.filter(s=>s.keep);
@@ -1963,14 +2046,14 @@ async function processBook(id){
     redEdge();
   }finally{
     if(r.coverDirty&&r.status==='done'){r.mode='rebuild';r.status='queued'}
-    r.log=ctx.log.slice(-200);await saveRec(r);paintLater();refreshSheet(id);
+    PROG.delete(id);r.log=ctx.log.slice(-200);await saveRec(r);paintLater();refreshSheet(id);
   }
 }
 /* per comic: unpack → pages → classify → identify → match → cuts → meta → cover → build → zip → verify → store */
 async function processComic(id){
   const r=BOOKS.get(id);if(!r)return;
   const mode=r.mode||'full';r.mode=null;r.coverDirty=false;
-  const ctx={id,name:r.name,log:[],stages:{},raw:{},warn:[]};
+  const ctx={id,name:r.name,log:[],stages:{},raw:{},warn:[]};progStart(ctx,'comic');
   r.status='working';r.stage='unpack';r.err=null;paintLater();
   blog(ctx,'start',`${r.name} · ${(r.fmt||'cbz').toUpperCase()} · ${mode}`);
   let comic=null,built=null;
@@ -2010,7 +2093,7 @@ async function processComic(id){
     const fin=validateComic({...meta0,...(r.edits||{})});
     const cover=await stg(ctx,'cover',()=>comicCover(id,comic,plan.order[0],ctx),c=>({src:c.src,w:c.w||null,h:c.h||null}));
     built=await stg(ctx,'build',()=>buildCbz(comic,plan,fin,cover,ctx),b=>({pages:b.pages,files:b.files.length,bytes:b.files.reduce((s,x)=>s+x.data.length,0)}));
-    const out=await stg(ctx,'zip',()=>zipWrite(built.files,CBZ_TYPE),b=>({bytes:b.size}));
+    const out=await stg(ctx,'zip',()=>zipWrite(built.files,CBZ_TYPE,(d,t)=>prog(ctx,d,t,'bytes')),b=>({bytes:b.size}));
     const nPages=built.pages;built=null;comic=null;          // let the page bytes go before verify reads the result
     const v=await stg(ctx,'verify',()=>verifyCbz(out,nPages),x=>x);
     await stg(ctx,'store',async()=>{await blobPut('out:'+id,out);return out.size},n=>({bytes:n}));
@@ -2030,7 +2113,7 @@ async function processComic(id){
   }finally{
     comic=null;built=null;
     if(r.coverDirty&&r.status==='done'){r.mode='rebuild';r.status='queued'}
-    r.log=ctx.log.slice(-200);await saveRec(r);paintLater();refreshSheet(id);
+    PROG.delete(id);r.log=ctx.log.slice(-200);await saveRec(r);paintLater();refreshSheet(id);
   }
 }
 
@@ -2038,7 +2121,7 @@ async function processComic(id){
 async function wakeOn(){try{if(navigator.wakeLock&&!RUN.lock){RUN.lock=await navigator.wakeLock.request('screen');RUN.lock.addEventListener('release',()=>{RUN.lock=null})}}catch(e){log('wake','unavailable: '+e.message)}}
 function wakeOff(){try{if(RUN.lock)RUN.lock.release()}catch(e){}RUN.lock=null}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&RUN.active.size)wakeOn()});
-function startRun(){if(!RUN.on){RUN.on=true;RUN.n=0;wakeOn();log('run','start')}pump();render()}
+function startRun(){if(!RUN.on){RUN.on=true;RUN.n=0;RUN.bad=0;RUN.t0=Date.now();wakeOn();log('run','start')}pump();render()}
 function pauseRun(){RUN.on=false;log('run','pause');if(RUN.active.size)toast('Pausing after the books in flight');render()}
 function pump(){
   while(RUN.on&&RUN.active.size<CONF.workers){
@@ -2046,7 +2129,7 @@ function pump(){
     const fits=r=>!isComic(r)||(!bigIn&&inComics.length<CONF.comicWorkers&&((r.size||0)<=CONF.bigComic||!inComics.length));   // comics are big: two at most, a huge one alone
     const next=[...BOOKS.values()].filter(r=>r.status==='queued'&&!RUN.active.has(r.k)&&fits(r)).sort((a,b)=>a.added-b.added)[0];if(!next)break;
     RUN.active.add(next.k);
-    (isComic(next)?processComic:processBook)(next.k).catch(e=>log('run','FAIL '+e.message)).finally(()=>{RUN.active.delete(next.k);RUN.n=(RUN.n||0)+1;pump()});
+    (isComic(next)?processComic:processBook)(next.k).catch(e=>log('run','FAIL '+e.message)).finally(()=>{RUN.active.delete(next.k);RUN.n=(RUN.n||0)+1;const fr=BOOKS.get(next.k);if(fr&&fr.status==='failed')RUN.bad=(RUN.bad||0)+1;pump()});
   }
   if(!RUN.active.size){if(RUN.on){RUN.on=false;const c=counts();log('run',`finished · ${RUN.n||0} processed · ${c.done} clean · ${c.failed} failed`);if(RUN.n)toast(c.failed?`Finished · ${c.failed} failed`:'Finished · all clean')}wakeOff()}
   paintLater();
@@ -2067,20 +2150,27 @@ async function sniffFile(f,buf){
   if(at([0x25,0x50,0x44,0x46]))return{bad:'a PDF: Panels reads those as they are'};
   return{bad:'not an EPUB, CBZ or CBR'};
 }
+function readBuf(f,onp){return new Promise((res,rej)=>{const fr=new FileReader();fr.onprogress=e=>{if(e.lengthComputable&&onp)onp(e.loaded,e.total)};fr.onload=()=>res(fr.result);fr.onerror=()=>rej(fr.error||new Error('the file wouldn’t read'));fr.readAsArrayBuffer(f)})}
 async function addFiles(files){
-  let add=0,dup=0;const bad=[];toast(`Adding ${files.length}…`);
+  let add=0,dup=0;const bad=[];
+  Object.assign(IMPORT,{on:true,kind:'files',i:0,n:files.length,name:'',done:0,total:files.reduce((s,f)=>s+(f.size||0),0)||1,cur:0,phase:''});render();
   try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().then(p=>log('storage','persist '+p)).catch(()=>{})}catch(e){}
   for(const f of files){
+    const sz=f.size||0;IMPORT.i++;IMPORT.name=f.name;
+    const step=(phase,frac)=>{IMPORT.phase=phase;IMPORT.cur=sz*frac;progLater()};   // reading is most of it; the rest is checking, fingerprinting, storing
     try{
-      const buf=await f.arrayBuffer();if(buf.byteLength<100){bad.push(`${f.name} (empty)`);continue}
-      const s=await sniffFile(f,buf);if(s.bad){bad.push(`${f.name} (${s.bad})`);continue}
-      const hex=await shaHex(buf);const id=hex.slice(0,16);
+      step('reading',0);
+      const buf=await readBuf(f,(l,t)=>step(`reading ${mb(l)} of ${mb(t)}`,.6*l/(t||1)));if(buf.byteLength<100){bad.push(`${f.name} (empty)`);continue}
+      step('checking what it is',.62);const s=await sniffFile(f,buf);if(s.bad){bad.push(`${f.name} (${s.bad})`);continue}
+      step('fingerprinting',.66);const hex=await shaHex(buf);const id=hex.slice(0,16);
       if(BOOKS.has(id)){dup++;continue}
-      await blobPut('src:'+id,new Blob([buf],{type:s.fmt==='epub'?'application/epub+zip':s.fmt==='cbr'?'application/vnd.comicbook-rar':CBZ_TYPE}));
+      step(`storing ${mb(sz)}`,.8);await blobPut('src:'+id,new Blob([buf],{type:s.fmt==='epub'?'application/epub+zip':s.fmt==='cbr'?'application/vnd.comicbook-rar':CBZ_TYPE}));
       const r={k:id,kind:s.kind,fmt:s.fmt,uuid:uuidOf(hex),name:f.name,size:f.size,added:Date.now(),status:'queued',stage:'',warn:[],log:[]};
       BOOKS.set(id,r);await saveRec(r);add++;paintLater();
     }catch(e){bad.push(`${f.name} (${(e&&(e.got||e.message))||e})`);log('add','FAIL '+f.name+': '+((e&&e.message)||e))}
+    finally{IMPORT.done+=sz;IMPORT.cur=0;progLater()}
   }
+  IMPORT.on=false;
   log('add',`${add} added · ${dup} already here · ${bad.length} skipped`);
   if(bad.length)FLAGS.push({level:'warn',text:`${bad.length} file${bad.length>1?'s':''} skipped: ${clip(bad.join(', '),160)}`});
   toast([`${add} added`,dup?`${dup} already here`:'',bad.length?`${bad.length} skipped`:''].filter(Boolean).join(' · '));
@@ -2102,14 +2192,17 @@ function matchCover(name,recs){
 }
 async function addCovers(files,targetId){
   const recs=[...BOOKS.values()];const miss=[];let n=0;
+  Object.assign(IMPORT,{on:true,kind:'covers',i:0,n:files.length,name:'',done:0,total:files.length||1,cur:0,phase:''});render();
   for(const f of files){
-    const id=targetId||matchCover(f.name,recs);if(!id){miss.push(f.name);continue}
+    IMPORT.i++;IMPORT.name=f.name;IMPORT.phase='matching';IMPORT.done=IMPORT.i-1;progLater();
+    const id=targetId||matchCover(f.name,recs);if(!id){miss.push(f.name);continue}IMPORT.phase='resizing';progLater();
     const r=BOOKS.get(id);if(!r)continue;
     try{const c=await normCover(f);await blobPut('cov:'+id,c.blob);r.thumb=c.thumb;r.coverName=f.name;
       if(r.status==='working')r.coverDirty=true;else if(r.status==='done'||(r.status==='failed'&&(r.plan||r.cls))){r.mode='rebuild';r.status='queued'}
       await saveRec(r);n++;log('cover',`${f.name} → ${r.meta?r.meta.title:r.name}`)}
     catch(e){miss.push(`${f.name} (${e.message})`);log('cover','FAIL '+f.name+': '+e.message)}
   }
+  IMPORT.on=false;
   if(miss.length)FLAGS.push({level:'warn',text:`${miss.length} cover${miss.length>1?'s':''} matched no book: ${clip(miss.join(', '),160)}`});
   toast(n?`${n} cover${n>1?'s':''} set`:'No covers matched');
   render();if(targetId)refreshSheet(targetId);
@@ -2170,34 +2263,34 @@ function counts(){const c={total:0,done:0,queued:0,working:0,failed:0,nocover:0,
 function flagsNow(){const f=[...FLAGS];const c=counts();if(!cfg.key&&c.total)f.push({level:'warn',text:'No Claude key: chapters, cuts and comic pages run on rules, and metadata comes from the files and the book catalogs.'});if(c.cutWarn)f.push({level:'warn',text:`${c.cutWarn} book${c.cutWarn>1?'s':''} lost over ${Math.round(CONF.cutWarn*100)}% of the words to cuts.`});
   if(c.unmatched&&cfg.key)f.push({level:'warn',text:`${c.unmatched} comic${c.unmatched>1?'s':''} without a database match: check the details.`});return f}
 function inboxHTML(){const d=cfg.dismissed||{};const rows=flagsNow().filter(f=>!d[f.text]);if(!rows.length)return '';return `<div class="card inbox">${rows.map(f=>`<div class="row ${f.level}"><span class="small">${esc(f.text)}</span><button class="pill" data-act="dismiss" data-t="${esc(encodeURIComponent(f.text))}" aria-label="Dismiss">×</button></div>`).join('')}</div>`}
-function comicRowHTML(r){
+function comicRowHTML(r,live=true){
   const m=r.meta;const t=m?comicTitle(m):r.name.replace(/\.(?:cbz|cbr|zip|rar)$/i,'');
   const a=m?([m.publisher,yearOf(m.coverDate),m.volume&&/^\d{4}$/.test(m.volume)?'vol '+m.volume:''].filter(Boolean).join(' · ')||m.title||''):`${(r.fmt||'cbz').toUpperCase()} · ${mb(r.size||0)}`;
   const th=r.thumb?`<img src="${r.thumb}" alt="">`:esc((t||'?').trim().charAt(0).toUpperCase());
-  let line,cls='';
+  let line,cls='',bar='';
   if(r.status==='done'){const s=r.stats||{},matched=m&&m.by==='database';line=[`${s.pages||0} pages`,s.cut?`cut ${s.cut}`:'',mb(s.bytes||0),matched?'matched':cfg.key?'no match':`from the ${(m&&m.by)||'file'}`].filter(Boolean).join(' · ');if((cfg.key&&!matched)||(r.warn&&r.warn.length))cls='warn'}
   else if(r.status==='failed'){line=r.err||'failed';cls='bad'}
-  else if(r.status==='working')line=STAGE_WORDS[r.stage]||r.stage||'working';
+  else if(r.status==='working'){const f=live?progShown(r.k):0;line=live?`${progText(r.k)} · ${Math.round(f*100)}%`:'';bar=`<div class="pbar"><i data-pb="${r.k}" style="width:${pctOf(f)}%"></i></div>`}
   else line='queued';
   const dot=r.status==='done'?'':r.status==='failed'?'c-red':r.status==='working'?'c-amber':'muted';
-  return `<div class="brow" data-book="${r.k}"><div class="thumb">${th}</div><div class="bmid"><div class="bt">${esc(t)}</div><div class="ba">${esc(a)}</div><div class="bs ${cls}">${esc(line)}</div></div><i class="rdot ${dot}"></i></div>`;
+  return `<div class="brow" data-book="${r.k}"><div class="thumb">${th}</div><div class="bmid"><div class="bt">${esc(t)}</div><div class="ba">${esc(a)}</div><div class="bs ${cls}"${r.status==='working'?` data-pt="${r.k}"`:''}>${esc(line)}</div>${bar}</div><i class="rdot ${dot}"></i></div>`;
 }
-function rowHTML(r){
-  if(isComic(r))return comicRowHTML(r);
+function rowHTML(r,live=true){
+  if(isComic(r))return comicRowHTML(r,live);
   const t=(r.meta&&r.meta.title)||r.name.replace(/\.epub$/i,'');const a=r.meta&&r.meta.authors?r.meta.authors.map(x=>x.name).join(', '):'';
   const th=r.thumb?`<img src="${r.thumb}" alt="">`:esc((t||'?').trim().charAt(0).toUpperCase());
-  let line,cls='';
+  let line,cls='',bar='';
   if(r.status==='done'){const s=r.stats||{};line=[`${s.chapters||0} ch`,s.cut?`cut ${s.cut}`:'',mb(s.bytes||0),r.coverSrc?'':'no cover'].filter(Boolean).join(' · ');if(r.warn&&r.warn.length)cls='warn'}
   else if(r.status==='failed'){line=r.err||'failed';cls='bad'}
-  else if(r.status==='working')line=STAGE_WORDS[r.stage]||r.stage||'working';
+  else if(r.status==='working'){const f=live?progShown(r.k):0;line=live?`${progText(r.k)} · ${Math.round(f*100)}%`:'';bar=`<div class="pbar"><i data-pb="${r.k}" style="width:${pctOf(f)}%"></i></div>`}
   else line='queued';
   const dot=r.status==='done'?'':r.status==='failed'?'c-red':r.status==='working'?'c-amber':'muted';
-  return `<div class="brow" data-book="${r.k}"><div class="thumb">${th}</div><div class="bmid"><div class="bt">${esc(t)}</div><div class="ba">${esc(a||r.name)}</div><div class="bs ${cls}">${esc(line)}</div></div><i class="rdot ${dot}"></i></div>`;
+  return `<div class="brow" data-book="${r.k}"><div class="thumb">${th}</div><div class="bmid"><div class="bt">${esc(t)}</div><div class="ba">${esc(a||r.name)}</div><div class="bs ${cls}"${r.status==='working'?` data-pt="${r.k}"`:''}>${esc(line)}</div>${bar}</div><i class="rdot ${dot}"></i></div>`;
 }
 const sortedBooks=()=>[...BOOKS.values()].sort((a,b)=>a.added-b.added);
 function booksHTML(){const recs=sortedBooks();
-  return `<div id="booksTop">${topHTML()}</div>${recs.length?`<div class="ey" style="margin:6px 2px 8px">on the shelf · ${recs.length}</div><div class="list">${recs.map(rowHTML).join('')}</div>`:'<div class="card empty dim">Nothing here yet.</div>'}`}
-function topHTML(){
+  return `<div id="booksTop">${topHTML(true)}</div>${recs.length?`<div class="ey" style="margin:6px 2px 8px">on the shelf · ${recs.length}</div><div class="list">${recs.map(r=>rowHTML(r,true)).join('')}</div>`:'<div class="card empty dim">Nothing here yet.</div>'}`}
+function topHTML(live=true){
   const c=counts();
   const verdict=RUN.on?'running':c.failed?'attention':c.queued?'waiting':c.total?'clean':'empty';
   const dot=RUN.on?'c-amber':c.failed?'c-red':c.queued||!c.total?'muted':'';
@@ -2209,6 +2302,7 @@ function topHTML(){
     <div><div class="ey">clean</div><div class="big">${c.done}<small>/${c.total}</small></div>${capt(esc(sentence),esc(cmp))}</div>
     <div class="pills"><button class="pill" data-act="${RUN.on?'run':c.queued?'run':'noop'}"><i class="tcdot ${dot}"></i>${verdict}</button>${cfg.key?`<span class="pill">${esc(CONF.models[cfg.model])}</span>`:'<span class="pill warn">rules only</span>'}<span class="pill">v${esc(BUILD.replace(/\D+/g,''))}</span><button class="pill" data-go="settings" aria-label="Settings">${ic('gear')}</button></div>
   </div>
+  ${progCardHTML(live)}
   ${inboxHTML()}
   <div class="acts">
     <button class="btn" data-act="add">${ic('plus')}Add</button>
@@ -2226,7 +2320,7 @@ function bookSheetHTML(r){
   const over=SHEET.over;const keepOf=s=>Object.prototype.hasOwnProperty.call(over,s.b)?!!over[s.b]:s.auto;
   const secs=(r.secs||[]).map(s=>{const k=keepOf(s);return `<div class="srow${k?'':' cut'}${s.level===2?' l2':''}" data-act="toggle-sec" data-b="${s.b}"><span class="sl">${esc(s.label)}</span><span class="chip">${k?'':'cut · '}${esc(s.kind.replace(/_/g,' '))}</span><span class="mono small dim">${s.words}</span></div>`}).join('');
   return `<div class="bhead"><button class="cvr" data-act="set-cover" data-id="${r.k}" aria-label="Set cover">${r.thumb?`<img src="${r.thumb}" alt="">`:'cover'}</button>
-    <div style="min-width:0"><div class="bt2">${esc(title)}</div><div class="dim">${esc(authors)}</div><div class="small dim mono" style="margin-top:4px">${esc(sub)}</div><div class="small" style="margin-top:6px">${esc(st)}</div></div></div>
+    <div style="min-width:0"><div class="bt2">${esc(title)}</div><div class="dim">${esc(authors)}</div><div class="small dim mono" style="margin-top:4px">${esc(sub)}</div>${r.status==='working'?progBlockHTML(r.k):`<div class="small" style="margin-top:6px">${esc(st)}</div>`}</div></div>
   ${r.status==='failed'?`<div class="card"><div class="err">${esc(r.err||'')}</div><div class="btnrow"><button class="btn" data-act="copy-dump">Copy dump</button></div></div>`:''}
   ${r.warn&&r.warn.length?`<div class="warns">${r.warn.map(esc).join('<br>')}</div>`:''}
   <div class="btnrow"><button class="btn acc" data-act="share-one"${r.status==='done'?'':' disabled'}>${ic('share')}Share</button><button class="btn" data-act="set-cover" data-id="${r.k}">${ic('image')}Cover</button></div>
@@ -2246,7 +2340,7 @@ function comicSheetHTML(r){
   const over=SHEET.over,ps=r.pages||[];const keepOf=(p,i)=>Object.prototype.hasOwnProperty.call(over,i)?!!over[i]:p.auto;
   const grid=ps.map((p,i)=>`<button class="pg${keepOf(p,i)?'':' cut'}" data-act="toggle-page" data-p="${i}" aria-label="Page ${i+1}: ${esc(p.kind)}"><img data-pth="${i}" alt=""><span class="pn">${i+1}</span><span class="pk">${esc(p.kind)}</span></button>`).join('');
   return `<div class="bhead"><button class="cvr" data-act="set-cover" data-id="${r.k}" aria-label="Set cover">${r.thumb?`<img src="${r.thumb}" alt="">`:'cover'}</button>
-    <div style="min-width:0"><div class="bt2">${esc(title)}</div>${m.title?`<div class="dim">${esc(m.title)}</div>`:''}<div class="small dim" style="margin-top:2px">${esc(who)}</div><div class="small dim mono" style="margin-top:4px">${esc(sub)}</div><div class="small" style="margin-top:6px">${esc(st)}</div>${m.source?`<a class="small mono" href="${esc(m.source)}" target="_blank" rel="noopener">${esc(hostOf(m.source))} ↗</a>`:''}</div></div>
+    <div style="min-width:0"><div class="bt2">${esc(title)}</div>${m.title?`<div class="dim">${esc(m.title)}</div>`:''}<div class="small dim" style="margin-top:2px">${esc(who)}</div><div class="small dim mono" style="margin-top:4px">${esc(sub)}</div>${r.status==='working'?progBlockHTML(r.k):`<div class="small" style="margin-top:6px">${esc(st)}</div>`}${m.source?`<a class="small mono" href="${esc(m.source)}" target="_blank" rel="noopener">${esc(hostOf(m.source))} ↗</a>`:''}</div></div>
   ${r.status==='failed'?`<div class="card"><div class="err">${esc(r.err||'')}</div><div class="btnrow"><button class="btn" data-act="copy-dump">Copy dump</button></div></div>`:''}
   ${r.warn&&r.warn.length?`<div class="warns">${r.warn.map(esc).join('<br>')}</div>`:''}
   ${r.status==='done'&&r.outName?`<div class="small dim mono" style="margin:2px 2px 6px;word-break:break-word">${esc(r.folder||'Comics')} / ${esc(r.outName)}</div>`:''}
@@ -2313,8 +2407,8 @@ function paintLater(){if(paintT)return;paintT=setTimeout(()=>{paintT=0;if(Date.n
 function paintBooks(){
   const top=$('booksTop'),list=document.querySelector('#screen .list');const recs=sortedBooks();
   if(!top||(recs.length&&!list)||(list&&(list.children.length!==recs.length||[...list.children].some((el,i)=>el.dataset.book!==recs[i].k)))){render();return}
-  const th=topHTML();if(top._h!==th){top.innerHTML=th;top._h=th}
-  if(list)recs.forEach((r,i)=>{const h=rowHTML(r);const el=list.children[i];if(el._h!==h){const t=document.createElement('div');t.innerHTML=h;const n=t.firstElementChild;n._h=h;list.replaceChild(n,el)}});
+  const tk=topHTML(false);if(top._h!==tk){top.innerHTML=topHTML(true);top._h=tk}
+  if(list)recs.forEach((r,i)=>{const k=rowHTML(r,false);const el=list.children[i];if(el._h!==k){const t=document.createElement('div');t.innerHTML=rowHTML(r,true);const n=t.firstElementChild;n._h=k;list.replaceChild(n,el)}});
   renderNav();
 }
 function go(t){if(!SCREENS[t])return;TAB=t;render();$('screen').scrollTop=0}
@@ -2333,11 +2427,12 @@ async function openSave(){
   if(!done.length){toast('Nothing clean yet');return}
   for(const u of SAVE.urls)try{URL.revokeObjectURL(u)}catch(e){}
   SHEET.book=null;SAVE.groups={books:[],comics:[]};SAVE.zips={};SAVE.urls=[];SHEET_FROM='stat';
-  sheet(`<div class="ey" style="margin:0 2px 10px">save · ${done.length} clean</div><div id="saveBody"><div class="dim small">Loading ${done.length} file${done.length>1?'s':''}…</div></div>`);
+  sheet(`<div class="ey" style="margin:0 2px 10px">save · ${done.length} clean</div><div id="saveBody">${progRowHTML('save',`loading 0 of ${done.length}`,0,false)}</div>`);
   const used=new Set();
   for(const r of done){try{const b=await blobGet('out:'+r.k);if(!b)continue;const c=isComic(r),ext=c?'.cbz':'.epub',base=r.outName||(c?'Comic.cbz':'Book.epub'),dir=c?(r.folder||'Comics')+'/':'';
     let n=base;for(let i=2;used.has((dir+n).toLowerCase());i++)n=base.replace(/\.(?:epub|cbz)$/i,'')+` (${i})${ext}`;used.add((dir+n).toLowerCase());
-    SAVE.groups[c?'comics':'books'].push({file:new File([b],n,{type:c?CBZ_TYPE:'application/epub+zip'}),path:dir+n})}catch(e){log('save','FAIL load '+r.k+': '+e.message)}}
+    SAVE.groups[c?'comics':'books'].push({file:new File([b],n,{type:c?CBZ_TYPE:'application/epub+zip'}),path:dir+n})}catch(e){log('save','FAIL load '+r.k+': '+e.message)}
+    const k=SAVE.groups.books.length+SAVE.groups.comics.length,a=$('saveText'),f=$('saveFill');if(a)a.textContent=`loading ${k} of ${done.length} · ${clip(r.outName||r.name,36)}`;if(f)f.style.width=pctOf(k/done.length)+'%'}
   SAVE.groups.comics.sort((a,b)=>NAT.compare(a.path,b.path));     // series together, issues in order
   const body=$('saveBody');if(!body)return;
   const sec=(key,unit,zipLabel,cap)=>{const g=SAVE.groups[key];if(!g.length)return '';const bs=batchFiles(g);
@@ -2376,16 +2471,21 @@ const ACT={
   'share-batch':el=>{const fs0=((SAVE.groups||{})[el.dataset.g]||[]).slice(+el.dataset.a,+el.dataset.b).map(x=>x.file);if(!fs0.length)return;const fs=shareable(fs0);
     if(!fs){toast('Sharing these files isn’t available here · use the ZIP');return}
     navigator.share({files:fs}).then(()=>{log('share',`${fs.length} ${el.dataset.g}`);el.classList.remove('acc');el.textContent='Shared'}).catch(e=>{if(e.name!=='AbortError'){log('share','FAIL '+e.message);toast('Share failed: '+e.message)}})},
-  'zip-group':async el=>{const key=el.dataset.g,g=(SAVE.groups||{})[key]||[];if(!g.length)return;const was=el.textContent;el.disabled=true;el.textContent='Packing…';
+  'zip-group':async el=>{const key=el.dataset.g,g=(SAVE.groups||{})[key]||[];if(!g.length)return;
+    const box=document.createElement('div');box.innerHTML=progRowHTML('zip'+key,`packing 0 of ${g.length}`,0,true);el.replaceWith(box);
+    const upd=(t,f)=>{const a=$('zip'+key+'Text'),b=$('zip'+key+'Fill');if(a&&a.textContent!==t)a.textContent=t;if(b)b.style.width=pctOf(f)+'%'};
+    const all=g.reduce((s,x)=>s+x.file.size,0)||1;let before=0,last=0;
     try{const parts=chunkBytes(g,CONF.zipBytes),day=new Date().toISOString().slice(0,10),html=[];SAVE.zips[key]=[];
       for(let i=0;i<parts.length;i++){
-        const blob=await zipBlobs(parts[i].map(x=>({path:x.path,blob:x.file})));
+        const blob=await zipBlobs(parts[i].map(x=>({path:x.path,blob:x.file})),(fi,fn,d,t,path)=>{const now=performance.now();if(now-last<150&&fi<fn)return;last=now;
+          upd(`packing ${parts.length>1?`part ${i+1} of ${parts.length} · `:''}${Math.min(fi+1,fn)} of ${fn} · ${mb(before+d)} of ${mb(all)} · ${Math.round((before+d)/all*100)}%${path?' · '+clip(path.split('/').pop(),28):''}`,(before+d)/all)});
+        before+=parts[i].reduce((s,x)=>s+x.file.size,0);
         const name=`Bookbinder ${key==='comics'?'Comics':'Books'} ${day}${parts.length>1?` part ${i+1}`:''}.zip`;const url=URL.createObjectURL(blob);SAVE.urls.push(url);
         SAVE.zips[key].push(new File([blob],name,{type:'application/zip'}));
         html.push(`<button class="btn wide acc" data-act="share-zip" data-g="${key}" data-i="${i}">${ic('share')}Share ${parts.length>1?`part ${i+1} · `:''}ZIP · ${mb(blob.size)}</button><a class="btn wide" href="${url}" download="${esc(name)}">Download ${parts.length>1?`part ${i+1}`:'ZIP'}</a>`);
         log('zip',`${key} part ${i+1}/${parts.length} · ${parts[i].length} files · ${mb(blob.size)}`)}
-      el.outerHTML=html.join('')}
-    catch(e){log('zip','FAIL '+e.message);toast('ZIP failed: '+e.message);el.disabled=false;el.textContent=was}},
+      box.outerHTML=html.join('')}
+    catch(e){log('zip','FAIL '+e.message);toast('ZIP failed: '+e.message);if(box.isConnected)box.replaceWith(el)}},
   'share-zip':el=>{const f=((SAVE.zips||{})[el.dataset.g]||[])[+el.dataset.i];if(!f)return;if(!(navigator.canShare&&navigator.canShare({files:[f]}))){toast('Sharing isn’t available here · use Download');return}
     navigator.share({files:[f]}).then(()=>log('share',f.name)).catch(e=>{if(e.name!=='AbortError'){log('share','FAIL '+e.message);toast('Share failed: '+e.message)}})},
   'toggle-page':el=>{const r=BOOKS.get(SHEET.book);if(!r||!r.pages)return;const i=+el.dataset.p,p=r.pages[i];if(!p)return;
