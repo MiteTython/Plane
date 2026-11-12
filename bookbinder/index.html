@@ -203,7 +203,7 @@ return ret;
 /* =====================================================================
    SLOT 1 — APP
    ===================================================================== */
-const BUILD='build 2';                       // bump every push; shown in Settings
+const BUILD='build 3';                       // bump every push; shown in Settings
 const APP={key:'bookbinder',name:'Bookbinder',answer:'Old EPUBs and comics in. Clean ones out.'};
 const PARSER='p1';                           // bump when extraction changes: saved chapter maps then re-plan
 const COMIC_PARSER='c1';                     // bump when page reading changes: saved page maps then re-sort
@@ -1778,11 +1778,11 @@ function normMatch(o){
   o=o&&typeof o==='object'?o:{};
   const s=v=>typeof v==='string'&&v.trim()?fixText(v).replace(/\s+/g,' ').trim():(typeof v==='number'&&isFinite(v)?String(v):null);
   const a=v=>[...new Set((Array.isArray(v)?v:typeof v==='string'?splitNames(v):[]).map(s).filter(x=>x&&x.length<=80))].slice(0,10);
-  const url=s(o.source_url),ic=+o.issue_count;
+  const url=s(o.source_url),icount=+o.issue_count;
   const m={matched:o.matched===true,source_url:url&&/^https:\/\/(?:[\w-]+\.)*(?:comics\.org|metron\.cloud|comicvine\.gamespot\.com|leagueofcomicgeeks\.com)\//i.test(url)?url:null,
     series:s(o.series),volume:s(o.volume),issue:normIssue(s(o.issue)),title:s(o.title),cover_date:s(o.cover_date),store_date:s(o.store_date),publisher:s(o.publisher),imprint:s(o.imprint),format:fmtKey(s(o.format)),
     writers:a(o.writers),pencillers:a(o.pencillers),inkers:a(o.inkers),colorists:a(o.colorists),letterers:a(o.letterers),cover_artists:a(o.cover_artists),editors:a(o.editors),
-    story_arc:s(o.story_arc),characters:a(o.characters),summary:s(o.summary),issue_count:Number.isInteger(ic)&&ic>0?ic:null,
+    story_arc:s(o.story_arc),characters:a(o.characters),summary:s(o.summary),issue_count:Number.isInteger(icount)&&icount>0?icount:null,
     confidence:['high','medium','low'].includes(o.confidence)?o.confidence:'low',notes:s(o.notes)};
   if(!m.series)m.matched=false;
   return m;
@@ -1840,11 +1840,11 @@ function validateComic(m){
   let vol=s(m.volume,8);if(vol&&(!/^\d{1,4}$/.test(vol)||(vol.length===4&&(+vol<1890||+vol>now))))vol=null;
   let d=s(m.coverDate,10);if(d){const x=d.match(/^(\d{4})(?:-(\d{1,2})(?:-(\d{1,2}))?)?$/);if(!x||+x[1]<1890||+x[1]>now)d=null;else{const mo=x[2]?+x[2]:0,dy=x[3]?+x[3]:0;d=x[1]+(mo>=1&&mo<=12?'-'+String(mo).padStart(2,'0')+(dy>=1&&dy<=31?'-'+String(dy).padStart(2,'0'):''):'')}}
   let sd=s(m.storeDate,10);if(sd&&!/^\d{4}-\d{2}-\d{2}$/.test(sd))sd=null;
-  const ic=+m.issueCount;
+  const icount=+m.issueCount;
   const lang=[s(m.language,20)].find(x=>x&&/^[a-z]{2,3}(?:-[A-Za-z0-9]{1,8})*$/i.test(x))||'en';
   return{series:s(m.series,120)||'Unknown Series',volume:vol,issue:normIssue(s(m.issue,16)),title:s(m.title,200),coverDate:d,storeDate:sd,publisher:s(m.publisher,80),imprint:s(m.imprint,80),
     format:FORMAT_ENUM.includes(m.format)&&m.format!=='unknown'?m.format:null,writers:names(m.writers),pencillers:names(m.pencillers),inkers:names(m.inkers),colorists:names(m.colorists),letterers:names(m.letterers),coverArtists:names(m.coverArtists),editors:names(m.editors),
-    storyArc:s(m.storyArc,120),characters:names(m.characters,10),summary:s(stripTags(m.summary||''),1500),issueCount:Number.isInteger(ic)&&ic>0&&ic<20000?ic:null,
+    storyArc:s(m.storyArc,120),characters:names(m.characters,10),summary:s(stripTags(m.summary||''),1500),issueCount:Number.isInteger(icount)&&icount>0&&icount<20000?icount:null,
     upc:m.upc?upcOk(m.upc):null,upcAddon:/^\d{2}(?:\d{3})?$/.test(m.upcAddon||'')?m.upcAddon:null,variant:s(m.variant,80),language:lang.toLowerCase(),rtl:!!m.rtl,
     source:typeof m.source==='string'&&/^https?:\/\//i.test(m.source)?m.source:null,confidence:['high','medium','low'].includes(m.confidence)?m.confidence:'medium',by:m.by||''};
 }
@@ -2118,6 +2118,17 @@ async function addCovers(files,targetId){
 async function requeue(id,mode){const r=BOOKS.get(id);if(!r)return;if(RUN.active.has(id)){toast('Still building · try again when it finishes');return}
   if(mode!=='rebuild')r.over={};          // a fresh chapter map starts from fresh cuts
   r.mode=mode;r.status='queued';r.err=null;await saveRec(r);closeSheet();startRun()}
+/* every book and comic, its source, output, cover, thumbnails and diagnostics: gone in one go */
+function shelfBytes(){let b=0;for(const r of BOOKS.values())b+=(r.size||0)+((r.stats&&r.stats.bytes)||0);return b}
+async function clearAll(){
+  const n=BOOKS.size,bytes=shelfBytes();
+  for(const st of ['books','blobs','diag'])try{await DB.clear(st)}catch(e){log('store','FAIL clear '+st+': '+e.message)}
+  BOOKS.clear();PTH.clear();FLAGS=[];
+  for(const u of SAVE.urls)try{URL.revokeObjectURL(u)}catch(e){}
+  SAVE.groups={};SAVE.zips={};SAVE.urls=[];
+  if($('sheets').querySelector('.sheet'))closeSheet();
+  log('store',`cleared ${n} files · ${mb(bytes)}`);render();toast(`Cleared ${n} file${n===1?'':'s'} · ${mb(bytes)} freed`);
+}
 async function removeBook(id){for(const p of ['src:','out:','cov:','pth:'])try{await DB.del('blobs',p+id)}catch(e){}try{await DB.del('books',id)}catch(e){}BOOKS.delete(id);PTH.delete(id)}
 
 /* =====================================================================
@@ -2146,6 +2157,7 @@ const IC={
   pause:'<path d="M8 5v14M16 5v14"/>',
   share:'<path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>',
   retry:'<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>',
+  trash:'<path d="M4 7h16M10 11v6M14 11v6"/><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4h6v3"/>',
 };
 const ic=n=>`<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${IC[n]}</svg>`;
 const STAGE_WORDS={read:'reading',parse:'opening',scrub:'cleaning',candidates:'finding chapters',plan:'mapping chapters',sections:'mapping chapters',meta:'metadata',cover:'cover',build:'building',zip:'packing',verify:'checking',store:'saving',
@@ -2204,7 +2216,8 @@ function topHTML(){
     <button class="btn${RUN.on?'':' acc'}" data-act="run"${!RUN.on&&!c.queued?' disabled':''}>${RUN.on?ic('pause')+'Pause':ic('play')+'Run'}</button>
     <button class="btn" data-act="save"${c.done?'':' disabled'}>${ic('share')}Save all</button>
   </div>
-  ${c.failed?`<button class="btn wide" data-act="retry">${ic('retry')}Retry ${c.failed} failed</button>`:''}`;
+  ${c.failed?`<button class="btn wide" data-act="retry">${ic('retry')}Retry ${c.failed} failed</button>`:''}
+  ${c.total&&!c.queued&&!c.working&&!RUN.active.size?`<button class="btn wide bad" data-act="clear-all">${ic('trash')}Clear all · ${c.total} file${c.total>1?'s':''} · ${mb(shelfBytes())}</button>`:''}`;
 }
 function bookSheetHTML(r){
   const m=r.meta||{};const title=m.title||r.name.replace(/\.epub$/i,'');const authors=(m.authors||[]).map(a=>a.name).join(', ');
@@ -2331,7 +2344,8 @@ async function openSave(){
     return `<div class="ey" style="margin:6px 2px 8px">${key} · ${g.length}</div>`+bs.map(([a,b])=>`<button class="btn wide acc" data-act="share-batch" data-g="${key}" data-a="${a}" data-b="${b}">${ic('share')}Share ${g.length===1?'1 '+unit:bs.length>1?`${a+1}–${b}`:`all ${g.length}`}</button>`).join('')+
       `<button class="btn wide" data-act="zip-group" data-g="${key}">${zipLabel} · ${mb(g.reduce((s,x)=>s+x.file.size,0))}</button>`+capt(cap,'')};
   body.innerHTML=sec('books','book','ZIP all','Books imports them. Files keeps them.')+
-    sec('comics','comic','ZIP by series','Share to Panels, or save the ZIP, unzip it in Files and move the series folders into Panels: each folder becomes a collection.');
+    sec('comics','comic','ZIP by series','Share to Panels, or save the ZIP, unzip it in Files and move the series folders into Panels: each folder becomes a collection.')+
+    `<button class="btn wide bad" data-act="clear-all" style="margin-top:14px">${ic('trash')}Clear all · ${BOOKS.size} file${BOOKS.size>1?'s':''} · ${mb(shelfBytes())}</button>`+capt('Once they’re saved, this empties the app for the next batch.','');
 }
 function copyText(t,msg){const done=()=>toast(msg);if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done).catch(()=>fallback())}else fallback();
   function fallback(){const ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');done()}catch(e){toast('Copy blocked here')}ta.remove()}}
@@ -2400,7 +2414,7 @@ const ACT={
   reload:()=>reloadApp(),
   'test-key':()=>testKey(),
   'forget-key':()=>{delete cfg.key;saveCfg();render();toast('Key removed')},
-  'clear-all':el=>{if(RUN.active.size){toast('Pause and let the books in flight finish first');return}arm(el,'Remove all?',async()=>{for(const s of ['books','blobs','diag'])try{await DB.clear(s)}catch(e){log('store','FAIL clear '+s+': '+e.message)}BOOKS.clear();FLAGS=[];render();toast('Everything removed')})},
+  'clear-all':el=>{if(RUN.active.size){toast('Pause and let the files in flight finish first');return}if(!BOOKS.size){toast('Nothing to clear');return}arm(el,`Tap again to clear ${BOOKS.size}`,clearAll)},
 };
 document.addEventListener('click',e=>{
   const g=e.target.closest('[data-go]');if(g){go(g.dataset.go);return}
