@@ -1,0 +1,1723 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Bookbinder">
+<!-- no apple-mobile-web-app-status-bar-style: see app-builder references/ios-pwa.md -->
+<meta name="theme-color" content="#f2f2f7">
+<link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAIAAACyr5FlAAAFqUlEQVR42u3cv2/TSgDA8dwvpzSpiVBFJVCZQJnYurAgVaoUoa6wMiBY+QeQOiD1P2DiD4CJhbUSgqkDYWWqBBJlaakjG6fYzjn3Bj+iqJSH3tMj8ZXvd+gAlbimn9ydYx8iDMMG0WlJXgICB4GDwEHgIHAQOAgcBA4CB4GDCBwEDgIHgYPAQeAgcBA4CBwEDiJwEDgIHAQOAgeBg8BB4CBwEDiIwEE/TXs9eiGEF+N0zoFjdimlnHNFUXgxWmOMUqosS7+U+IdDSumcGwwGxpiLFy9KKWs+Z0gpv3z5Esdxu902xpRlCY7fJaMoirIsHzx4cPv27WvXrmmta/52FELs7+/v7Ow8efJkMBgsLS354kN49B/GVTI6nc7Tp083NzettXmee7HhCIIgCIL379/fv3+/3++3220vfPiEQwiRZdmLFy82NzcPDw+VUjVfU6Z9WGsvXLjw+fPnmzdvHhwcNJvN8XjMpez/tgNNkuTu3buVjCAIlFI/Xq2IH6qDaSllEARRFF25cmVrayvPcy+us7zZczjntNZ37tyx1iqlpi8Epr/txysCrfV8fxOTIRlj0jTt9Xqrq6uHh4fGmJrvlrQvC0pRFCsrK1evXs3zfLKaOOeiKJp+iVut1vSLLoRIksRaK4SY129iMiQhxGg0Wl5e7na7nz59ajabNd95aL8+8prMGc45Y0wURbdu3YqiyBgjhEjT9Pnz5+vr60mSKKXG43Gr1bp3796rV6/CMJz9Gi+lPDGk6g+nZz5w/Ma1Joqio6OjCY7RaDS9iFQzx2AwsNbO/m1a4TgxJI8+MPUbR7WQVwkhqq8nf0KtlVLGmNlf2kgpTx1Sgw/BZjZ5VP3sHemmmsvYGtyVpQa37AkcROAgcBA4CBwEDgIHgYPAQeAgcBA4iMBB4CBwEDgIHAQOAgeBg8BB4CACB4GDwEHgIHAQOAgcBA4CB4GDCBwEDgIHgYPAQeAgcBA4CBwEDgIHETgIHAQOAgeBg8BB4CBwEDgIHETgIHAQOAgcBA4CB4GDwEHgIHAQgYPAQf8pffb5f885N5d/WggBjpp2fHxsrU3TtCzL2eMoisJa66mPs4xDCJHn+fb2dhRFWuvZzxxCiLIsr1+/fnx8LKUER71wWGvX1tbmImMyhmrq8nHyOOPLihBiOBzOS8ZkcWFZqe+GlOsOcJzeeDye++zFzFHTFhcXlVJz3HNkWcaeo3Y55xYWFh49etTv91ut1uynECHEt2/ftre319bWhsOhdwvcGcehte73+2/evDHGzOVzDmvtvC6kwfFrH61Wyxhz/vz5ueBI09RTGX/KhrT83uxplmXpqQxuvBE4CBwEDgIHgYPAQeAgcBA4CBxEjbN4b2Vy8kAIceoDeRxN+ENxOOeGw2GapsYYIcSp5wA4mvBH4Jh+3q566r/dbj979mw0GlV/deIcQG2PJvjy1I/26LGdo6Oj/f39lZWVoiiEEM45Y8z6+vq0mOlzADU8mqCUiuP448ePQRDU/1a+NzOH1jpJkp2dnRs3bsRxHARBhSZJkn84B1CrownW2k6ns7u7u7e3t7i4OPcnn38tOwxDX9aUsizPnTv3+vXrbrcbRVG1z/AFt7U2CAKt9cbGxtu3b9vt9uz3QP821Ww2PZo84jju9/u9Xu/SpUvW2uo5q/onpQzD0Dn38OHDly9fhmFYfxk+zRx/W1bq69evly9f3tra6vV6y8vLXmzu4jh+9+7d48ePd3d3O52OFzL8w1H5yLIsy7LV1dVut1v/x3ellB8+fNjb23POLS0t+SLDSxzV/kNKmed5lmVeDDgIgoWFhUYNjt+dfRzTRBqePAHPuZU5PPjfIG68ETgIHAQOAgeBg8BBBA4CB4GDwEHgIHAQOAgcBA4CB4GDCBwEDgIHgYPAQeAgcBA4CBwEDiJwEDgIHAQOmkN/Abr/RSPCR4JGAAAAAElFTkSuQmCC">
+<title>Bookbinder</title>
+<script>
+/* one file, no siblings: the look lands before first paint, the manifest is written in place */
+(function(){
+  try{var c=JSON.parse(localStorage.getItem('bookbinder-cfg')||'{}');if(c.look==='light'||c.look==='dark')document.documentElement.setAttribute('data-look',c.look);}catch(e){}
+  try{var base=location.origin+location.pathname.replace(/[^\/]*$/,'');
+    var m={name:'Bookbinder',short_name:'Bookbinder',display:'standalone',orientation:'portrait',scope:base,start_url:base,background_color:'#000000',theme_color:'#000000'};
+    var l=document.createElement('link');l.rel='manifest';l.href='data:application/manifest+json;charset=utf-8,'+encodeURIComponent(JSON.stringify(m));document.head.appendChild(l);}catch(e){}
+})();
+</script>
+<style>
+/* ---------- tokens: Dawn (light) and Native (dark), following the system ---------- */
+:root{--ground:#f2f2f7;--card:#fff;--ink:#111;--ink-2:#6e6e73;--rule:#e1e1e6;--surface2:#e8e8ed;
+  --accent:#007aff;--good:#1a9e4b;--warn:#c27c0e;--bad:#e0342b;
+  --font:-apple-system,system-ui,sans-serif;--mono:ui-monospace,Menlo,monospace;--radius:12px;--pad:14px}
+@media (prefers-color-scheme:dark){:root:not([data-look=light]){--ground:#000;--card:#1c1c1e;--ink:#f5f5f7;--ink-2:#8e8e93;--rule:#2c2c2e;--surface2:#2c2c2e;--accent:#0a84ff;--good:#30d158;--warn:#ffd60a;--bad:#ff453a;color-scheme:dark}}
+:root[data-look=dark]{--ground:#000;--card:#1c1c1e;--ink:#f5f5f7;--ink-2:#8e8e93;--rule:#2c2c2e;--surface2:#2c2c2e;--accent:#0a84ff;--good:#30d158;--warn:#ffd60a;--bad:#ff453a;color-scheme:dark}
+/* the Motion block speaks Vault's token names */
+:root{--bg:var(--ground);--fg:var(--ink);--surface:var(--card);--muted:var(--ink-2);--line:var(--rule);--red:var(--bad);--green:var(--good);--amber:var(--warn)}
+
+/* ---------- Motion — the contract (app-builder) ---------- */
+:root{--spring:cubic-bezier(.2,.9,.25,1.2);--ease:cubic-bezier(.2,.7,.2,1)}
+/* press */
+button,.btn,.chip,.pchip,.tcpill,.tcgear,.acch,.grp,.drow,.trow,.prow,.pipbtn,.subx,.cvr,[data-go],tr[data-tx],tr[data-pl],tr[data-b],tr[data-dedit],tr[data-vk]{transition:transform .15s var(--spring)}
+button:active,.btn:active,.chip:active,.pchip:active,.tcpill:active,.tcgear:active,.acch:active,.pipbtn:active,.subx:active,.cvr:active,[data-go]:active{transform:scale(.96)}
+.trow:active,.prow:active,.grp:active,.drow:active,tr[data-tx]:active,tr[data-pl]:active,tr[data-b]:active,tr[data-dedit]:active,tr[data-vk]:active{transform:scale(.985)}
+.chev,.accc{display:inline-block;transition:transform .15s var(--spring)}:active>.chev,:active .chev,.acch:active .accc{transform:translateX(4px)}
+/* toast · sheet */
+.toast{animation:toastin .42s var(--spring) both,toastout .3s ease-in 2.2s forwards;box-shadow:0 8px 24px rgba(0,0,0,.45),0 2px 6px rgba(0,0,0,.3)}
+@keyframes toastin{from{transform:translateY(40px) scale(.96);opacity:0}to{transform:none;opacity:1}}@keyframes toastout{to{transform:translateY(-6px);opacity:0}}
+.sheet{animation:sheetup .35s var(--spring) both}@keyframes sheetup{from{transform:translateY(100%)}to{transform:none}}
+.sheet.from-stat{transform-origin:92% 100%;animation:sheetfromstat .42s var(--spring) both}@keyframes sheetfromstat{from{transform:scale(.25);opacity:0}to{transform:none;opacity:1}}
+/* arrival */
+@keyframes rowin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.boot .tcrows .trow,.boot .btab tbody tr{animation:rowin .4s var(--ease) both}
+.boot .trow:nth-child(2),.boot tbody tr:nth-child(2){animation-delay:55ms}.boot .trow:nth-child(3),.boot tbody tr:nth-child(3){animation-delay:110ms}.boot .trow:nth-child(4),.boot tbody tr:nth-child(4){animation-delay:165ms}.boot .trow:nth-child(5),.boot tbody tr:nth-child(5){animation-delay:220ms}.boot .trow:nth-child(6),.boot tbody tr:nth-child(6){animation-delay:275ms}.boot .trow:nth-child(7),.boot tbody tr:nth-child(7){animation-delay:330ms}.boot .trow:nth-child(8),.boot tbody tr:nth-child(8){animation-delay:385ms}.boot .trow:nth-child(n+9),.boot tbody tr:nth-child(n+9){animation-delay:440ms}
+/* charts */
+.lfoot .anim,.canim{clip-path:inset(0 100% 0 0)}.lfoot.go .anim{animation:wipe 1.1s var(--ease) .1s forwards}.canim.go{animation:wipe 1s var(--ease) .05s forwards}@keyframes wipe{to{clip-path:inset(0 0 0 0)}}
+.canim2{opacity:0;transform:scale(.85)}.canim2.go{animation:ringin .6s var(--spring) forwards}@keyframes ringin{to{opacity:1;transform:none}}
+.lfoot .pl{opacity:0}.lfoot.go .pl{animation:pillin .35s var(--ease) forwards}@keyframes pillin{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.lfoot.go .pl:nth-of-type(1){animation-delay:1.1s}.lfoot.go .pl:nth-of-type(2){animation-delay:1.22s}.lfoot.go .pl:nth-of-type(3){animation-delay:1.34s}.lfoot.go .pl:nth-of-type(4){animation-delay:1.46s}.lfoot.go .pl:nth-of-type(5){animation-delay:1.58s}.lfoot.go .pl:nth-of-type(6){animation-delay:1.7s}
+.lfoot .brk{transform-box:fill-box;transform-origin:50% 0;transform:scaleY(0)}.lfoot.go .brk{animation:brkgrow .4s var(--spring) 1.25s forwards}@keyframes brkgrow{to{transform:scaleY(1)}}
+.lfoot .tpulse{opacity:0;transform-box:fill-box;transform-origin:center}.lfoot.go .tpulse{animation:tpulse .9s ease-out 1.3s 1}@keyframes tpulse{0%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(3.2)}}
+.canim .cur{transform-box:fill-box;transform-origin:50% 100%}.canim.go .cur{animation:barpulse .5s ease 1.1s 1}@keyframes barpulse{0%,100%{transform:none;opacity:1}50%{transform:scaleY(1.06);opacity:.7}}
+.heat .hc{opacity:0}.heat.go .hc{animation:pillin .4s var(--ease) forwards}.heat.go td:nth-child(3) .hc{animation-delay:.08s}.heat.go td:nth-child(4) .hc{animation-delay:.16s}.heat.go td:nth-child(5) .hc{animation-delay:.24s}.heat.go td:nth-child(6) .hc{animation-delay:.32s}.heat.go td:nth-child(7) .hc{animation-delay:.4s}.heat.go td:nth-child(8) .hc{animation-delay:.48s}
+.heat td{transition:opacity .25s}.heat.focus tr:not(.on) td{opacity:.3}.heat .hk{cursor:pointer}
+.ring circle{transition:stroke-width .2s var(--spring)}.ring circle.sel{stroke-width:21}
+svg .scrub{opacity:0;pointer-events:none;transition:opacity .12s}svg .scrub.on{opacity:1}
+/* controls */
+.pips i{transition:background .2s}@keyframes pipbump{0%,100%{transform:scale(1)}50%{transform:scale(1.6)}}.pips.bump i:nth-child(1){animation:pipbump .3s var(--spring)}.pips.bump i:nth-child(2){animation:pipbump .3s var(--spring) .07s}.pips.bump i:nth-child(3){animation:pipbump .3s var(--spring) .14s}
+tr.fold td{transition:padding .26s var(--ease),line-height .26s var(--ease),font-size .26s var(--ease),opacity .2s;padding-top:0!important;padding-bottom:0!important;line-height:0!important;font-size:0!important;opacity:0}tr.fold td *{font-size:0!important;line-height:0!important}
+.hs{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}.hs.atend{-webkit-mask-image:none;mask-image:none}
+.slwrap{position:relative;padding-top:22px}.sltip{position:absolute;top:0;transform:translateX(-50%) translateY(6px);background:var(--fg);color:var(--bg);font-family:var(--mono);font-size:10px;font-weight:800;padding:2px 6px;border-radius:5px;opacity:0;transition:opacity .15s,transform .15s var(--spring);pointer-events:none;white-space:nowrap}.slwrap.dragging .sltip{opacity:1;transform:translateX(-50%) translateY(0)}
+input[type=range]::-webkit-slider-thumb{transition:transform .15s var(--spring)}input[type=range]:active::-webkit-slider-thumb{transform:scale(1.3)}
+.korow{position:relative;transition:transform .18s var(--ease);background:var(--surface)}.korow .grip{width:16px;color:var(--muted);font-size:11px;letter-spacing:-3px;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;flex:none}.korow.lift{transition:none;z-index:3;box-shadow:0 8px 20px rgba(0,0,0,.45);background:var(--surface2);border-radius:6px}
+/* meaning */
+@keyframes dotbreathe{0%,100%{box-shadow:0 0 0 0 currentColor}70%{box-shadow:0 0 0 7px transparent}}.tcdot{animation:dotbreathe 2.6s ease-out infinite}.tcdot.c-amber{animation-duration:1.8s}.tcdot.c-red{animation-duration:1.2s}.tcdot.muted{animation:none}
+@keyframes nsamber{0%,100%{box-shadow:0 0 0 0 rgba(255,214,10,0)}50%{box-shadow:0 0 0 3px rgba(255,214,10,.4)}}@keyframes nsred{0%,100%{box-shadow:0 0 0 0 rgba(255,69,58,0)}50%{box-shadow:0 0 0 3px rgba(255,69,58,.5)}}.navstat.thin{animation:nsamber 2.4s ease-in-out infinite}.navstat.short{animation:nsred 1.3s ease-in-out infinite}
+@keyframes pulse2{0%,100%{box-shadow:0 0 0 0 transparent}30%{box-shadow:0 0 0 5px rgba(255,214,10,.3)}60%{box-shadow:0 0 0 0 transparent}80%{box-shadow:0 0 0 5px rgba(255,214,10,.3)}}.tag.pulse2{animation:pulse2 1.8s ease .4s 1}
+.rededge{position:fixed;left:0;right:0;top:0;height:36px;pointer-events:none;z-index:50;background:linear-gradient(rgba(255,69,58,.55),transparent);animation:edgepulse 1.7s ease 1 forwards}@keyframes edgepulse{0%,100%{opacity:0}20%,30%{opacity:1}50%{opacity:.1}65%,75%{opacity:1}}
+@keyframes emptybreathe{0%,100%{opacity:.55}50%{opacity:1}}.empty{animation:emptybreathe 3.2s ease-in-out infinite}
+html.looking,html.looking *{transition:background-color .3s ease,color .3s ease,border-color .3s ease,fill .3s ease,stroke .3s ease,box-shadow .3s ease!important}
+
+/* ---------- this app ---------- */
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;overscroll-behavior:none}
+body{background:var(--ground);color:var(--ink);font:16px/1.4 var(--font);-webkit-text-size-adjust:100%;-webkit-user-select:none;user-select:none}
+input,select,pre.log,.err{-webkit-user-select:text;user-select:text}
+#app{position:fixed;inset:0;height:100dvh;display:flex;flex-direction:column}
+#screen{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:max(10px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 28px max(16px,env(safe-area-inset-left))}
+#nav{flex:none;display:flex;align-items:center;border-top:1px solid var(--rule);background:var(--ground);padding:0 max(10px,env(safe-area-inset-right)) env(safe-area-inset-bottom) max(6px,env(safe-area-inset-left))}
+#nav .tab{width:58px;min-height:56px;display:flex;align-items:center;justify-content:center;background:none;border:0;color:var(--ink-2);touch-action:manipulation}
+#nav .tab.on{color:var(--accent)}
+#nav .tab svg.i{width:25px;height:25px}
+.navstat{margin-left:auto;display:grid;gap:1px;padding:5px 10px;min-width:118px;border:1px solid var(--rule);border-radius:10px;background:var(--card);color:var(--ink);font:11px/1.3 var(--mono);text-align:left;touch-action:manipulation}
+.navstat div{display:flex;justify-content:space-between;gap:12px}.navstat span{color:var(--ink-2)}
+svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.plabel{margin:6px 2px 14px}
+.ey{display:flex;align-items:center;gap:6px;font:600 11px/1.2 var(--mono);letter-spacing:.08em;color:var(--ink-2);text-transform:lowercase}
+.ey svg.i{width:14px;height:14px}
+.plabel p{margin:5px 0 0;font-size:15px}
+.card{background:var(--card);border-radius:var(--radius);padding:var(--pad);margin-bottom:12px}
+.top{display:flex;gap:12px;justify-content:space-between}
+.big{font:600 42px/1 var(--mono);letter-spacing:-.03em;margin-top:2px}
+.big small{font-size:20px;color:var(--ink-2);font-weight:500;letter-spacing:0}
+.cap{font-size:13px;color:var(--ink-2);margin-top:8px;line-height:1.35}.cap .cmp{color:var(--ink)}
+.pills{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;align-content:flex-start;max-width:56%}
+.pill{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:14px;background:var(--surface2);color:var(--ink);font:12px/1 var(--mono);border:0;white-space:nowrap;touch-action:manipulation}
+.pill svg.i{width:15px;height:15px}
+.pill.warn{color:var(--warn)}
+.tcdot{width:8px;height:8px;border-radius:50%;display:inline-block;background:var(--good);color:var(--good);flex:none}
+.tcdot.c-amber{background:var(--warn);color:var(--warn)}.tcdot.c-red{background:var(--bad);color:var(--bad)}.tcdot.muted{background:var(--ink-2);color:var(--ink-2)}
+.rdot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--good)}.rdot.c-amber{background:var(--warn)}.rdot.c-red{background:var(--bad)}.rdot.muted{background:var(--ink-2);opacity:.45}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 14px;border-radius:12px;border:1px solid var(--rule);background:var(--card);color:var(--ink);font:500 15px var(--font);touch-action:manipulation;text-decoration:none;cursor:pointer}
+.btn.acc{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.bad{color:var(--bad)}
+.btn:disabled{opacity:.4}
+.btn.wide{width:100%;margin-bottom:8px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:44px;border-bottom:1px solid var(--rule)}
+.row:last-child{border-bottom:0}
+.inbox .row.bad{border-left:3px solid var(--bad);padding-left:8px}
+.inbox .row.warn{border-left:3px solid var(--warn);padding-left:8px}
+.inbox .row{padding-top:6px;padding-bottom:6px}
+.list{background:var(--card);border-radius:var(--radius);overflow:hidden;margin-bottom:12px}
+.brow{display:flex;align-items:center;gap:12px;padding:10px 12px;border-bottom:1px solid var(--rule);min-height:76px;transition:transform .15s var(--spring)}
+.brow:active{transform:scale(.985)}
+.brow:last-child{border-bottom:0}
+.boot .list .brow{animation:rowin .4s var(--ease) both}
+.boot .list .brow:nth-child(2){animation-delay:55ms}.boot .list .brow:nth-child(3){animation-delay:110ms}.boot .list .brow:nth-child(4){animation-delay:165ms}.boot .list .brow:nth-child(5){animation-delay:220ms}.boot .list .brow:nth-child(6){animation-delay:275ms}.boot .list .brow:nth-child(7){animation-delay:330ms}.boot .list .brow:nth-child(8){animation-delay:385ms}.boot .list .brow:nth-child(n+9){animation-delay:440ms}
+.thumb{width:40px;height:60px;border-radius:3px;flex:none;overflow:hidden;background:var(--surface2);display:flex;align-items:center;justify-content:center;font:600 18px Georgia,serif;color:var(--ink-2)}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.bmid{flex:1;min-width:0}
+.bt{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ba{font-size:13px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bs{font:12px/1.3 var(--mono);color:var(--ink-2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bs.bad{color:var(--bad)}.bs.warn{color:var(--warn)}
+.dim{color:var(--ink-2)}.mono{font-family:var(--mono)}.small{font-size:13px}
+input[type=text],input[type=password],select{font:16px var(--font);color:var(--ink);background:var(--ground);border:1px solid var(--rule);border-radius:10px;padding:9px 10px;min-height:42px;max-width:100%}
+input.full{width:100%;margin:8px 0}
+input[type=checkbox]{width:22px;height:22px}
+pre.log{font:11px/1.35 var(--mono);white-space:pre-wrap;word-break:break-all;max-height:42vh;overflow:auto;margin:8px 0 0;color:var(--ink-2)}
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:20}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;max-height:90dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--ground);border-radius:18px 18px 0 0;padding:2px max(16px,env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+.grab{display:flex;justify-content:center;padding:8px 0 12px}.grab i{width:38px;height:5px;border-radius:3px;background:var(--rule)}
+@keyframes sheetdown{to{transform:translateY(100%)}}.sheet.out{animation:sheetdown .3s var(--ease) forwards}
+@keyframes scrimout{to{opacity:0}}.scrim.out{animation:scrimout .3s ease forwards}
+#toasts{position:fixed;left:0;right:0;bottom:calc(84px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:6px;z-index:40;pointer-events:none}
+.toast{max-width:88%;padding:10px 14px;border-radius:12px;background:var(--ink);color:var(--ground);font-size:14px;line-height:1.3}
+.bhead{display:flex;gap:14px;margin-bottom:12px}
+.cvr{width:96px;height:144px;flex:none;border-radius:4px;overflow:hidden;border:1px solid var(--rule);background:var(--surface2);padding:0;display:flex;align-items:center;justify-content:center;color:var(--ink-2);font:12px var(--mono)}
+.cvr img{width:100%;height:100%;object-fit:cover;display:block}
+.bt2{font-size:19px;font-weight:600;line-height:1.25;word-break:break-word}
+.btnrow{display:flex;gap:8px;margin:10px 0}.btnrow .btn{flex:1;padding:0 8px}
+.srow{display:flex;align-items:center;gap:8px;min-height:44px;padding:4px 0;border-bottom:1px solid var(--rule);transition:transform .15s var(--spring)}
+.srow:active{transform:scale(.985)}
+.srow:last-child{border-bottom:0}
+.srow .sl{flex:1;min-width:0;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.srow.l2 .sl{padding-left:16px}
+.srow.cut .sl{color:var(--ink-2);text-decoration:line-through}
+.chip{font:11px/1 var(--mono);padding:5px 6px;border-radius:6px;background:var(--surface2);color:var(--ink-2);white-space:nowrap}
+.srow.cut .chip{color:var(--bad)}
+.err{font:12px/1.45 var(--mono);color:var(--bad);white-space:pre-wrap;word-break:break-word}
+.warns{font-size:13px;color:var(--warn);margin:6px 0;line-height:1.4}
+.fgrid{display:grid;grid-template-columns:1fr 76px;gap:8px}
+.fgrid input{width:100%}
+.lbl{font:11px var(--mono);color:var(--ink-2);margin:8px 0 2px}
+/* off switch — keep last */
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.lfoot .anim,.canim{clip-path:none}.canim2,.lfoot .pl,.heat .hc{opacity:1;transform:none}.lfoot .brk{transform:none}}
+</style>
+</head>
+<body>
+<div id="app"><div id="screen"></div><div id="nav"></div></div>
+<div id="sheets"></div>
+<div id="toasts"></div>
+<input type="file" id="fpEpub" accept=".epub,application/epub+zip" multiple hidden>
+<input type="file" id="fpCover" accept="image/*" multiple hidden>
+<input type="file" id="fpOne" accept="image/*" hidden>
+<script>
+'use strict';
+/* =====================================================================
+   SLOT 1 — APP
+   ===================================================================== */
+const BUILD='build 1';                       // bump every push; shown in Settings
+const APP={key:'bookbinder',name:'Bookbinder',answer:'Old EPUBs in. Clean books out.'};
+const PARSER='p1';                           // bump when extraction changes: saved chapter maps then re-plan
+
+/* =====================================================================
+   SLOT 2 — CONF
+   ===================================================================== */
+const CONF={
+  workers:3,                 // books in flight at once
+  shareBatch:20,             // files per share sheet
+  cutWarn:.25,               // flag a book when cuts take more than this share of its words
+  cutFail:.5,                // refuse to build past this until the cuts are set by hand
+  maxCands:1200,             // candidate lines sent to Claude per book
+  models:{'claude-haiku-5-5':'Haiku 5.5','claude-sonnet-5-5':'Sonnet 5.5'},
+  price:{'claude-haiku-5-5':[.10,.50],'claude-sonnet-5-5':[2,10]},   // $ per million tokens in/out, Nov 2026
+  // keep (true) or cut (false) by kind of page; the book sheet overrides any section
+  policy:{cover:false,half_title:false,title_page:true,copyright:true,dedication:true,epigraph:true,toc:false,
+    foreword:true,preface:true,introduction:true,prologue:true,part:true,chapter:true,interlude:true,epilogue:true,
+    afterword:true,acknowledgments:true,author_note:true,notes:true,glossary:true,appendix:true,bibliography:true,
+    index:false,about_author:true,also_by:false,praise:false,excerpt:false,ad:false,newsletter:false,credits:false,
+    blank:false,illustration:true,other_front:true,other_back:true},
+};
+const KINDS=Object.keys(CONF.policy);
+const BODY=new Set(['prologue','part','chapter','interlude','epilogue']);
+const BACK=new Set(['afterword','acknowledgments','notes','glossary','appendix','bibliography','index','about_author','also_by','excerpt','ad','newsletter','credits','other_back']);
+const FRONTISH=new Set(['cover','half_title','title_page','copyright','dedication','epigraph','toc','foreword','preface','introduction','praise','also_by','other_front']);
+
+/* =====================================================================
+   ENGINE — log, fail, stage, cfg, storage. Domain-free.
+   ===================================================================== */
+const LOG=[];
+function sj(x){try{return JSON.stringify(x,(k,v)=>typeof v==='bigint'||v instanceof Error?String(v):v)}catch(e){return String(x)}}
+function log(stage,data){const line=`${new Date().toISOString().slice(11,23)} ${stage} ${data==null?'':typeof data==='string'?data:sj(data)}`;LOG.push(line);if(LOG.length>500)LOG.shift();try{console.log(line)}catch(e){}return line}
+class StageError extends Error{constructor(stage,expected,got,extra){super(`[${stage}] expected ${expected}, got ${got}`);this.stage=stage;this.expected=expected;this.got=got;this.extra=extra}}
+function fail(stage,expected,got,extra){const e=new StageError(stage,expected,got,extra);log(stage,'FAIL '+e.message);throw e}
+window.addEventListener('error',e=>log('window','uncaught '+(e.message||e)));
+window.addEventListener('unhandledrejection',e=>log('window','unhandled rejection '+((e.reason&&e.reason.message)||e.reason)));
+function blog(ctx,stage,data){const line=log(`${ctx.id.slice(0,6)} ${stage}`,data);ctx.log.push(line);if(ctx.log.length>400)ctx.log.shift()}
+async function stg(ctx,name,fn,summ){
+  const t0=performance.now();setStage(ctx,name);
+  try{
+    const out=await fn();const ms=Math.round(performance.now()-t0);let s;
+    try{s=summ?summ(out):undefined}catch(e){s='summary failed: '+e.message}
+    ctx.stages[name]={ok:true,ms,out:s};blog(ctx,name,`PASS ${ms} ms${s!==undefined?' | '+sj(s):''}`);return out;
+  }catch(e){
+    const ms=Math.round(performance.now()-t0);
+    const err=e instanceof StageError?e:new StageError(name,'a clean run',`${e.name}: ${e.message}`);
+    ctx.stages[name]={ok:false,ms,error:err.message,stack:String(e.stack||'').slice(0,1500)};blog(ctx,name,'FAIL '+err.message);throw err;
+  }
+}
+const $=id=>document.getElementById(id);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const tick=()=>new Promise(r=>setTimeout(r,0));
+const clip=(s,n)=>{s=String(s??'');return s.length>n?s.slice(0,n-1)+'…':s};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const xt=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const xa=s=>xt(s).replace(/"/g,'&quot;');
+const mb=n=>(n/1048576).toFixed(n<10485760?1:0)+' MB';
+
+let cfg={};
+try{cfg=JSON.parse(localStorage.getItem(APP.key+'-cfg')||'{}')||{}}catch(e){log('cfg','read failed: '+e.message)}
+if(!CONF.models[cfg.model])cfg.model='claude-haiku-5-5';
+if(cfg.lookups==null)cfg.lookups=true;
+function saveCfg(){try{localStorage.setItem(APP.key+'-cfg',JSON.stringify(cfg))}catch(e){log('cfg','write failed: '+e.message)}}
+
+/* IndexedDB: books (records), blobs (src: out: cov:), diag (base: dump:). Every store keys on k. */
+const DB={db:null,
+  open(){if(this.db)return Promise.resolve(this.db);return new Promise((res,rej)=>{let r;try{r=indexedDB.open('bookbinder',1)}catch(e){rej(e);return}
+    r.onupgradeneeded=()=>{const d=r.result;for(const s of ['books','blobs','diag'])if(!d.objectStoreNames.contains(s))d.createObjectStore(s,{keyPath:'k'})};
+    r.onsuccess=()=>{this.db=r.result;this.db.onversionchange=()=>{this.db.close();this.db=null};res(this.db)};
+    r.onerror=()=>rej(r.error||new Error('open failed'));r.onblocked=()=>rej(new Error('database blocked by another tab'))})},
+  async run(store,mode,fn){const db=await this.open();return new Promise((res,rej)=>{let out;const t=db.transaction(store,mode);const q=fn(t.objectStore(store));if(q)q.onsuccess=()=>{out=q.result};t.oncomplete=()=>res(out);t.onerror=()=>rej(t.error||new Error('transaction error'));t.onabort=()=>rej(t.error||new Error('transaction aborted (storage full?)'))})},
+  get(s,k){return this.run(s,'readonly',o=>o.get(k))},
+  put(s,v){return this.run(s,'readwrite',o=>o.put(v))},
+  del(s,k){return this.run(s,'readwrite',o=>o.delete(k))},
+  all(s){return this.run(s,'readonly',o=>o.getAll())},
+  keys(s){return this.run(s,'readonly',o=>o.getAllKeys())},
+  clear(s){return this.run(s,'readwrite',o=>o.clear())},
+};
+async function blobPut(k,blob){try{await DB.put('blobs',{k,blob})}catch(e){fail('store',`room to save ${k.split(':')[0]} in the browser`,(e&&e.message)||String(e))}}
+async function blobGet(k){const o=await DB.get('blobs',k);return o?o.blob:null}
+async function saveRec(r){try{await DB.put('books',r)}catch(e){log('store','FAIL book record '+r.k+': '+((e&&e.message)||e))}}
+
+/* =====================================================================
+   ZIP — read and write, no library. An EPUB is a plain zip.
+   ===================================================================== */
+const ENC=new TextEncoder();
+const CRC_T=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
+function crc32(u8){let c=0xFFFFFFFF;for(let i=0;i<u8.length;i++)c=CRC_T[(c^u8[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0}
+let RAW_OK=null;
+function rawSupported(){if(RAW_OK===null){try{new DecompressionStream('deflate-raw');new CompressionStream('deflate-raw');RAW_OK=true}catch(e){RAW_OK=false;log('zip','deflate-raw unavailable: using gzip framing')}}return RAW_OK}
+async function pipeBytes(u8,ts){return new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(ts)).arrayBuffer())}
+async function inflate(u8,crc,usize){
+  if(rawSupported())return pipeBytes(u8,new DecompressionStream('deflate-raw'));
+  const g=new Uint8Array(10+u8.length+8);g.set([0x1f,0x8b,8,0,0,0,0,0,0,0xff]);g.set(u8,10);const v=new DataView(g.buffer);v.setUint32(10+u8.length,crc,true);v.setUint32(14+u8.length,usize>>>0,true);
+  return pipeBytes(g,new DecompressionStream('gzip'));
+}
+async function deflate(u8){
+  if(rawSupported())return pipeBytes(u8,new CompressionStream('deflate-raw'));
+  const g=await pipeBytes(u8,new CompressionStream('gzip'));return g[3]===0?g.subarray(10,g.length-8):null;
+}
+async function zipOpen(buf){
+  const u8=new Uint8Array(buf),dv=new DataView(buf);let e=-1;
+  for(let i=u8.length-22,lo=Math.max(0,u8.length-22-65557);i>=lo;i--)if(u8[i]===0x50&&dv.getUint32(i,true)===0x06054b50){e=i;break}
+  if(e<0)fail('unzip','a zip end record','none: not a zip, or the file is cut short');
+  let count=dv.getUint16(e+10,true),off=dv.getUint32(e+16,true);
+  if((count===0xFFFF||off===0xFFFFFFFF)&&e>=20&&dv.getUint32(e-20,true)===0x07064b50){const z=Number(dv.getBigUint64(e-12,true));if(dv.getUint32(z,true)===0x06064b50){count=Number(dv.getBigUint64(z+32,true));off=Number(dv.getBigUint64(z+48,true))}}
+  const ents=new Map(),lower=new Map(),td=new TextDecoder('utf-8');let p=off;
+  for(let n=0;n<count;n++){
+    if(p+46>u8.length||dv.getUint32(p,true)!==0x02014b50)fail('unzip',`central directory entry ${n+1} of ${count}`,`bad signature at byte ${p}`);
+    const flags=dv.getUint16(p+8,true),method=dv.getUint16(p+10,true),crc=dv.getUint32(p+16,true);
+    let cs=dv.getUint32(p+20,true),us=dv.getUint32(p+24,true);const nl=dv.getUint16(p+28,true),xl=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true);let lho=dv.getUint32(p+42,true);
+    const name=td.decode(u8.subarray(p+46,p+46+nl));
+    if(cs===0xFFFFFFFF||us===0xFFFFFFFF||lho===0xFFFFFFFF){let x=p+46+nl;const xe=x+xl;while(x+4<=xe){const id=dv.getUint16(x,true),sz=dv.getUint16(x+2,true);if(id===1){let q=x+4;if(us===0xFFFFFFFF){us=Number(dv.getBigUint64(q,true));q+=8}if(cs===0xFFFFFFFF){cs=Number(dv.getBigUint64(q,true));q+=8}if(lho===0xFFFFFFFF){lho=Number(dv.getBigUint64(q,true));q+=8}}x+=4+sz}}
+    if(!name.endsWith('/')){const en={name,flags,method,crc,cs,us,lho};ents.set(name,en);lower.set(name.toLowerCase(),en)}
+    p+=46+nl+xl+cl;
+  }
+  if(!ents.size)fail('unzip','files in the zip','an empty archive');
+  return{
+    names:[...ents.keys()],
+    find(n){if(n==null)return null;return ents.get(n)||lower.get(String(n).toLowerCase())||null},
+    async bytes(n){const en=typeof n==='string'?this.find(n):n;if(!en)return null;
+      if(en.flags&1)fail('unzip',`${en.name} without zip encryption`,'an encrypted entry');
+      if(dv.getUint32(en.lho,true)!==0x04034b50)fail('unzip',`a local header for ${en.name}`,`bad signature at byte ${en.lho}`);
+      const s=en.lho+30+dv.getUint16(en.lho+26,true)+dv.getUint16(en.lho+28,true);const c=u8.subarray(s,s+en.cs);
+      if(en.method===0)return c.slice();
+      if(en.method===8){try{return await inflate(c,en.crc,en.us)}catch(err){fail('unzip',`${en.name} to inflate`,err.message)}}
+      fail('unzip',`stored or deflated ${en.name}`,`compression method ${en.method}`)},
+    async text(n){const b=await this.bytes(n);return b?decodeText(b):null},
+  };
+}
+function dosStamp(d=new Date()){return{time:(d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1),date:((d.getFullYear()-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate()}}
+function localHeader(nm,method,crc,cs,us,time,date,utf){const h=new Uint8Array(30+nm.length),v=new DataView(h.buffer);v.setUint32(0,0x04034b50,true);v.setUint16(4,20,true);v.setUint16(6,utf?0x0800:0,true);v.setUint16(8,method,true);v.setUint16(10,time,true);v.setUint16(12,date,true);v.setUint32(14,crc,true);v.setUint32(18,cs,true);v.setUint32(22,us,true);v.setUint16(26,nm.length,true);v.setUint16(28,0,true);h.set(nm,30);return h}
+function centralHeader(nm,method,crc,cs,us,time,date,off,utf){const h=new Uint8Array(46+nm.length),v=new DataView(h.buffer);v.setUint32(0,0x02014b50,true);v.setUint16(4,20,true);v.setUint16(6,20,true);v.setUint16(8,utf?0x0800:0,true);v.setUint16(10,method,true);v.setUint16(12,time,true);v.setUint16(14,date,true);v.setUint32(16,crc,true);v.setUint32(20,cs,true);v.setUint32(24,us,true);v.setUint16(28,nm.length,true);v.setUint32(42,off,true);h.set(nm,46);return h}
+function endRecord(n,size,off){const h=new Uint8Array(22),v=new DataView(h.buffer);v.setUint32(0,0x06054b50,true);v.setUint16(8,n,true);v.setUint16(10,n,true);v.setUint32(12,size,true);v.setUint32(16,off,true);return h}
+async function zipWrite(files){
+  const parts=[],central=[];let off=0;const {time,date}=dosStamp();
+  for(const f of files){
+    const nm=ENC.encode(f.name),u8=f.data,crc=crc32(u8);let data=u8,method=0;
+    if(!f.store&&u8.length>64){try{const c=await deflate(u8);if(c&&c.length<u8.length){data=c;method=8}}catch(e){log('zip',`deflate failed, storing ${f.name}: ${e.message}`)}}
+    const utf=/[^\x00-\x7f]/.test(f.name);const lh=localHeader(nm,method,crc,data.length,u8.length,time,date,utf);
+    parts.push(lh,data);central.push(centralHeader(nm,method,crc,data.length,u8.length,time,date,off,utf));off+=lh.length+data.length;
+  }
+  const size=central.reduce((s,c)=>s+c.length,0);
+  return new Blob([...parts,...central,endRecord(files.length,size,off)],{type:'application/epub+zip'});
+}
+async function zipBlobs(files){        // a zip of finished EPUBs, stored, built without holding them all in memory
+  const parts=[],central=[];let off=0;const {time,date}=dosStamp();
+  for(const f of files){
+    const u8=new Uint8Array(await f.arrayBuffer());const crc=crc32(u8);const nm=ENC.encode(f.name);const utf=/[^\x00-\x7f]/.test(f.name);
+    const lh=localHeader(nm,0,crc,u8.length,u8.length,time,date,utf);parts.push(lh,f);central.push(centralHeader(nm,0,crc,u8.length,u8.length,time,date,off,utf));off+=lh.length+u8.length;await tick();
+  }
+  return new Blob([...parts,...central,endRecord(files.length,central.reduce((s,c)=>s+c.length,0),off)],{type:'application/zip'});
+}
+
+/* =====================================================================
+   TEXT — decoding, mojibake, whitespace
+   ===================================================================== */
+function decodeText(u8){
+  if(u8[0]===0xEF&&u8[1]===0xBB&&u8[2]===0xBF)return new TextDecoder('utf-8').decode(u8.subarray(3));
+  if(u8[0]===0xFF&&u8[1]===0xFE)return new TextDecoder('utf-16le').decode(u8.subarray(2));
+  if(u8[0]===0xFE&&u8[1]===0xFF)return new TextDecoder('utf-16be').decode(u8.subarray(2));
+  let head='';for(let i=0;i<Math.min(1024,u8.length);i++)head+=String.fromCharCode(u8[i]);
+  let label=(head.match(/<\?xml[^>]*encoding\s*=\s*["']([\w.:-]+)["']/i)||head.match(/<meta[^>]+charset\s*=\s*["']?([\w.:-]+)/i)||[])[1];
+  label=label?label.toLowerCase():'utf-8';
+  let dec;try{dec=new TextDecoder(label)}catch(e){dec=new TextDecoder('utf-8');label='utf-8'}
+  let s=dec.decode(u8);
+  if(label==='utf-8'||label==='utf8'){const bad=(s.match(/�/g)||[]).length;if(bad>8&&bad>s.length/2000){try{s=new TextDecoder('windows-1252').decode(u8)}catch(e){}}}
+  return s;
+}
+const CP_HI='€\u0081‚ƒ„…†‡ˆ‰Š‹Œ\u008DŽ\u008F\u0090‘’“”•–—˜™š›œ\u009DžŸ';
+const CP_BYTE=new Map();for(let i=0;i<32;i++)CP_BYTE.set(CP_HI[i],0x80+i);
+const CONT='[\\u0080-\\u00BF\\u20AC\\u201A\\u0192\\u201E\\u2026\\u2020\\u2021\\u02C6\\u2030\\u0160\\u2039\\u0152\\u017D\\u2018\\u2019\\u201C\\u201D\\u2022\\u2013\\u2014\\u02DC\\u2122\\u0161\\u203A\\u0153\\u017E\\u0178]';
+const MOJI_RX=new RegExp(`(?:[\\u00C2-\\u00DF]${CONT}|[\\u00E0-\\u00EF]${CONT}{2}|[\\u00F0-\\u00F4]${CONT}{3})+`,'g');
+const UTF8_FATAL=new TextDecoder('utf-8',{fatal:true});
+function unMoji(s){return s.replace(MOJI_RX,m=>{const b=new Uint8Array(m.length);for(let i=0;i<m.length;i++){const c=m.charCodeAt(i);const v=c<0x100?c:CP_BYTE.get(m[i]);if(v==null)return m;b[i]=v}try{return UTF8_FATAL.decode(b)}catch(e){return m}})}
+function fixText(s){
+  s=String(s);if(/[Â-ô]/.test(s))s=unMoji(s);
+  return s.replace(/[­​﻿￾￿\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g,'').replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g,'').normalize('NFC');
+}
+const WS=/[\s  -   　]+/g;
+function normWs(nodes){
+  let sp=true;
+  const go=arr=>{for(let i=0;i<arr.length;i++){const x=arr[i];
+    if(typeof x==='string'){let s=fixText(x).replace(WS,m=>m===' '?' ':' ');if(sp)s=s.replace(/^[  ]+/,'');if(s)sp=/[  ]$/.test(s);arr[i]=s}
+    else if(x.t==='br'){trimTail(arr,i);sp=true}
+    else if(x.t==='img')sp=false;
+    else if(x.c)go(x.c)}};
+  go(nodes);trimTail(nodes,nodes.length);return prune(nodes);
+}
+function trimTail(arr,i){for(let j=i-1;j>=0;j--){const x=arr[j];if(typeof x==='string'){arr[j]=x.replace(/[  ]+$/,'');if(arr[j])return;continue}if(x.t==='br'||x.t==='img')return;if(x.c&&x.c.length){trimTail(x.c,x.c.length);return}}}
+function prune(arr){const out=[];for(const x of arr){if(typeof x==='string'){if(x)out.push(x);continue}if(x.c){x.c=prune(x.c);if(!x.c.length&&!(x.a&&x.a.id)&&x.t!=='td'&&x.t!=='th'&&x.t!=='li')continue}out.push(x)}
+  while(out.length&&out[0].t==='br')out.shift();while(out.length&&out[out.length-1].t==='br')out.pop();return out}
+const SEPS=new Set(['li','td','th','tr','dt','dd','caption']);
+function plain(arr){let s='';for(const x of arr){if(typeof x==='string')s+=x;else if(x.t==='br')s+='\n';else if(x.c){s+=plain(x.c);if(SEPS.has(x.t))s+=' '}}return s}
+function countWords(t){const m=t.match(/\S+/g);const n=m?m.length:0;const cjk=(t.match(/[぀-ヿ㐀-鿿가-힯]/g)||[]).length;return cjk>n?Math.ceil(cjk/2):n}
+function hasTag(arr,t){for(const x of arr){if(typeof x!=='object')continue;if(x.t===t)return true;if(x.c&&hasTag(x.c,t))return true}return false}
+function idsIn(arr,out=[]){for(const x of arr){if(typeof x!=='object')continue;if(x.a&&x.a.id)out.push(x.a.id);if(x.c)idsIn(x.c,out)}return out}
+function normKey(s){return String(s||'').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g,'').replace(/[^a-z\s]/g,' ').replace(/\s+/g,' ').trim()}
+function stripTags(h){if(!h)return '';const d=new DOMParser().parseFromString('<div>'+h+'</div>','text/html');return String(d.body.textContent||'').replace(/\s+/g,' ').trim()}
+
+/* =====================================================================
+   DOM — parsing old XHTML that isn't always XML
+   ===================================================================== */
+const lname=el=>String(el.localName||el.nodeName||'').toLowerCase().replace(/^.*:/,'');
+function els(root,name){const out=[];for(const e of root.getElementsByTagName('*'))if(lname(e)===name)out.push(e);return out}
+const txt=el=>String(el.textContent||'').replace(/\s+/g,' ').trim();
+function attrAny(el,local){if(!el.attributes)return null;for(const a of el.attributes)if(a.name.toLowerCase().replace(/^.*:/,'')===local)return a.value;return null}
+const VOID_RX=/^(?:area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)$/i;
+function parseX(text,type){
+  const P=new DOMParser();
+  const d=P.parseFromString(text,type==='xml'?'application/xml':'application/xhtml+xml');
+  if(d.documentElement&&!d.getElementsByTagName('parsererror').length)return{doc:d,xml:true};
+  const fixed=String(text).replace(/^﻿/,'').replace(/<\?xml[\s\S]*?\?>/,'').replace(/<!DOCTYPE[^>]*>/i,'').replace(/<([a-zA-Z][\w:.-]*)(\s[^<>]*?)?\/>/g,(m,t,a)=>VOID_RX.test(t)?m:`<${t}${a||''}></${t}>`);
+  return{doc:P.parseFromString(fixed,'text/html'),xml:false};
+}
+function dirOf(p){const i=p.lastIndexOf('/');return i<0?'':p.slice(0,i+1)}
+function dec(s){try{return decodeURIComponent(s)}catch(e){return s}}
+function resolvePath(base,href){
+  let h=String(href).split('#')[0].split('?')[0];h=dec(h);
+  if(/^[a-z][a-z0-9+.-]*:/i.test(h))return null;
+  const parts=(h.startsWith('/')?h.slice(1):base+h).split('/');const out=[];
+  for(const p of parts){if(p==='..')out.pop();else if(p!=='.'&&p!=='')out.push(p)}
+  return out.join('/');
+}
+function splitHash(h){const i=h.indexOf('#');return i<0?[h,'']:[h.slice(0,i),dec(h.slice(i+1))]}
+
+/* =====================================================================
+   CSS — only what decides meaning: italic, bold, centred, small caps,
+   size, indent, page breaks, hidden. Everything else is thrown away.
+   ===================================================================== */
+function toEm(v){
+  const m=String(v).match(/^(-?[\d.]+)(em|rem|%|px|pt|ex|ch)?$/);
+  if(!m)return {'xx-small':.6,'x-small':.75,small:.89,medium:1,large:1.2,'x-large':1.5,'xx-large':2,'xxx-large':3,larger:1.2,smaller:.83}[v]??null;
+  const n=parseFloat(m[1]),u=m[2]||'px';
+  return u==='em'||u==='rem'?n:u==='%'?n/100:u==='px'?n/16:u==='pt'?n/12:n/2;
+}
+function declFlags(s){
+  const f={};let any=false;
+  for(const part of String(s).split(';')){const i=part.indexOf(':');if(i<0)continue;const p=part.slice(0,i).trim().toLowerCase();const v=part.slice(i+1).trim().toLowerCase().replace(/\s*!important$/,'');
+    switch(p){
+      case 'font-style':f.italic=/italic|oblique/.test(v);any=true;break;
+      case 'font-weight':f.bold=/bold/.test(v)||parseInt(v,10)>=600;any=true;break;
+      case 'font-variant':case 'font-variant-caps':if(/small-caps/.test(v)){f.sc=true;any=true}break;
+      case 'text-transform':if(v==='uppercase'){f.caps=true;any=true}break;
+      case 'text-align':if(/center/.test(v)){f.center=true;f.right=false}else if(/right|end/.test(v)){f.right=true;f.center=false}else{f.center=false;f.right=false}any=true;break;
+      case 'font-size':{const em=toEm(v);if(em!=null){f.large=em>=1.2;if(em<=.85)f.small=true;any=true}}break;
+      case 'vertical-align':if(/super/.test(v)){f.sup=true;any=true}else if(/sub/.test(v)){f.sub=true;any=true}break;
+      case 'text-decoration':case 'text-decoration-line':if(/underline/.test(v)){f.under=true;any=true}if(/line-through/.test(v)){f.strike=true;any=true}break;
+      case 'display':if(v==='none'){f.hidden=true;any=true}break;
+      case 'visibility':if(v==='hidden'){f.hidden=true;any=true}break;
+      case 'margin-left':case 'padding-left':{const em=toEm(v);if(em!=null&&em>=1.5){f.indent=true;any=true}}break;
+      case 'margin':{const ps=v.split(/\s+/);const left=ps.length===4?ps[3]:ps.length>=2?ps[1]:ps[0];const el=toEm(left),et=toEm(ps[0]);if(el!=null&&el>=1.5){f.indent=true;any=true}if(et!=null&&et>=1.5){f.gap=true;any=true}}break;
+      case 'margin-top':case 'padding-top':case 'height':{const em=toEm(v);if(em!=null&&em>=1.5){f.gap=true;any=true}}break;
+      case 'page-break-before':case 'break-before':if(/always|page|left|right|recto|verso/.test(v)){f.pb=true;any=true}break;
+    }}
+  return any?f:null;
+}
+function cssInto(map,text){
+  text=String(text).replace(/\/\*[\s\S]*?\*\//g,'');
+  const re=/([^{}@;]+)\{([^{}]*)\}/g;let m;
+  while((m=re.exec(text))){const d=declFlags(m[2]);if(!d)continue;
+    for(let s of m[1].split(',')){s=s.trim();const mm=s.match(/^[a-z][a-z0-9]*((?:\.[\w-]+)+)$/i)||s.match(/^((?:\.[\w-]+)+)$/);if(!mm)continue;const key=mm[1].slice(1);map.set(key,{...(map.get(key)||{}),...d})}}
+}
+function withCompound(map){map.compound=[...map].filter(([k])=>k.includes('.')).map(([k,v])=>[k.split('.'),v]);return map}
+function elFlags(el,cls){
+  let f=null;const c=el.getAttribute('class');
+  if(c&&cls){const list=c.trim().split(/\s+/);for(const k of list){const x=cls.get(k);if(x)f=Object.assign(f||{},x)}if(cls.compound)for(const [ps,x] of cls.compound)if(ps.every(p=>list.includes(p)))f=Object.assign(f||{},x)}
+  const st=el.getAttribute('style');if(st){const x=declFlags(st);if(x)f=Object.assign(f||{},x)}
+  const al=el.getAttribute('align');if(al){f=f||{};if(/center/i.test(al))f.center=true;else if(/right/i.test(al))f.right=true}
+  if(lname(el)==='center'){f=f||{};f.center=true}
+  return f;
+}
+
+/* =====================================================================
+   READ — container, package, contents, DRM
+   ===================================================================== */
+async function drmCheck(zip){
+  if(zip.find('META-INF/rights.xml'))fail('drm','an EPUB without DRM','Adobe DRM (rights.xml): the file is locked');
+  if(zip.find('META-INF/sinf.xml'))fail('drm','an EPUB without DRM','Apple FairPlay (sinf.xml): a store-bought book');
+  const enc=zip.find('META-INF/encryption.xml');
+  if(enc){const t=await zip.text(enc)||'';const uris=[...t.matchAll(/URI\s*=\s*["']([^"']+)["']/g)].map(m=>m[1]);const locked=uris.filter(u=>!/\.(?:ttf|otf|woff2?|fnt|ttc)$/i.test(u));
+    if(locked.length)fail('drm','an EPUB without DRM',`${locked.length} encrypted file${locked.length>1?'s':''} (${clip(locked[0],60)})`)}
+}
+function sortName(n){n=String(n||'').trim();if(!n||n.includes(','))return n;const p=n.split(/\s+/);if(p.length<2)return n;let suf='';if(p.length>2&&/^(?:jr\.?|sr\.?|ii|iii|iv|phd|md)$/i.test(p[p.length-1]))suf=', '+p.pop();const last=p.pop();return `${last}, ${p.join(' ')}${suf}`}
+function cleanTitle(s){
+  s=String(s||'').replace(/\.epub$/i,'').replace(/_/g,' ').replace(/^\s*(?:microsoft word|untitled document)\s*-\s*/i,'')
+    .replace(/\s*[[(](?:z-?lib(?:rary)?(?:\.org)?|libgen[^\])]*|oceanofpdf(?:\.com)?|epub|retail|ebook|v\d[\w.]*)[\])]\s*/gi,' ').replace(/\s*-\s*(?:oceanofpdf\.com|z-lib\.org)\s*/gi,' ').replace(/\s+/g,' ').trim();
+  return /^(?:unknown|untitled|title|book|calibre)$/i.test(s)?'':s;
+}
+function cleanAuthor(s){s=String(s||'').replace(/\s+/g,' ').trim();return /^(?:unknown|unknown author|calibre|author)?$/i.test(s)?'':s}
+function unshout(s){if(!s||s!==s.toUpperCase()||s===s.toLowerCase())return s;return s.toLowerCase().replace(/(^|[\s(\-"“'‘])(\p{L})/gu,(m,a,b)=>a+b.toUpperCase())}
+function parseOpf(text,opfPath,zip){
+  const {doc}=parseX(text,'xml');const dir=dirOf(opfPath);const refines={};
+  for(const m of els(doc,'meta')){const rf=(m.getAttribute('refines')||'').replace(/^#/,'');const p=m.getAttribute('property');if(rf&&p)(refines[rf]=refines[rf]||{})[p]=txt(m)}
+  const metaName=n=>{for(const m of els(doc,'meta'))if((m.getAttribute('name')||'').toLowerCase()===n)return m.getAttribute('content');return null};
+  const creators=els(doc,'creator').map(e=>{const rf=refines[e.getAttribute('id')||'']||{};return{name:txt(e),role:(attrAny(e,'role')||rf.role||'').toLowerCase(),fileAs:attrAny(e,'file-as')||rf['file-as']||''}}).filter(c=>c.name);
+  const aut=creators.filter(c=>!c.role||c.role==='aut');
+  const authors=(aut.length?aut:creators).map(c=>({name:cleanAuthor(c.name),fileAs:c.fileAs})).filter(a=>a.name);
+  let series=metaName('calibre:series'),seriesIndex=metaName('calibre:series_index');
+  if(!series)for(const m of els(doc,'meta'))if(m.getAttribute('property')==='belongs-to-collection'){series=txt(m);const id=m.getAttribute('id');if(id&&refines[id])seriesIndex=refines[id]['group-position']||null;break}
+  const items=new Map();
+  for(const it of els(doc,'item')){const id=it.getAttribute('id'),href=it.getAttribute('href');if(!id||!href)continue;const p=resolvePath(dir,href);if(!p)continue;const ent=zip.find(p);items.set(id,{id,path:ent?ent.name:p,type:(it.getAttribute('media-type')||'').toLowerCase(),props:it.getAttribute('properties')||''})}
+  const spineEl=els(doc,'spine')[0];
+  const spine=els(doc,'itemref').map(ir=>items.get(ir.getAttribute('idref'))).filter(Boolean);
+  const ncx=(spineEl&&items.get(spineEl.getAttribute('toc')))||[...items.values()].find(i=>/dtbncx/.test(i.type))||null;
+  const nav=[...items.values()].find(i=>/\bnav\b/.test(i.props))||null;
+  let coverPath=null;const ci=[...items.values()].find(i=>/\bcover-image\b/.test(i.props));if(ci)coverPath=ci.path;
+  if(!coverPath){const cid=metaName('cover');const it=cid&&items.get(cid);if(it&&/^image\//.test(it.type))coverPath=it.path;else if(cid){const bh=[...items.values()].find(i=>/^image\//.test(i.type)&&(i.path===cid||i.path.endsWith('/'+cid)));if(bh)coverPath=bh.path}}
+  if(!coverPath){const im=[...items.values()].find(i=>/^image\//.test(i.type)&&/cover/i.test(i.id+' '+i.path));if(im)coverPath=im.path}
+  const gc=els(doc,'reference').find(r=>/cover/i.test(r.getAttribute('type')||''));
+  const one=n=>els(doc,n).map(txt).find(Boolean)||'';
+  const md={title:cleanTitle(one('title')),authors,author:authors[0]?authors[0].name:'',language:one('language'),publisher:one('publisher'),date:one('date'),
+    description:stripTags(els(doc,'description').map(e=>e.textContent).find(Boolean)||''),subjects:els(doc,'subject').map(txt).filter(Boolean),identifiers:els(doc,'identifier').map(txt).filter(Boolean),series:series||null,seriesIndex:seriesIndex||null};
+  return{items,spine,ncx,nav,coverPath,guideCover:gc?resolvePath(dir,gc.getAttribute('href')||''):null,meta:md};
+}
+async function readToc(pk,zip){
+  const out=[];
+  if(pk.nav){const t=await zip.text(pk.nav.path);if(t){const {doc}=parseX(t,'xhtml');const navs=els(doc,'nav');const nav=navs.find(n=>/\btoc\b/.test(attrAny(n,'type')||''))||navs[0];
+    if(nav){const dir=dirOf(pk.nav.path);for(const a of els(nav,'a')){const h=a.getAttribute('href');if(!h)continue;let depth=0;for(let p=a.parentNode;p&&p!==nav;p=p.parentNode)if(lname(p)==='ol')depth++;const [pp,frag]=splitHash(h);const path=pp?resolvePath(dir,pp):pk.nav.path;if(path)out.push({label:txt(a),path:(zip.find(path)||{}).name||path,frag,depth})}}}}
+  if(!out.length&&pk.ncx){const t=await zip.text(pk.ncx.path);if(t){const {doc}=parseX(t,'xml');const dir=dirOf(pk.ncx.path);
+    for(const np of els(doc,'navpoint')){const lab=els(np,'text')[0],ct=els(np,'content')[0];const src=ct&&ct.getAttribute('src');if(!src)continue;let depth=0;for(let p=np.parentNode;p;p=p.parentNode)if(lname(p)==='navpoint')depth++;const [pp,frag]=splitHash(src);const path=resolvePath(dir,pp);if(path)out.push({label:lab?txt(lab):'',path:(zip.find(path)||{}).name||path,frag,depth:depth+1})}}}
+  return out;
+}
+
+/* =====================================================================
+   EXTRACT — every spine file flattened into one stream of blocks.
+   A block is a paragraph, heading, image, list, table, preformatted
+   run or a scene break, with its inline markup rebuilt from scratch.
+   ===================================================================== */
+const SKIP=new Set(['script','style','head','title','meta','link','noscript','template','iframe','object','embed','form','input','button','select','textarea','audio','video','source','track','canvas','map','area','math','case']);
+const BLOCKS=new Set(['p','h1','h2','h3','h4','h5','h6','div','section','article','aside','header','footer','main','nav','blockquote','ul','ol','dl','table','pre','hr','figure','figcaption','center','address','body','li','dd','dt','hgroup','details','summary','caption','tbody','thead','tfoot','tr','td','th','fieldset','legend']);
+const PARA=new Set(['p','dt','dd','li','caption','figcaption','legend','summary','address']);
+const INLINE_KEEP={sup:'sup',sub:'sub',small:'small',u:'u',s:'s',strike:'s',del:'del',ins:'ins',code:'code',tt:'code',kbd:'kbd',samp:'samp',q:'q',abbr:'abbr',ruby:'ruby',rt:'rt',rp:'rp'};
+const STRUCT=new Set(['ul','ol','li','dl','dt','dd','table','thead','tbody','tfoot','tr','td','th','caption']);
+const sidOf=(fi,raw)=>'f'+fi+'-'+String(raw).replace(/[^A-Za-z0-9_.-]/g,'_');
+function ownSid(el,X){if(!el.getAttribute)return null;const raw=el.getAttribute('id')||(lname(el)==='a'?el.getAttribute('name'):null);if(!raw)return null;const s=sidOf(X.fi,raw);if(!X.targets.has(s)||X.used.has(s))return null;X.used.add(s);return s}
+function linkTarget(href,X){
+  href=String(href).trim();if(!href)return null;
+  if(/^(?:https?:|mailto:)/i.test(href))return href;
+  if(/^[a-z][a-z0-9+.-]*:/i.test(href))return null;
+  const [p,frag]=splitHash(href);let path=X.path;
+  if(p){const q=resolvePath(X.dir,p);if(!q)return null;const ent=X.zip&&X.zip.find(q);path=ent?ent.name:q}
+  const fi=X.fileIdx.get(path);if(fi==null)return null;
+  return frag?'#'+sidOf(fi,frag):'@'+fi;
+}
+function hasBlockChild(el){for(const n of el.children){const t=lname(n);if(BLOCKS.has(t)&&!SKIP.has(t))return true}return false}
+function down(me){const o={...me};delete o.pb;delete o.gap;return o}
+function walk(el,X,inh){
+  const t=lname(el);if(SKIP.has(t))return;
+  const f=elFlags(el,X.cls);if(f&&f.hidden)return;
+  const me={...inh,...(f||{})};
+  if(t==='i'||t==='em'||t==='cite')me.italic=true;if(t==='b'||t==='strong')me.bold=true;
+  if(f&&f.pb)X.pb=true;
+  if(/^h[1-6]$/.test(t)){textBlock(el,X,me,'h',+t[1]);return}
+  if(t==='hr'){pushBlock(X,{k:'hr',c:[],text:'',words:0,fl:{}});return}
+  if(t==='ul'||t==='ol'||t==='dl'){structBlock(el,X,me,'list');return}
+  if(t==='table'){structBlock(el,X,me,'table');return}
+  if(t==='pre'){structBlock(el,X,me,'pre');return}
+  if(t==='blockquote'){const q={...me,q:++X.qid};if(!hasBlockChild(el)){textBlock(el,X,q,'p',0);return}const sid=ownSid(el,X);if(sid)X.pend.push(sid);containerWalk(el,X,down(q));return}
+  if(!hasBlockChild(el)){textBlock(el,X,me,'p',0);return}
+  const sid=ownSid(el,X);if(sid)X.pend.push(sid);
+  containerWalk(el,X,down(me));
+}
+function containerWalk(el,X,me){
+  let run=[];
+  const flush=()=>{if(!run.length)return;const nodes=[];for(const n of run){if(n.nodeType===3||n.nodeType===4)nodes.push(n.nodeValue);else for(const y of cleanNode(n,X,{italic:!!me.italic,bold:!!me.bold,sc:!!me.sc}))nodes.push(y)}emitText(nodes,X,me,'p',0,null);run=[]};
+  for(const n of el.childNodes){
+    if(n.nodeType===3||n.nodeType===4){run.push(n);continue}
+    if(n.nodeType!==1)continue;
+    const t=lname(n);if(SKIP.has(t))continue;
+    if(BLOCKS.has(t)||hasBlockChild(n)){flush();walk(n,X,me)}else run.push(n);
+  }
+  flush();
+}
+function textBlock(el,X,me,k,lvl){const sid=ownSid(el,X);emitText(cleanKids(el,X,{italic:!!me.italic,bold:!!me.bold,sc:!!me.sc}),X,me,k,lvl,sid)}
+function splitBrBr(nodes){
+  const out=[[]];let i=0;
+  while(i<nodes.length){const x=nodes[i];
+    if(x&&x.t==='br'){let j=i+1;while(j<nodes.length&&typeof nodes[j]==='string'&&!nodes[j].trim())j++;
+      if(j<nodes.length&&nodes[j]&&nodes[j].t==='br'){while(j<nodes.length&&((nodes[j]&&nodes[j].t==='br')||(typeof nodes[j]==='string'&&!nodes[j].trim())))j++;out.push([]);i=j;continue}}
+    out[out.length-1].push(x);i++}
+  return out.filter(g=>g.length);
+}
+function blockFlags(me,c,text){
+  const len=text.length;let bc=0,ic=0;
+  (function w(arr,b,it){for(const x of arr){if(typeof x==='string'){if(b)bc+=x.length;if(it)ic+=x.length}else if(x.c)w(x.c,b||x.t==='b'||x.t==='strong',it||x.t==='i'||x.t==='em')}})(c,false,false);
+  const letters=text.replace(/[^\p{L}]/gu,'');
+  return{c:!!me.center,r:!!me.right&&!me.center,ind:!!me.indent,sc:!!me.sc,pb:!!me.pb,large:!!me.large,
+    bold:!!me.bold||(len>0&&bc>=len*.9),ital:!!me.italic||(len>0&&ic>=len*.9),
+    caps:!!me.caps||(letters.length>=3&&letters===letters.toUpperCase()&&letters!==letters.toLowerCase())};
+}
+function emitText(nodes,X,me,k,lvl,sid){
+  const groups=k==='p'?splitBrBr(nodes):[nodes];let first=true;
+  for(const g of groups){
+    const c=normWs(g);const text=plain(c).trim();const img=hasTag(c,'img');const myId=first?sid:null;first=false;
+    if(!text&&!img){if(myId)X.pend.push(myId);const ids=idsIn(c);if(ids.length)X.pend.push(...ids);if(me.gap)pushBlock(X,{k:'gap',c:[],text:'',words:0,fl:{}});continue}
+    const b={k:img&&!text?'img':k,lvl:lvl||0,c,text,words:countWords(text),fl:blockFlags(me,c,text),q:me.q||0,wi:!!me.italic&&k==='p',wb:!!me.bold&&k==='p'};
+    if(myId)b.id=myId;
+    pushBlock(X,b);
+  }
+}
+function pushBlock(X,b){
+  b.i=X.blocks.length;b.f=X.fi;if(b.q==null)b.q=0;
+  if(X.pend.length){b.pre=X.pend;X.pend=[]}
+  if(X.pb){b.fl.pb=true;X.pb=false}
+  if(!X.fileFirst.has(X.fi))X.fileFirst.set(X.fi,b.i);
+  X.blocks.push(b);
+}
+function cleanKids(el,X,ctx){const out=[];for(const n of el.childNodes){if(n.nodeType===3||n.nodeType===4)out.push(n.nodeValue);else if(n.nodeType===1)for(const y of cleanNode(n,X,ctx))out.push(y)}return out}
+function cleanNode(n,X,ctx){
+  const t=lname(n);if(SKIP.has(t))return [];
+  const f=elFlags(n,X.cls);if(f&&f.hidden)return [];
+  if(t==='br')return [{t:'br'}];
+  if(t==='img'||t==='image')return imgNode(n,X);
+  if(t==='svg')return svgImg(n,X);
+  const sid=ownSid(n,X);const idSpan=sid?[{t:'span',a:{id:sid},c:[]}]:[];
+  if(BLOCKS.has(t))return [' ',...idSpan,...cleanKids(n,X,ctx),' '];       // a box inside a line: keep the words, lose the box
+  const c2={...ctx};let wrap=null;
+  if(t==='i'||t==='em'||t==='cite'||t==='dfn'||t==='var'){if(!ctx.italic)wrap=t==='em'?'em':'i';c2.italic=true}
+  else if(t==='b'||t==='strong'){if(!ctx.bold)wrap=t==='strong'?'strong':'b';c2.bold=true}
+  else if(INLINE_KEEP[t])wrap=INLINE_KEEP[t];
+  const outer=[];
+  if(f){
+    if(f.italic===true&&!c2.italic){outer.push({t:'i'});c2.italic=true}
+    else if(f.italic===false&&c2.italic){outer.push({t:'span',a:{class:'up'}});c2.italic=false}
+    if(f.bold===true&&!c2.bold){outer.push({t:'b'});c2.bold=true}
+    if(f.sc&&!c2.sc){outer.push({t:'span',a:{class:'sc'}});c2.sc=true}
+    if(f.sup&&wrap!=='sup')outer.push({t:'sup'});else if(f.sub&&wrap!=='sub')outer.push({t:'sub'});
+    if(f.under&&wrap!=='u')outer.push({t:'u'});
+    if(f.strike&&wrap!=='s')outer.push({t:'s'});
+  }
+  let out=cleanKids(n,X,c2);
+  if(t==='a'){const href=n.getAttribute('href');const L=href?linkTarget(href,X):null;if(L||sid){const a={};if(L)a.href=L;if(sid)a.id=sid;out=[{t:'a',a,c:out}]}}
+  else{if(wrap)out=[{t:wrap,a:{},c:out}];if(sid)out=[...idSpan,...out]}
+  for(let i=outer.length-1;i>=0;i--)out=[{t:outer[i].t,a:outer[i].a||{},c:out}];
+  return out;
+}
+function imgNode(n,X){
+  const src=n.getAttribute('src')||attrAny(n,'href');if(!src)return [];
+  const w=parseInt(n.getAttribute('width'),10),h=parseInt(n.getAttribute('height'),10);if((w&&w<=2)||(h&&h<=2))return [];
+  if(/^data:/i.test(src)){X.dataImgs++;return []}
+  const p=resolvePath(X.dir,src);const ent=p&&X.zip.find(p);if(!ent){X.missingImg++;return []}
+  return [{t:'img',a:{src:'%'+ent.name,alt:fixText(n.getAttribute('alt')||'').replace(WS,' ').trim()}}];
+}
+function svgImg(n,X){const im=els(n,'image')[0];return im?imgNode(im,X):[]}
+function structBlock(el,X,me,k){
+  const node=k==='pre'?{t:'pre',a:{},c:deepFix(cleanKids(el,X,{}))}:cleanStruct(el,X);if(!node)return;
+  if(k==='pre'){const sid=ownSid(el,X);if(sid)node.a.id=sid}
+  const text=plain([node]).trim();if(!text&&!hasTag([node],'img'))return;
+  pushBlock(X,{k,lvl:0,c:[node],text,words:countWords(text),fl:{c:!!me.center},q:me.q||0});
+}
+function deepFix(arr){return arr.map(x=>typeof x==='string'?fixText(x):(x.c?{...x,c:deepFix(x.c)}:x))}
+function cleanStruct(el,X){
+  const t=lname(el);const node={t,a:{},c:[]};
+  if(t==='td'||t==='th')for(const at of ['colspan','rowspan']){const v=el.getAttribute(at);if(v&&/^\d+$/.test(v)&&+v>1)node.a[at]=v}
+  if(t==='ol'){const s=el.getAttribute('start');if(s&&/^-?\d+$/.test(s))node.a.start=s;const ty=el.getAttribute('type');if(ty&&/^[1aAiI]$/.test(ty))node.a.type=ty}
+  const leaf=t==='li'||t==='td'||t==='th'||t==='dt'||t==='dd'||t==='caption';
+  for(const n of el.childNodes){
+    if(n.nodeType===3||n.nodeType===4){if(leaf)node.c.push(n.nodeValue);continue}
+    if(n.nodeType!==1)continue;const ct=lname(n);if(SKIP.has(ct))continue;
+    if(STRUCT.has(ct)){const sub=cleanStruct(n,X);if(sub)node.c.push(sub)}
+    else if(leaf){for(const y of cleanNode(n,X,{}))node.c.push(y)}
+    else if(t==='ul'||t==='ol'){const kids=cleanNode(n,X,{});if(kids.length)node.c.push({t:'li',a:{},c:kids})}
+  }
+  if(leaf)node.c=normWs(node.c);
+  const sid=ownSid(el,X);if(sid)node.a.id=sid;
+  return node;
+}
+
+async function parseEpub(buf,ctx,rec){
+  const zip=await zipOpen(buf);
+  await drmCheck(zip);
+  const cx=await zip.text('META-INF/container.xml');if(!cx)fail('container','META-INF/container.xml','missing: not an EPUB');
+  const opfPath=(cx.match(/full-path\s*=\s*["']([^"']+)["']/i)||[])[1];if(!opfPath)fail('container','a rootfile full-path','none in container.xml');
+  const opfEnt=zip.find(opfPath);if(!opfEnt)fail('opf',`the package file ${opfPath}`,'missing');
+  const pk=parseOpf(await zip.text(opfEnt),opfEnt.name,zip);
+  if(!pk.spine.length)fail('opf','at least one spine item',`none (manifest has ${pk.items.size})`);
+  const cls=new Map();
+  for(const it of pk.items.values())if(/css/i.test(it.type)||/\.css$/i.test(it.path)){const t=await zip.text(it.path);if(t)cssInto(cls,t)}
+  const docs=[],fileIdx=new Map();
+  for(const it of pk.spine){
+    if(fileIdx.has(it.path))continue;
+    if(!/html|xml/i.test(it.type)&&!/\.x?html?$/i.test(it.path)){ctx.warn.push(`skipped spine item ${it.path.split('/').pop()} (${it.type||'no type'})`);continue}
+    const t=await zip.text(it.path);if(t==null){ctx.warn.push(`spine file missing: ${it.path}`);continue}
+    const {doc}=parseX(t,'xhtml');fileIdx.set(it.path,docs.length);docs.push({path:it.path,dir:dirOf(it.path),doc,name:it.path.split('/').pop()});
+    if(docs.length%6===0)await tick();
+  }
+  if(!docs.length)fail('spine','readable XHTML in the spine','none');
+  if(!pk.coverPath&&pk.guideCover){const t=await zip.text(pk.guideCover);if(t){const {doc}=parseX(t,'xhtml');const im=els(doc,'img')[0]||els(doc,'image')[0];const s=im&&(im.getAttribute('src')||attrAny(im,'href'));const p=s&&resolvePath(dirOf(pk.guideCover),s);const ent=p&&zip.find(p);if(ent)pk.coverPath=ent.name}}
+  const toc=await readToc(pk,zip);
+  const targets=new Set();
+  for(let i=0;i<docs.length;i++){const d=docs[i];const L0={dir:d.dir,path:d.path,fileIdx,zip};
+    for(const el of d.doc.getElementsByTagName('*')){if(lname(el)==='link')continue;const h=el.getAttribute('href');if(!h)continue;const L=linkTarget(h,L0);if(L&&L[0]==='#')targets.add(L.slice(1))}}
+  for(const e of toc){const fi=fileIdx.get(e.path);if(fi!=null&&e.frag)targets.add(sidOf(fi,e.frag))}
+  const X={zip,fileIdx,targets,used:new Set(),blocks:[],fileFirst:new Map(),qid:0,pend:[],pb:false,missingImg:0,dataImgs:0,cls:null,fi:0,path:'',dir:''};
+  for(let i=0;i<docs.length;i++){
+    const d=docs[i];X.fi=i;X.path=d.path;X.dir=d.dir;
+    const local=new Map(cls);for(const st of els(d.doc,'style'))cssInto(local,st.textContent||'');X.cls=withCompound(local);
+    walk(els(d.doc,'body')[0]||d.doc.documentElement,X,{});
+    if(i%4===3)await tick();
+  }
+  if(X.pend.length&&X.blocks.length){const lb=X.blocks[X.blocks.length-1];lb.post=[...(lb.post||[]),...X.pend];X.pend=[]}
+  if(!X.blocks.length)fail('blocks','readable text in the book','none');
+  if(X.missingImg)ctx.warn.push(`${X.missingImg} image${X.missingImg>1?'s were':' was'} referenced but missing from the file`);
+  if(X.dataImgs)ctx.warn.push(`${X.dataImgs} inline data image${X.dataImgs>1?'s':''} dropped`);
+  if(!pk.coverPath){const b0=X.blocks[0];if(b0&&b0.f===0&&b0.k==='img'){const w0=X.blocks.filter(b=>b.f===0).reduce((s,b)=>s+b.words,0);const im=(function find(a){for(const x of a){if(x&&x.t==='img')return x;if(x&&x.c){const r=find(x.c);if(r)return r}}return null})(b0.c);if(w0<15&&im)pk.coverPath=im.a.src.slice(1)}}
+  const files=docs.map(d=>({path:d.path,name:d.name,words:0}));for(const b of X.blocks)files[b.f].words+=b.words;
+  const words=X.blocks.reduce((s,b)=>s+b.words,0);if(!words)fail('blocks','words in the book','0');
+  const tocRaw=toc.map(e=>({fi:fileIdx.get(e.path),frag:e.frag,label:e.label,depth:e.depth})).filter(e=>e.fi!=null);
+  docs.length=0;
+  return{zip,pk,meta:pk.meta,files,blocks:X.blocks,fileFirst:X.fileFirst,tocRaw,toc:[],words,cssClasses:cls.size,coverPath:pk.coverPath,fileName:rec.name,idBlock:new Map(),ocr:false};
+}
+
+/* =====================================================================
+   SCRUB — the weird artifacts. Each pass counts what it touched.
+   ===================================================================== */
+const TERM_RX=/[.!?…"”’'»)\]:—]\s*$/;
+const CHAP_RX=/^(?:chapter|chap\.|part|book|volume|vol\.|prologue|epilogue|interlude|introduction|preface|foreword|afterword|appendix|acknowledg(?:e)?ments?|dedication|contents|table of contents|copyright|about the authors?|also by|praise for|excerpt|coming soon|epigraph|glossary|notes|endnotes|bibliography|index|cast of characters|dramatis personae|author[’']?s note|a note on|maps?)\b/i;
+const NUMW='(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred)';
+const NUMWORD_RX=new RegExp(`^${NUMW}(?:[\\s-]+${NUMW}){0,2}[.:]?$`,'i');
+const NUM_RX=/^[[(]?(?:\d{1,3}|[ivxlc]{1,7})[\])]?[.:]?$/i;
+const PAGENUM_RX=/^[[(]?(?:\d{1,4}|[ivxlcdm]{1,7})[\])]?\.?$/i;
+const PART_RX=/^(?:part|book|volume)\b/i;
+const DINKUS_RX=/^(?:[*·•∗⁂#~◆◇♦❖✦✧❧☙§=_\-–—●○◦⋆★☆✱✲✳❦❀✿]{1,30}|o0o|0o0|xxx|ooo)$/i;
+const WATERMARK_RX=/oceanofpdf|z-?library|\bz-lib\b|\blibgen\b|ebook3000|\bscanned (?:and proofed )?by\b|\bproof-?read by\b|\bocr(?:'?d)? by\b|this e-?book (?:was|is) (?:created|scanned|made|brought|prepared)|\bdownloaded (?:from|at|via)\b|\buploaded by\b|free e-?books? (?:at|from)/i;
+function prevLive(B,i){for(let j=i-1;j>=0;j--)if(!B[j].drop)return B[j];return null}
+function nextLive(B,i){for(let j=i+1;j<B.length;j++)if(!B[j].drop)return B[j];return null}
+function firstLiveOf(book,fi){const s=book.fileFirst.get(fi);if(s==null)return null;for(let j=s;j<book.blocks.length;j++)if(!book.blocks[j].drop)return j;return null}
+function looksHead(b){return b.words<=8&&(b.fl.bold||b.fl.large||b.fl.caps||b.fl.c||CHAP_RX.test(b.text)||NUMWORD_RX.test(b.text)||NUM_RX.test(b.text))}
+function isHeadish(b){return b.k==='h'||(b.k==='p'&&b.words<=12&&(b.fl.c||b.fl.bold||b.fl.large||b.fl.caps||b.fl.sc||CHAP_RX.test(b.text)||NUM_RX.test(b.text)||NUMWORD_RX.test(b.text)))}
+function buildVocab(B){const v=new Set();for(const b of B){if(b.drop||b.k!=='p')continue;for(const m of b.text.toLowerCase().matchAll(/(?<![\p{L}-])\p{L}{4,}(?![\p{L}-])/gu))v.add(m[0])}return v}
+function dropTrailingHyphen(arr,end=arr.length){for(let j=end-1;j>=0;j--){const x=arr[j];if(typeof x==='string'){if(/-\s*$/.test(x)){arr[j]=x.replace(/-\s*$/,'');return true}if(x.trim())return false;continue}if(x.t==='br'||x.t==='img')return false;if(x.c&&x.c.length)return dropTrailingHyphen(x.c)}return false}
+function joinable(before,after,vocab){const w1=(before.match(/(\p{L}+)-\s*$/u)||[])[1]||'',w2=(after.match(/^\s*(\p{L}+)/u)||[])[1]||'';return !!(w1&&w2&&vocab.has((w1+w2).toLowerCase()))}
+function mergeInto(a,b,vocab){
+  const ids=[...(b.pre||[]),...(b.id?[b.id]:[]),...(b.post||[])].map(id=>({t:'span',a:{id},c:[]}));
+  const hy=/\p{L}-$/u.test(a.text)&&/^\p{Ll}/u.test(b.text);
+  if(hy){if(joinable(a.text,b.text,vocab))dropTrailingHyphen(a.c);a.c.push(...ids,...b.c)}else a.c.push(' ',...ids,...b.c);
+  a.c=normWs(a.c);a.text=plain(a.c).trim();a.words=countWords(a.text);
+  b.drop='merged';b.c=[];b.pre=b.post=null;b.id=null;
+}
+function joinLines(b,vocab){
+  let n=0;const c=b.c;
+  for(let i=c.length-1;i>=0;i--){if(!(c[i]&&c[i].t==='br'))continue;const before=plain(c.slice(0,i)),after=plain(c.slice(i+1));if(!before.trim()||!after.trim())continue;
+    if(TERM_RX.test(before)&&!/^\s*\p{Ll}/u.test(after))continue;
+    if(/\p{L}-\s*$/u.test(before)&&/^\s*\p{Ll}/u.test(after)){if(joinable(before,after,vocab))dropTrailingHyphen(c,i);c.splice(i,1)}else c.splice(i,1,' ');n++}
+  if(n){b.c=normWs(c);b.text=plain(b.c).trim();b.words=countWords(b.text)}
+  return n;
+}
+function fixHyphens(b,vocab){let n=0;(function w(arr){for(let i=0;i<arr.length;i++){const x=arr[i];if(typeof x==='string'){if(x.includes('- '))arr[i]=x.replace(/(\p{L}{2,})- (\p{Ll}{2,})/gu,(m,p,q)=>vocab.has((p+q).toLowerCase())?(n++,p+q):m)}else if(x.c&&x.t!=='code')w(x.c)}})(b.c);if(n)b.text=plain(b.c).trim();return n}
+function typeset(b,D,S,dash){
+  const segs=[];(function w(arr){for(let i=0;i<arr.length;i++){const x=arr[i];if(typeof x==='string')segs.push({arr,i});else if(x.t==='br')segs.push({br:1});else if(x.c&&x.t!=='code')w(x.c)}})(b.c);
+  let full='';for(const g of segs)full+=g.br?'\n':g.arr[g.i];
+  const o=full.split('');let q=0,d=0;
+  if(D||S)for(let i=0;i<o.length;i++){const ch=o[i];if(ch!=='"'&&ch!=="'")continue;const p=i?o[i-1]:' ',nx=i+1<o.length?o[i+1]:' ';const open=i===0||/[\s(\[{—–‘“\/-]/.test(p);
+    if(ch==='"'&&D){o[i]=open?'“':'”';q++}
+    else if(ch==="'"&&S){if(/[\p{L}\p{N}]/u.test(p))o[i]='’';else if(open){const rest=full.slice(i+1,i+7).toLowerCase();o[i]=/^\d/.test(nx)||/^(?:tis|twas|em\b|n\b|cause|bout|round|til|nuff)/.test(rest)?'’':'‘'}else o[i]='’';q++}}
+  let k=0;for(const g of segs){if(g.br){k++;continue}const len=g.arr[g.i].length;let s=o.slice(k,k+len).join('');if(dash){const before=s;s=s.replace(/(?<!-)--(?!-)/g,'—');d+=(before.length-s.length)}g.arr[g.i]=s;k+=len}
+  if(q||d)b.text=plain(b.c).trim();
+  return{q,d};
+}
+function markFirsts(B){const seen=new Set();for(const b of B){if(b.drop){b.first=false;continue}b.first=!seen.has(b.f);seen.add(b.f)}}
+function indexIds(book){
+  const B=book.blocks;const map=new Map();let carry=[];
+  for(const b of B){
+    if(b.drop==='merged')continue;
+    const own=[...(b.pre||[]),...(b.id?[b.id]:[]),...idsIn(b.c),...(b.post||[])];
+    if(b.drop||b.k==='hr'){if(own.length){carry.push(...own);b.id=null;b.pre=null;b.post=null}continue}
+    if(carry.length){b.pre=[...carry,...(b.pre||[])];for(const id of carry)map.set(id,b.i);carry=[]}
+    for(const id of own)map.set(id,b.i);
+  }
+  if(carry.length){let last=null;for(let j=B.length-1;j>=0;j--)if(!B[j].drop&&B[j].k!=='hr'){last=B[j];break}if(last){last.post=[...(last.post||[]),...carry];for(const id of carry)map.set(id,last.i)}}
+  book.idBlock=map;
+}
+function scrub(book,ctx){
+  const B=book.blocks;const S={watermarks:0,pageNumbers:0,runningHeads:0,spacing:0,sceneBreaks:0,unquoted:0,unindented:0,uncentered:0,ocr:false,merged:0,lineJoins:0,hyphens:0,quotes:0,dashes:0,verse:0};
+  const P=()=>B.filter(b=>!b.drop&&b.k==='p');
+  for(const b of B)if(!b.drop&&(b.k==='p'||b.k==='h')&&b.words<=40&&WATERMARK_RX.test(b.text)){b.drop='watermark';S.watermarks++}
+  const nums=B.filter(b=>!b.drop&&b.k==='p'&&PAGENUM_RX.test(b.text)&&!b.fl.c&&!b.fl.bold&&!b.fl.large&&!b.fl.pb);
+  if(nums.length>=8){let mid=0;for(const b of nums){const p=prevLive(B,b.i),n=nextLive(B,b.i);if((p&&p.k==='p'&&!TERM_RX.test(p.text))||(n&&n.k==='p'&&/^\p{Ll}/u.test(n.text)))mid++}
+    if(mid/nums.length>=.2)for(const b of nums){b.drop='page number';S.pageNumbers++}}
+  for(const b of B)if(!b.drop&&b.k==='p'&&/^page\s+\d{1,4}$/i.test(b.text)){b.drop='page number';S.pageNumbers++}
+  const keys=new Set();const md=book.meta;const tk=normKey(String(md.title||'').replace(/:.*$/,''));if(tk.length>=4)keys.add(tk);
+  for(const a of md.authors){const k=normKey(a.name);if(k.length>=4)keys.add(k);const last=k.split(' ').pop();if(last&&last.length>=5)keys.add(last)}
+  const heads=B.filter(b=>!b.drop&&b.k==='p'&&b.words<=12&&keys.has(normKey(b.text)));
+  if(heads.length>=3)for(const b of heads){b.drop='running head';S.runningHeads++}
+  const gaps=B.filter(b=>b.k==='gap');const asBreaks=gaps.length>0&&gaps.length<=P().length*.08;
+  for(const b of gaps){if(asBreaks){b.k='hr';S.sceneBreaks++}else{b.drop='spacing';S.spacing++}}
+  for(const b of B)if(!b.drop&&b.k==='p'&&b.text.length<=40&&DINKUS_RX.test(b.text.replace(/\s+/g,''))){b.k='hr';b.c=[];b.text='';b.words=0;S.sceneBreaks++}
+  let qw=0,tw=0;for(const b of B)if(!b.drop){tw+=b.words;if(b.q)qw+=b.words}
+  if(tw&&qw/tw>.5)for(const b of B)if(b.q){b.q=0;S.unquoted++}
+  const PP=P();
+  const ind=PP.filter(b=>b.fl.ind).length;if(PP.length>=20&&ind/PP.length>.3)for(const b of PP)if(b.fl.ind){b.fl.ind=false;S.unindented++}
+  const long=PP.filter(b=>b.text.length>=80);const cen=long.filter(b=>b.fl.c||b.fl.r).length;if(long.length>=10&&cen/long.length>.25)for(const b of long)if(b.fl.c||b.fl.r){b.fl.c=b.fl.r=false;S.uncentered++}
+  if(PP.length>=20&&PP.filter(b=>b.wi).length/PP.length>.5)for(const b of PP)b.wi=false;
+  const vocab=buildVocab(B);
+  let pairs=0,brk=0;for(let j=1;j<PP.length;j++){const a=PP[j-1],b=PP[j];if(a.f!==b.f)continue;pairs++;if(!TERM_RX.test(a.text)&&/^\p{Ll}/u.test(b.text))brk++}
+  S.ocr=pairs>=40&&brk/pairs>.06;book.ocr=S.ocr;
+  if(S.ocr){
+    for(let j=PP.length-1;j>=1;j--){const a=PP[j-1],b=PP[j];if(a.f!==b.f||a.drop||b.drop)continue;if(a.fl.c||a.fl.r||b.fl.c||b.fl.r)continue;if(TERM_RX.test(a.text)||a.words<3||looksHead(a))continue;if(!/^[\p{L}\p{N}"“‘'(\[]/u.test(b.text))continue;mergeInto(a,b,vocab);S.merged++}
+    for(const b of P())S.lineJoins+=joinLines(b,vocab);
+  }
+  for(const b of P())S.hyphens+=fixHyphens(b,vocab);
+  if(!S.ocr)for(const b of P()){if(b.fl.c)continue;const lines=b.text.split('\n').map(s=>s.trim()).filter(Boolean);if(lines.length>=3&&lines.reduce((s,l)=>s+l.length,0)/lines.length<60){b.verse=true;S.verse++}}
+  const T=B.filter(b=>!b.drop&&(b.k==='p'||b.k==='h'||b.k==='list'||b.k==='table'));
+  let sd=0,cd=0,ss=0,cs=0,dd=0,em=0;
+  for(const b of T){for(const ch of b.text){if(ch==='"')sd++;else if(ch==='“'||ch==='”')cd++;else if(ch==="'")ss++;else if(ch==='‘'||ch==='’')cs++;else if(ch==='—')em++}const m=b.text.match(/(?<!-)--(?!-)/g);if(m)dd+=m.length}
+  const curlD=sd>cd,curlS=ss>cs,dash=dd>=5&&dd>em;
+  if(curlD||curlS||dash)for(const b of T){const n=typeset(b,curlD,curlS,dash);S.quotes+=n.q;S.dashes+=n.d}
+  markFirsts(B);indexIds(book);
+  book.toc=book.tocRaw.map(e=>{const bi=e.frag?book.idBlock.get(sidOf(e.fi,e.frag)):firstLiveOf(book,e.fi);return bi!=null?{b:bi,label:e.label,depth:e.depth}:null}).filter(Boolean);
+  if(!B.some(b=>!b.drop))fail('scrub','text left after cleaning','nothing');
+  return S;
+}
+
+/* =====================================================================
+   CANDIDATES — every line where a section could begin
+   ===================================================================== */
+function candidates(book){
+  const B=book.blocks,out=[];const tocAt=new Map();for(const t of book.toc)if(!tocAt.has(t.b))tocAt.set(t.b,t.label);
+  let prevStrong=null;
+  for(const b of B){if(b.drop)continue;
+    const sig=[];if(b.first)sig.push('file');if(tocAt.has(b.i))sig.push('toc');if(b.k==='h')sig.push('h'+b.lvl);if(b.fl.pb)sig.push('break');
+    const short=b.k!=='hr'&&b.words<=15&&b.text.length<=140;
+    if(short&&b.k!=='img'){if(b.fl.c)sig.push('center');if(b.fl.r)sig.push('right');if(b.fl.bold)sig.push('bold');if(b.fl.large)sig.push('large');if(b.fl.caps&&b.words<=12)sig.push('caps');if(b.fl.sc)sig.push('smallcaps');if(CHAP_RX.test(b.text)||NUMWORD_RX.test(b.text))sig.push('word');if(NUM_RX.test(b.text))sig.push('number')}
+    if(b.k==='img')sig.push('image');
+    const strong=sig.some(s=>s==='file'||s==='toc'||/^h[1-6]$/.test(s)||s==='break'||s==='word');
+    const styled=b.k!=='img'&&sig.some(s=>s==='center'||s==='bold'||s==='large'||s==='caps'||s==='smallcaps'||s==='number');
+    let keep=strong||styled;
+    if(!keep&&short&&b.k!=='img'&&prevStrong!=null){const p=prevLive(B,b.i);if(p&&p.i===prevStrong){sig.push('after-heading');keep=true}}
+    if(!keep){prevStrong=null;continue}
+    out.push({b:b.i,sig,strong,toc:tocAt.get(b.i)||null});prevStrong=strong?b.i:null;
+  }
+  const first=B.find(b=>!b.drop);
+  if(!out.length||out[0].b!==first.i)out.unshift({b:first.i,sig:['start'],strong:true,toc:null});
+  let list=out;
+  if(list.length>CONF.maxCands)list=list.filter((x,i)=>i===0||x.strong||x.sig.includes('after-heading'));
+  if(list.length>CONF.maxCands)list=list.slice(0,CONF.maxCands);
+  list.forEach((x,i)=>{x.c=i});
+  return list;
+}
+
+/* =====================================================================
+   PLAN — where sections begin, what they are, what the contents say.
+   Claude decides when there's a key; rules decide when there isn't.
+   ===================================================================== */
+const PLAN_SYS=`You map the structure of an ebook so a script can rebuild it with clean chapters. The script never changes the book's words: you only decide where sections begin, what each one is, and what the table of contents says.
+
+You get candidate lines where a section might begin: every file start, every heading tag, every short styled line, every table-of-contents target. Each line reads: id | file | signals | words until the next candidate | the line's text ⟶ what follows it.
+
+Return the sections in reading order. A section starts at a candidate and runs to the next section's start.
+- Start a section only at a real division: cover, title page, copyright, dedication, epigraph, contents, foreword, preface, introduction, prologue, part divider, chapter, interlude, epilogue, afterword, acknowledgments, notes, appendix, about the author, ads, "also by" lists, praise pages, excerpts of other books, newsletter sign-ups, scanner or converter credits, blank pages.
+- Don't start sections at styled lines inside a chapter: letters, signs, scene breaks, emphasized sentences, subheads inside a non-fiction chapter.
+- A file that continues a sentence from the file before it is not a new section; the book was split mechanically.
+- The first section starts at candidate 0.
+- start: the candidate number (12 for c12).
+- heading: the candidate numbers of the lines that ARE the section's printed heading, in order. "CHAPTER ONE" followed by "The Boy Who Lived" is [40, 41]. Empty when the section has no printed heading (a copyright page, a cover image, a bare dedication).
+- label: the contents entry, built only from the heading's own words, keeping their wording and capitalization. Join two heading lines with ": ". Drop page numbers, ornaments and stray punctuation. null when heading is empty.
+- level: 2 for chapters, prologues, interludes and epilogues that sit inside a part; 1 for everything else.
+- kind: cover is the cover image page. half_title is a page with only the title. excerpt is sample pages from a different book. ad is a publisher catalog or marketing. credits is scanner, ripper or converter notes. also_by lists the author's other books. other_front and other_back are anything else before or after the story.
+- title, author: the book's title and main author as printed on its title page, or from the metadata when there is no title page. Used to look the book up.
+- notes: one short line on anything odd; empty if nothing.`;
+const PLAN_SCHEMA={type:'object',additionalProperties:false,required:['title','author','sections','notes'],properties:{
+  title:{type:'string'},author:{type:'string'},
+  sections:{type:'array',items:{type:'object',additionalProperties:false,required:['start','heading','kind','level','label'],properties:{
+    start:{type:'integer'},heading:{type:'array',items:{type:'integer'}},kind:{type:'string',enum:KINDS},level:{type:'integer',enum:[1,2]},label:{anyOf:[{type:'string'},{type:'null'}]}}}},
+  notes:{type:'string'}}};
+function follow(B,i,n){let s='';for(let j=i+1;j<B.length&&s.length<n;j++){const b=B[j];if(b.drop)continue;s+=(s?' ':'')+(b.k==='img'?'[image]':b.k==='hr'?'[break]':b.text.replace(/\n/g,' / '))}return clip(s,n)}
+function planPrompt(book,cands){
+  const B=book.blocks,L=[],md=book.meta;const lim=cands.length>600?[80,60]:[140,120];
+  L.push(`BOOK  metadata title: ${md.title||'?'} | metadata author: ${md.author||'?'} | file name: ${book.fileName}`);
+  L.push('FILES (spine order, words): '+book.files.map((f,i)=>`f${i} ${f.name} (${f.words})`).join(' · '));
+  if(book.toc.length){const at=new Map(cands.map(x=>[x.b,x.c]));L.push("THE BOOK'S OWN CONTENTS: "+book.toc.slice(0,500).map(t=>`"${clip(t.label,60)}"→${at.has(t.b)?'c'+at.get(t.b):'?'}`).join(' · '))}
+  L.push('CANDIDATES');
+  for(let i=0;i<cands.length;i++){const x=cands[i],b=B[x.b];const end=i+1<cands.length?cands[i+1].b:B.length;let w=0;for(let j=x.b;j<end;j++)if(!B[j].drop)w+=B[j].words;
+    const t=b.k==='img'?'[image]':b.k==='hr'?'[break]':clip(b.text.replace(/\n/g,' / '),lim[0]);
+    L.push(`c${i} | f${b.f} | ${x.sig.join(',')} | ${w} | ${JSON.stringify(t)} ⟶ ${JSON.stringify(follow(B,x.b,lim[1]))}`)}
+  return L.join('\n');
+}
+async function planClaude(book,cands,ctx){
+  const {out}=await claudeCall(ctx,'plan',{system:PLAN_SYS,user:planPrompt(book,cands),schema:PLAN_SCHEMA,maxTokens:32000,effort:'medium'});
+  const n=cands.length;
+  if(!Array.isArray(out.sections)||!out.sections.length)fail('plan','at least one section','none');
+  const bad=out.sections.find(s=>!(Number.isInteger(s.start)&&s.start>=0&&s.start<n));if(bad)fail('plan',`candidate numbers 0–${n-1}`,`start ${bad.start}`);
+  if(out.notes)blog(ctx,'plan','notes: '+clip(out.notes,200));
+  return{by:'claude',model:cfg.model,title:out.title||'',author:out.author||'',notes:out.notes||'',sections:out.sections.map(s=>({b:cands[s.start].b,hb:(s.heading||[]).filter(h=>Number.isInteger(h)&&h>=0&&h<n).map(h=>cands[h].b),kind:s.kind,level:s.level,label:s.label}))};
+}
+function kindRules(book,s,i,secs){
+  const B=book.blocks;const e=i+1<secs.length?secs[i+1].b:B.length;
+  const L=s.hb.map(j=>B[j].text).join(' ').toLowerCase().trim();
+  const F=String((book.files[B[s.b].f]||{}).name||'').toLowerCase();
+  let w=0,img=false,T='';for(let j=s.b;j<e;j++){const b=B[j];if(b.drop)continue;w+=b.words;if(b.k==='img')img=true;if(T.length<700)T+=' '+b.text.toLowerCase()}
+  if(i===0&&w<15&&img)return 'cover';
+  if(/(?:^|[^a-z])cover/.test(F)&&w<40)return 'cover';
+  if(/^(?:also by|other (?:books|titles|novels) by|books by|by the same author|more from|other works)/.test(L))return 'also_by';
+  if(/^praise\b/.test(L))return 'praise';
+  if(/^(?:contents|table of contents)$/.test(L)||/(?:^|[^a-z])(?:toc|contents)(?:[^a-z]|$)/.test(F))return 'toc';
+  if(/^(?:excerpt|an excerpt|sneak peek|a sneak peek|preview|a preview|coming soon|bonus|read on|keep reading|continue reading|turn the page|look for)/.test(L)||/excerpt|preview|teaser|sneak/.test(F))return 'excerpt';
+  if(/newsletter|sign up|mailing list|join (?:my|our)/.test(L)||/newsletter|signup|adcard|ad-card|ad_card/.test(F))return 'newsletter';
+  if(w<400&&/(?:scanned|proofed|proofread|ocr|converted|formatted) by|release notes|\bv\s?\d\.\d\b/.test(T))return 'credits';
+  if(/^(?:copyright|©)/.test(L)||(w<600&&/all rights reserved|\bisbn\b|library of congress|published by/.test(T)))return 'copyright';
+  if(/^dedicat/.test(L)||(/dedic/.test(F)&&w<150))return 'dedication';
+  if(/^epigraph/.test(L)||/epigraph/.test(F))return 'epigraph';
+  if(/^about the authors?/.test(L)||(/about/.test(F)&&/author/.test(F)))return 'about_author';
+  if(/^acknowledg/.test(L))return 'acknowledgments';
+  if(/^prologue/.test(L))return 'prologue';
+  if(/^epilogue/.test(L))return 'epilogue';
+  if(/^interlude/.test(L))return 'interlude';
+  if(PART_RX.test(L)&&w<400)return 'part';
+  if(/^foreword/.test(L))return 'foreword';
+  if(/^preface/.test(L))return 'preface';
+  if(/^introduction/.test(L))return 'introduction';
+  if(/^afterword/.test(L))return 'afterword';
+  if(/^(?:author[’']?s note|a note from the author|note from the author)/.test(L))return 'author_note';
+  if(/^appendix/.test(L))return 'appendix';
+  if(/^glossary/.test(L))return 'glossary';
+  if(/^(?:notes|endnotes)$/.test(L))return 'notes';
+  if(/^(?:bibliography|works cited|references)$/.test(L))return 'bibliography';
+  if(/^index$/.test(L))return 'index';
+  if(/^(?:chapter|chap\.)\b/.test(L)||NUM_RX.test(L)||NUMWORD_RX.test(L)||/^\d+[.:]?\s/.test(L))return 'chapter';
+  if(w<4&&!img)return 'blank';
+  if(/title/.test(F)&&w<80)return 'title_page';
+  if(i<=2&&w<60&&!L)return 'title_page';
+  return w>=350?'chapter':'other';
+}
+function planRules(book,cands){
+  const B=book.blocks;const top=new Map(),cnt=new Map();
+  for(const b of B){if(b.drop||b.k!=='h')continue;const t=top.get(b.f);if(t==null||b.lvl<t)top.set(b.f,b.lvl)}
+  for(const b of B)if(!b.drop&&b.k==='h'&&b.lvl===top.get(b.f))cnt.set(b.f,(cnt.get(b.f)||0)+1);
+  const starts=[];
+  for(const x of cands){const b=B[x.b];let st=x.c===0;
+    if(b.first){const p=prevLive(B,b.i);const cont=p&&p.k==='p'&&b.k==='p'&&!TERM_RX.test(p.text)&&/^\p{Ll}/u.test(b.text);if(!cont)st=true}
+    if(x.sig.includes('toc'))st=true;
+    if(b.k==='h'&&b.lvl===top.get(b.f)&&(cnt.get(b.f)||0)>1)st=true;
+    if(b.k==='p'&&b.words<=8&&(CHAP_RX.test(b.text)||NUMWORD_RX.test(b.text)||NUM_RX.test(b.text))&&(b.fl.c||b.fl.bold||b.fl.large||b.fl.caps||b.fl.pb))st=true;
+    if(b.fl.pb&&isHeadish(b))st=true;
+    if(st)starts.push(b.i)}
+  const S=[];
+  for(const s of starts){const p=S[S.length-1];
+    if(p!=null&&B[p].f===B[s].f&&!(PART_RX.test(B[p].text)&&!PART_RX.test(B[s].text))){let only=true,n=0;for(let j=p;j<s;j++){const b=B[j];if(b.drop)continue;n++;if(!(isHeadish(b)||b.k==='img')){only=false;break}}if(only&&n<=3)continue}
+    S.push(s)}
+  // heading lines: the first heading-ish line, then at most one more that is a real heading or set bold/large/caps (a centred epigraph is not a heading)
+  const secs=S.map((s,i)=>{const e=i+1<S.length?S[i+1]:B.length;const hb=[];for(let j=s;j<e&&hb.length<2;j++){const b=B[j];if(b.drop)continue;if(b.k==='img'&&!hb.length)continue;
+    const ok=hb.length?b.k==='h'||(b.k==='p'&&b.words<=10&&(b.fl.bold||b.fl.large||b.fl.caps||b.fl.sc)):isHeadish(b);if(ok)hb.push(j);else break}return{b:s,hb,kind:null,level:1,label:null}});
+  let firstBody=-1;
+  secs.forEach((s,i)=>{s.kind=kindRules(book,s,i,secs);if(firstBody<0&&BODY.has(s.kind))firstBody=i});
+  secs.forEach((s,i)=>{if(s.kind==='other')s.kind=firstBody<0||i<firstBody?'other_front':'other_back'});
+  let inPart=false;for(const s of secs){if(s.kind==='part')inPart=true;else if(BACK.has(s.kind))inPart=false;else if(inPart&&BODY.has(s.kind))s.level=2}
+  return{by:'rules',title:book.meta.title,author:book.meta.author,notes:'',sections:secs};
+}
+const KIND_LABEL={cover:'Cover',half_title:'Half Title',title_page:'Title Page',copyright:'Copyright',dedication:'Dedication',epigraph:'Epigraph',toc:'Contents',foreword:'Foreword',preface:'Preface',introduction:'Introduction',prologue:'Prologue',interlude:'Interlude',epilogue:'Epilogue',afterword:'Afterword',acknowledgments:'Acknowledgments',author_note:'Author’s Note',notes:'Notes',glossary:'Glossary',appendix:'Appendix',bibliography:'Bibliography',index:'Index',about_author:'About the Author',also_by:'Also By',praise:'Praise',excerpt:'Excerpt',ad:'Advertisement',newsletter:'Newsletter',credits:'Credits',blank:'Blank Page',illustration:'Illustration',other_front:'Front Matter',other_back:'Back Matter'};
+function defaultLabel(kind,n){if(kind==='chapter')return 'Chapter '+n.ch;if(kind==='part')return 'Part '+n.pt;return KIND_LABEL[kind]||'Section'}
+function wordsOf(s){return String(s).toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g,'').match(/[\p{L}\p{N}]+/gu)||[]}
+function validLabel(label,htext){const h=new Set(wordsOf(htext));const l=wordsOf(label);return l.length>0&&l.every(w=>h.has(w))}
+function tidyLabel(s){return fixText(s).replace(/\s+/g,' ').replace(/[\s.·…_-]{2,}\d+$/,'').replace(/^[\s.:;,\-–—|•*]+|[\s:;,\-–—|•*]+$/g,'').slice(0,120).trim()}
+function resolvePlan(book,raw,over){
+  const B=book.blocks;const first=B.find(b=>!b.drop).i;
+  let S=raw.sections.filter(s=>B[s.b]&&!B[s.b].drop).map(s=>({...s}));
+  S.sort((a,b)=>a.b-b.b);S=S.filter((s,i)=>i===0||s.b!==S[i-1].b);
+  if(!S.length||S[0].b!==first)S.unshift({b:first,hb:[],kind:'other_front',level:1,label:null});
+  const secs=[];let ch=0,pt=0,inPart=false;
+  for(let i=0;i<S.length;i++){
+    const s=S[i],end=(i+1<S.length?S[i+1].b:B.length)-1;const kind=KINDS.includes(s.kind)?s.kind:'other_back';
+    const hb=[...new Set(s.hb||[])].filter(x=>x>=s.b&&x<=end&&B[x]&&!B[x].drop&&(B[x].k==='p'||B[x].k==='h')).sort((a,b)=>a-b);
+    const htext=hb.map(x=>B[x].text).join(' ');
+    let words=0,img=false,prev='';for(let j=s.b;j<=end;j++){const b=B[j];if(b.drop)continue;if(b.k==='img')img=true;if(hb.includes(j))continue;words+=b.words;if(!prev&&b.text)prev=clip(b.text,90)}
+    if(kind==='chapter')ch++;if(kind==='part'){pt++;inPart=true}else if(BACK.has(kind))inPart=false;
+    let label=s.label&&validLabel(s.label,htext)?tidyLabel(s.label):'';
+    if(!label&&hb.length)label=tidyLabel(hb.map(x=>B[x].text.replace(/\n/g,' ')).join(': '));
+    if(!label)label=defaultLabel(kind,{ch,pt});
+    const level=s.level===2&&inPart&&kind!=='part'&&BODY.has(kind)?2:1;
+    const auto=CONF.policy[kind]!==false;const keep=Object.prototype.hasOwnProperty.call(over,s.b)?!!over[s.b]:auto;
+    secs.push({start:s.b,end,hb,kind,level,label,words,preview:prev,img,auto,keep});
+  }
+  const total=secs.reduce((a,s)=>a+s.words,0)||1;const cutW=secs.filter(s=>!s.keep).reduce((a,s)=>a+s.words,0);const kept=secs.filter(s=>s.keep).length;const cutPct=+(cutW/total).toFixed(3);
+  if(!kept)fail('sections','at least one kept section','every section cut',{secs});
+  if(cutPct>CONF.cutFail&&!Object.keys(over).length)fail('sections',`under ${Math.round(CONF.cutFail*100)}% of the words cut`,`${Math.round(cutPct*100)}% (${[...new Set(secs.filter(s=>!s.keep).map(s=>s.kind))].join(', ')}); open the book and set the cuts`,{secs});
+  return{secs,kept,cut:secs.length-kept,cutPct};
+}
+
+/* =====================================================================
+   CLAUDE — structured outputs over fetch. Forced tool use is refused
+   by Sonnet 5.5, so every answer comes back as schema-shaped JSON.
+   ===================================================================== */
+const USAGE={t:{},add(model,u){const x=this.t[model]||(this.t[model]={calls:0,in:0,out:0});x.calls++;x.in+=u.input_tokens||0;x.out+=u.output_tokens||0},
+  line(){const e=Object.entries(this.t);if(!e.length)return 'No Claude calls yet this session.';let usd=0;const parts=e.map(([m,x])=>{const p=CONF.price[m]||[0,0];usd+=x.in/1e6*p[0]+x.out/1e6*p[1];return `${CONF.models[m]||m}: ${x.calls} calls, ${Math.round(x.in/1000)}k in, ${Math.round(x.out/1000)}k out`});return parts.join(' · ')+` · about $${usd.toFixed(2)} this session.`}};
+let EFFORT_OK=true;
+function errMsg(t){try{const j=JSON.parse(t);return (j.error&&j.error.message)||clip(t,200)}catch(e){return clip(t,200)}}
+async function claudeCall(ctx,key,{system,user,schema,maxTokens,effort}){
+  if(!cfg.key)fail('claude.'+key,'a Claude API key in Settings','none');
+  const model=cfg.model;const st='claude.'+key;
+  const body={model,max_tokens:maxTokens,system,messages:[{role:'user',content:user}],output_config:{format:{type:'json_schema',schema}}};
+  if(effort&&EFFORT_OK)body.output_config.effort=effort;
+  let last='no attempt';
+  for(let attempt=1;attempt<=5;attempt++){
+    const t0=performance.now();let r,text;
+    try{r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':cfg.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(body)});text=await r.text()}
+    catch(e){last='network: '+e.message;blog(ctx,st,`attempt ${attempt} ${last}`);await sleep(1500*attempt);continue}
+    const ms=Math.round(performance.now()-t0);
+    ctx.raw[st]={request:{model,max_tokens:maxTokens,output_config:body.output_config.effort?{effort:body.output_config.effort,format:'json_schema'}:{format:'json_schema'},system:clip(system,300),user:clip(user,60000)},status:r.status,ms,response:clip(text,60000)};
+    if(r.status===429||r.status===529||r.status>=500){last=`${r.status} ${errMsg(text)}`;const ra=+(r.headers.get('retry-after')||0);blog(ctx,st,`attempt ${attempt} ${last}; waiting`);await sleep(ra>0?ra*1000:2000*2**attempt);continue}
+    if(r.status===400&&body.output_config.effort&&/effort/i.test(text)){EFFORT_OK=false;delete body.output_config.effort;blog(ctx,st,'effort refused with structured output; retrying without it');attempt--;continue}
+    if(!r.ok)fail(st,'200 from /v1/messages',`${r.status} ${errMsg(text)}`);
+    let j;try{j=JSON.parse(text)}catch(e){fail(st,'a JSON response','an unparseable body')}
+    if(j.stop_reason==='refusal')fail(st,'an answer','a refusal');
+    if(j.stop_reason==='max_tokens')fail(st,'complete JSON',`output cut off at max_tokens ${maxTokens}`);
+    const tb=(j.content||[]).find(b=>b.type==='text');if(!tb)fail(st,'a text block',`content [${(j.content||[]).map(b=>b.type).join(',')}]`);
+    let out;try{out=JSON.parse(tb.text)}catch(e){fail(st,'JSON matching the schema','unparseable: '+clip(tb.text,120))}
+    const u=j.usage||{};USAGE.add(model,u);blog(ctx,st,`${CONF.models[model]||model} ${ms} ms · ${u.input_tokens||0} in · ${u.output_tokens||0} out`);
+    return{out,usage:u};
+  }
+  fail(st,'an answer within 5 attempts',last);
+}
+
+/* =====================================================================
+   META — the file's own metadata, its title and copyright pages, two
+   free catalogs, and (with a key) Claude to reconcile them
+   ===================================================================== */
+function isbnOk(s){s=String(s||'').replace(/[^0-9Xx]/g,'').toUpperCase();if(/^\d{13}$/.test(s)){let t=0;for(let i=0;i<12;i++)t+=(+s[i])*(i%2?3:1);return (10-t%10)%10===+s[12]?s:null}if(/^\d{9}[\dX]$/.test(s)){let t=0;for(let i=0;i<9;i++)t+=(+s[i])*(10-i);t+=s[9]==='X'?10:+s[9];return t%11===0?s:null}return null}
+function findIsbns(text){const out=new Set();for(const m of String(text).matchAll(/(?:97[89][\s-]?)?(?:\d[\s-]?){9}[\dXx]/g)){const v=isbnOk(m[0]);if(v)out.add(v)}return [...out].slice(0,6)}
+async function getJSON(url,ctx,key,timeout=12000){
+  const ac=new AbortController();const tm=setTimeout(()=>ac.abort(),timeout);const t0=performance.now();
+  try{const r=await fetch(url,{signal:ac.signal});const text=await r.text();ctx.raw[key]={url,status:r.status,ms:Math.round(performance.now()-t0),body:clip(text,20000)};if(!r.ok)throw new Error(`HTTP ${r.status}`);return JSON.parse(text)}
+  finally{clearTimeout(tm)}
+}
+async function lookups(title,author,ctx){
+  const out={google:[],ol:[]};if(!title)return out;const t=title.replace(/:.*$/,'').trim();const last=author?author.split(/\s+/).pop():'';
+  try{const j=await getJSON('https://www.googleapis.com/books/v1/volumes?maxResults=5&printType=books&q='+encodeURIComponent(`intitle:${t}`+(last?` inauthor:${last}`:'')),ctx,'lookup.google');
+    out.google=(j.items||[]).map(v=>{const i=v.volumeInfo||{};return{title:i.title,subtitle:i.subtitle,authors:i.authors,publisher:i.publisher,date:i.publishedDate,isbn:(i.industryIdentifiers||[]).map(x=>x.identifier),categories:i.categories,language:i.language,description:clip(stripTags(i.description||''),700)}});
+    blog(ctx,'lookup.google',`${out.google.length} results`)}
+  catch(e){blog(ctx,'lookup.google','skipped: '+e.message);ctx.warn.push('Google Books lookup failed: '+e.message)}
+  try{const j=await getJSON(`https://openlibrary.org/search.json?limit=5&fields=title,subtitle,author_name,first_publish_year,isbn,publisher,language,subject&title=${encodeURIComponent(t)}`+(author?`&author=${encodeURIComponent(author)}`:''),ctx,'lookup.ol');
+    out.ol=(j.docs||[]).map(d=>({title:d.title,subtitle:d.subtitle,authors:d.author_name,first_year:d.first_publish_year,isbn:(d.isbn||[]).slice(0,4),publisher:(d.publisher||[]).slice(0,3),language:(d.language||[]).slice(0,3),subjects:(d.subject||[]).slice(0,8)}));
+    blog(ctx,'lookup.ol',`${out.ol.length} results`)}
+  catch(e){blog(ctx,'lookup.ol','skipped: '+e.message);ctx.warn.push('Open Library lookup failed: '+e.message)}
+  return out;
+}
+const META_SYS=`You write catalog metadata for an ebook file. Sources: the file's own metadata (often wrong or junk), its title page and copyright page, its opening lines, and catalog search results from Google Books and Open Library, which may be different books.
+- title: the book's real title, capitalized the way the publisher prints it, with no series name or number. subtitle separately, or null.
+- authors: real people as "First Last"; sort is "Last, First".
+- year: the first publication year (YYYY) when you're sure; else the year on the copyright page; else null.
+- isbn: only one printed in the sources for this edition. Never invent one.
+- series, series_index: from the sources, or from your own knowledge only when certain; else null.
+- description: 2–4 plain sentences, no spoilers, no marketing lines ("NEW YORK TIMES BESTSELLER", review quotes). Prefer the catalog description of this exact book, cleaned. Otherwise write one from what you know of the book and its opening. null if you can't tell what it's about.
+- subjects: up to 4 genres such as "Crime Fiction", "Science Fiction", "Biography".
+- language: the BCP 47 code of the book's text.
+- confidence: high when the sources agree on this book; low when you're guessing.`;
+const NUL=t=>({anyOf:[{type:t},{type:'null'}]});
+const META_SCHEMA={type:'object',additionalProperties:false,required:['title','subtitle','authors','language','publisher','year','isbn','series','series_index','description','subjects','confidence'],properties:{
+  title:{type:'string'},subtitle:NUL('string'),authors:{type:'array',items:{type:'object',additionalProperties:false,required:['name','sort'],properties:{name:{type:'string'},sort:{type:'string'}}}},
+  language:{type:'string'},publisher:NUL('string'),year:NUL('string'),isbn:NUL('string'),series:NUL('string'),series_index:NUL('string'),description:NUL('string'),
+  subjects:{type:'array',items:{type:'string'}},confidence:{type:'string',enum:['high','medium','low']}}};
+async function metaClaude(book,raw,own,isbns,look,ctx){
+  const md=book.meta;
+  const src={file_metadata:{title:md.title,authors:md.authors.map(a=>a.name),language:md.language,publisher:md.publisher,date:md.date,identifiers:md.identifiers.slice(0,6),series:md.series,series_index:md.seriesIndex,subjects:md.subjects.slice(0,8),description:clip(md.description,700)},
+    file_name:book.fileName,identified:{title:raw.title||'',author:raw.author||''},title_page:own.title_page,copyright_page:own.copyright,opening:own.opening,isbns_in_book:isbns,google_books:look.google,open_library:look.ol};
+  const {out}=await claudeCall(ctx,'meta',{system:META_SYS,user:JSON.stringify(src,null,1),schema:META_SCHEMA,maxTokens:8000,effort:'low'});
+  return{title:out.title,subtitle:out.subtitle,authors:out.authors,language:out.language,publisher:out.publisher,year:out.year,isbn:out.isbn,series:out.series,seriesIndex:out.series_index,description:out.description,subjects:out.subjects,confidence:out.confidence};
+}
+function metaRules(md,title,author,isbns,look){
+  const sim=(a,b)=>{a=normKey(a);b=normKey(b);return !!(a&&b&&(a===b||a.startsWith(b)||b.startsWith(a)))};
+  const g=look.google.find(v=>sim(v.title,title)),o=look.ol.find(v=>sim(v.title,title));
+  const names=(md.authors.length?md.authors.map(a=>a.name):author?[author]:g&&g.authors?g.authors:o&&o.authors?o.authors.slice(0,1):[]).map(n=>unshout(cleanAuthor(n))).filter(Boolean);
+  return{title:unshout(title)||(g&&g.title)||'',subtitle:null,authors:names.map(n=>({name:n,sort:sortName(n)})),language:md.language||(g&&g.language)||'en',publisher:md.publisher||(g&&g.publisher)||null,
+    year:(o&&o.first_year?String(o.first_year):null)||(md.date?md.date.slice(0,4):null)||(g&&g.date?String(g.date).slice(0,4):null),
+    isbn:isbns[0]||(g&&g.isbn?g.isbn.map(isbnOk).find(Boolean):null)||null,series:md.series||null,seriesIndex:md.seriesIndex||null,
+    description:md.description||(g&&g.description)||null,subjects:md.subjects.length?md.subjects.slice(0,4):((g&&g.categories)||[]).slice(0,3),confidence:'medium'};
+}
+function validateMeta(m,md,fbTitle,fbAuthor){
+  const s=v=>typeof v==='string'?fixText(v).replace(/\s+/g,' ').trim():'';
+  const title=s(m.title)||fbTitle||'Untitled';
+  let authors=(Array.isArray(m.authors)?m.authors:[]).map(a=>({name:s(a&&a.name),sort:s(a&&a.sort)})).filter(a=>a.name);
+  if(!authors.length&&fbAuthor)authors=[{name:fbAuthor,sort:''}];
+  if(!authors.length)authors=[{name:'Unknown',sort:'Unknown'}];
+  authors=authors.map(a=>({name:a.name,sort:a.sort||sortName(a.name)}));
+  const lang=[s(m.language),s(md.language)].find(x=>/^[a-z]{2,3}(?:-[A-Za-z0-9]{1,8})*$/i.test(x)&&!/^und$/i.test(x))||'en';
+  const y=s(m.year),yn=+y.slice(0,4);const year=/^\d{4}(?:-\d{2}(?:-\d{2})?)?$/.test(y)&&yn>=1400&&yn<=new Date().getFullYear()+1?y:null;
+  const series=s(m.series)||null,si=s(m.seriesIndex);const desc=s(stripTags(m.description||''));
+  return{title,subtitle:s(m.subtitle)||null,authors,language:lang.toLowerCase().replace(/-([a-z0-9]+)$/,(x,r)=>'-'+(r.length===2?r.toUpperCase():r)),publisher:s(m.publisher)||null,year,isbn:m.isbn?isbnOk(m.isbn):null,
+    series,seriesIndex:series&&/^\d+(?:\.\d+)?$/.test(si)?si:null,description:desc?clip(desc,3000):null,subjects:(Array.isArray(m.subjects)?m.subjects:[]).map(s).filter(x=>x&&x.length<=60).slice(0,6),confidence:m.confidence||'medium',by:m.by||''};
+}
+async function metadata(book,plan,raw,ctx){
+  const md=book.meta,B=book.blocks;
+  const secText=(k,n)=>{const s=plan.secs.find(x=>x.kind===k);if(!s)return '';let t='';for(let j=s.start;j<=s.end&&t.length<n;j++)if(!B[j].drop&&B[j].text)t+=(t?'\n':'')+B[j].text;return clip(t,n)};
+  const fb=plan.secs.find(x=>BODY.has(x.kind)&&x.kind!=='part');
+  let opening='';if(fb)for(let j=fb.start;j<=fb.end&&opening.length<700;j++)if(!B[j].drop&&B[j].text)opening+=(opening?' ':'')+B[j].text;
+  const own={title_page:secText('title_page',800),copyright:secText('copyright',1500),opening:clip(opening,700)};
+  const isbns=findIsbns([own.copyright,...md.identifiers].join(' '));
+  const title=cleanTitle(raw.title)||md.title||cleanTitle(book.fileName);
+  const author=cleanAuthor(raw.author)||md.author||'';
+  const look=cfg.lookups?await lookups(title,author,ctx):{google:[],ol:[]};
+  const m=cfg.key&&raw.by==='claude'?{...(await metaClaude(book,raw,own,isbns,look,ctx)),by:'claude'}:{...metaRules(md,title,author,isbns,look),by:'rules'};
+  return validateMeta(m,md,title,author);
+}
+
+/* =====================================================================
+   COVER — yours when you've set one, else the file's own. The cover
+   page in the EPUB is just the picture.
+   ===================================================================== */
+async function decodeImage(blob){
+  if(window.createImageBitmap){try{const bm=await createImageBitmap(blob);return{src:bm,w:bm.width,h:bm.height,close:()=>{try{bm.close()}catch(e){}}}}catch(e){}}
+  const url=URL.createObjectURL(blob);
+  try{const img=new Image();img.src=url;await img.decode();return{src:img,w:img.naturalWidth,h:img.naturalHeight,close:()=>URL.revokeObjectURL(url)}}
+  catch(e){URL.revokeObjectURL(url);throw new Error('this image format won’t decode here')}
+}
+function thumbOf(src,w,h){const W=120,H=180;const c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');const s=Math.max(W/w,H/h);g.drawImage(src,(W-w*s)/2,(H-h*s)/2,w*s,h*s);const u=c.toDataURL('image/jpeg',.72);c.width=c.height=0;return u}
+async function normCover(blob){
+  const im=await decodeImage(blob);
+  try{
+    if(!im.w||!im.h)throw new Error('the image has no size');
+    const sc=Math.min(1,2560/Math.max(im.w,im.h));const W=Math.max(1,Math.round(im.w*sc)),H=Math.max(1,Math.round(im.h*sc));
+    const c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,W,H);g.drawImage(im.src,0,0,W,H);
+    const out=await new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error('the canvas gave back no image')),'image/jpeg',.9));c.width=c.height=0;
+    return{blob:out,w:W,h:H,thumb:thumbOf(im.src,im.w,im.h)};
+  }finally{im.close()}
+}
+async function coverFor(book,id,ctx){
+  let blob=await blobGet('cov:'+id),src='yours';
+  if(!blob&&book.coverPath){const bytes=await book.zip.bytes(book.coverPath);if(bytes){blob=new Blob([bytes]);src='original'}}
+  if(!blob){ctx.warn.push('no cover yet');return null}
+  try{const n=await normCover(blob);return{...n,bytes:new Uint8Array(await n.blob.arrayBuffer()),src}}
+  catch(e){if(src==='yours')fail('cover','your cover image to decode',e.message);ctx.warn.push('the file’s own cover won’t decode: '+e.message);return null}
+}
+
+/* =====================================================================
+   BUILD — a fresh EPUB 3: one file per section, nav + ncx, landmarks
+   that open the book at the first chapter, clean CSS that leaves the
+   font, size, spacing and theme to Books.
+   ===================================================================== */
+const CONTAINER='<?xml version="1.0" encoding="UTF-8"?>\n<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">\n<rootfiles>\n<rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>\n</rootfiles>\n</container>\n';
+const IMG_TYPES={jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',gif:'image/gif',svg:'image/svg+xml',webp:'image/webp'};
+const SSV={title_page:'titlepage',copyright:'copyright-page',dedication:'dedication',epigraph:'epigraph',foreword:'foreword',preface:'preface',introduction:'introduction',prologue:'prologue',part:'part',chapter:'chapter',interlude:'chapter',epilogue:'epilogue',afterword:'afterword',acknowledgments:'acknowledgments',notes:'endnotes',glossary:'glossary',appendix:'appendix',bibliography:'bibliography',index:'index'};
+const SECCLASS={copyright:'cp',dedication:'ded',epigraph:'epi',title_page:'tp',half_title:'tp'};
+const BOOK_CSS=`@charset "utf-8";
+body{margin:0;padding:0;-webkit-hyphens:auto;hyphens:auto;widows:2;orphans:2}
+section{display:block}
+p{margin:0;text-indent:1.2em}
+p.first,p.c,p.r{text-indent:0}
+p.c{text-align:center}
+p.r{text-align:right}
+p.blk{margin:0 1em 0 1.6em;text-indent:0}
+p.verse{margin:.8em 0 .8em 1.4em;text-indent:0;text-align:left;-webkit-hyphens:none;hyphens:none}
+h1,h2,h3{-webkit-hyphens:none;hyphens:none;line-height:1.25;page-break-after:avoid;break-after:avoid;page-break-inside:avoid;break-inside:avoid}
+h1{font-weight:normal;text-align:center;text-indent:0}
+h1.ch{font-size:1.45em;margin:2.2em 0 1.4em}
+h1.fm{font-size:1.25em;margin:2em 0 1.2em}
+h1.part{font-size:1.6em;margin:6em 0 2em}
+h1 .hl{display:block;font-size:.62em;letter-spacing:.12em;text-transform:uppercase;margin-bottom:.55em}
+h1 .hs{display:block}
+h2.sub{font-size:1.15em;font-weight:bold;text-align:left;margin:1.6em 0 .7em}
+h3.sub{font-size:1em;font-weight:bold;text-align:left;margin:1.4em 0 .6em}
+hr.scene{border:0;border-top:1px solid currentColor;opacity:.35;width:24%;height:0;margin:1.4em auto}
+blockquote{margin:1em 1.4em}
+blockquote p{text-indent:0}
+blockquote p+p{margin-top:.5em}
+.sc{font-variant:small-caps}
+.up{font-style:normal}
+div.img{text-align:center;text-indent:0;margin:1em 0;page-break-inside:avoid;break-inside:avoid}
+div.img img{max-width:100%;max-height:95vh;width:auto;height:auto}
+img{max-width:100%;height:auto}
+table{border-collapse:collapse;margin:1em auto;max-width:100%;font-size:.9em}
+td,th{padding:.2em .5em;vertical-align:top;text-indent:0;text-align:left}
+pre{white-space:pre-wrap;word-wrap:break-word;font-size:.85em;margin:1em 0;text-indent:0}
+ul,ol{margin:.8em 0 .8em 1.4em;padding:0}
+li{margin:.25em 0}
+sup,sub{font-size:.72em;line-height:0}
+section.cp p{font-size:.8em;text-indent:0;margin:0 0 .7em;text-align:left}
+section.ded,section.epi{padding-top:3em}
+section.ded p{text-align:center;text-indent:0}
+section.epi p{text-indent:0}
+section.tp p{text-align:center;text-indent:0;margin:.5em 0}
+`;
+function serNodes(arr,R){let s='';for(const x of arr)s+=serNode(x,R);return s}
+function serNode(x,R){
+  if(typeof x==='string')return xt(x);
+  const t=x.t,a=x.a||{};
+  if(t==='br')return '<br/>';
+  if(t==='img'){const name=R.img(String(a.src||'').slice(1));if(!name){R.noimg++;return ''}return `<img src="../images/${name}" alt="${xa(a.alt||'')}"/>`}
+  if(t==='a'){const h=a.href;let href=null;
+    if(h){if(h[0]==='#'){const f=R.idFile(h.slice(1));if(f)href=`${f}#${h.slice(1)}`;else R.dead++}else if(h[0]==='@'){const f=R.fileFile(+h.slice(1));if(f)href=f;else R.dead++}else href=h}
+    if(!href&&!a.id)return serNodes(x.c||[],R);
+    R.links+=href?1:0;return `<a${href?` href="${xa(href)}"`:''}${a.id?` id="${a.id}"`:''}>${serNodes(x.c||[],R)}</a>`}
+  let at='';for(const [k,v] of Object.entries(a))at+=` ${k}="${xa(v)}"`;
+  const inner=serNodes(x.c||[],R);
+  if(!inner&&t!=='span'&&t!=='td'&&t!=='th'&&t!=='li')return '';
+  return `<${t}${at}>${inner}</${t}>`;
+}
+const idSpans=ids=>(ids||[]).map(id=>`<span id="${id}"></span>`).join('');
+function headingXhtml(B,s,R){
+  const lines=s.hb.map(j=>B[j]);const cls=s.kind==='part'?'part':BODY.has(s.kind)?'ch':'fm';
+  const ids=idSpans(lines.flatMap(b=>[...(b.pre||[]),...(b.id?[b.id]:[]),...(b.post||[])]));
+  if(lines.length===1)return `<h1 class="${cls}">${ids}${serNodes(lines[0].c,R)}</h1>`;
+  return `<h1 class="${cls}">${ids}<span class="hl">${serNodes(lines[0].c,R)}</span>${lines.slice(1).map(b=>`<span class="hs">${serNodes(b.c,R)}</span>`).join('')}</h1>`;
+}
+const FLUSH_AFTER=new Set(['start','h','hr','img','list','table','pre','q']);
+function blockXhtml(b,after,R){
+  const pre=idSpans(b.pre),post=idSpans(b.post),idA=b.id?` id="${b.id}"`:'';
+  switch(b.k){
+    case 'h':{const tg=b.lvl<=2?'h2':'h3';return `<${tg} class="sub"${idA}>${pre}${serNodes(b.c,R)}${post}</${tg}>`}
+    case 'img':return `<div class="img"${idA}>${pre}${serNodes(b.c,R)}${post}</div>`;
+    case 'list':case 'table':case 'pre':return `${pre?`<div>${pre}</div>`:''}${serNodes(b.c,R)}${post?`<div>${post}</div>`:''}`;
+    default:{
+      const cl=[];if(b.fl.c)cl.push('c');else if(b.fl.r)cl.push('r');
+      if(b.verse)cl.push('verse');else if(b.fl.ind)cl.push('blk');
+      if(FLUSH_AFTER.has(after)&&!b.fl.c&&!b.fl.r)cl.push('first');
+      let body=serNodes(b.c,R);if(b.wi)body=`<i>${body}</i>`;if(b.wb)body=`<b>${body}</b>`;
+      return `<p${idA}${cl.length?` class="${cl.join(' ')}"`:''}>${pre}${body}${post}</p>`;
+    }
+  }
+}
+function sectionXhtml(book,s,lang,R){
+  const B=book.blocks,parts=[];const hb=new Set(s.hb);let after='start',q=0;
+  if(s.hb.length){parts.push(headingXhtml(B,s,R));after='h'}
+  for(let j=s.start;j<=s.end;j++){const b=B[j];if(b.drop||hb.has(j))continue;
+    if(b.q!==q){if(q)parts.push('</blockquote>');if(b.q){parts.push('<blockquote>');after='q'}q=b.q}
+    if(b.k==='hr'){if(after!=='start'&&after!=='h'&&after!=='hr'&&after!=='q'){parts.push('<hr class="scene"/>');after='hr'}continue}
+    parts.push(blockXhtml(b,after,R));after=b.k==='p'?'p':b.k;
+  }
+  if(q)parts.push('</blockquote>');
+  while(parts.length&&parts[parts.length-1]==='<hr class="scene"/>')parts.pop();
+  if(!parts.length)parts.push('<p class="first"></p>');
+  const type=SSV[s.kind],cls=SECCLASS[s.kind];
+  return `<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="${xa(lang)}" xml:lang="${xa(lang)}">
+<head>
+<meta charset="utf-8"/>
+<title>${xt(s.label)}</title>
+<link rel="stylesheet" type="text/css" href="../style.css"/>
+</head>
+<body>
+<section id="${s.file.replace('.xhtml','')}"${type?` epub:type="${type}"`:''}${cls?` class="${cls}"`:''}>
+${parts.join('\n')}
+</section>
+</body>
+</html>
+`;
+}
+function coverXhtml(w,h,lang){return `<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="${xa(lang)}" xml:lang="${xa(lang)}">
+<head>
+<meta charset="utf-8"/>
+<title>Cover</title>
+<style type="text/css">html,body{margin:0;padding:0;height:100%;text-align:center}svg{display:block;margin:0;padding:0;width:100%;height:100%}</style>
+</head>
+<body epub:type="cover">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="100%" height="100%" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet"><image width="${w}" height="${h}" xlink:href="images/cover.jpg"/></svg>
+</body>
+</html>
+`}
+function tocTree(entries){const root=[];let cur=null;for(const e of entries){if(e.level===2&&cur)cur.kids.push(e);else{cur={...e,kids:[]};root.push(cur)}}return root}
+function navOl(items){return '<ol>\n'+items.map(it=>`<li><a href="${xa(it.href)}">${xt(it.label)}</a>${it.kids&&it.kids.length?'\n'+navOl(it.kids):''}</li>\n`).join('')+'</ol>'}
+function navXhtml(tree,lang,marks){return `<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="${xa(lang)}" xml:lang="${xa(lang)}">
+<head>
+<meta charset="utf-8"/>
+<title>Contents</title>
+</head>
+<body>
+<nav epub:type="toc" id="toc">
+<h1>Contents</h1>
+${navOl(tree)}
+</nav>
+<nav epub:type="landmarks" hidden="hidden">
+<ol>
+${marks.map(m=>`<li><a epub:type="${m.type}" href="${xa(m.href)}">${xt(m.label)}</a></li>`).join('\n')}
+</ol>
+</nav>
+</body>
+</html>
+`}
+function ncxXml(tree,uuid,title,lang){
+  let po=0;const pt=items=>items.map(it=>{po++;const n=po;return `<navPoint id="np${n}" playOrder="${n}"><navLabel><text>${xt(it.label)}</text></navLabel><content src="${xa(it.href)}"/>${it.kids&&it.kids.length?pt(it.kids):''}</navPoint>`}).join('\n');
+  const body=pt(tree);const depth=tree.some(t=>t.kids.length)?2:1;
+  return `<?xml version="1.0" encoding="utf-8"?>
+<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1" xml:lang="${xa(lang)}">
+<head>
+<meta name="dtb:uid" content="urn:uuid:${uuid}"/>
+<meta name="dtb:depth" content="${depth}"/>
+<meta name="dtb:totalPageCount" content="0"/>
+<meta name="dtb:maxPageNumber" content="0"/>
+</head>
+<docTitle><text>${xt(title)}</text></docTitle>
+<navMap>
+${body}
+</navMap>
+</ncx>
+`}
+function opfXml(m,uuid,manifest,spine,guide,hasCover){
+  const md=[`<dc:identifier id="bookid">urn:uuid:${uuid}</dc:identifier>`];
+  if(m.isbn)md.push(`<dc:identifier id="isbn">urn:isbn:${m.isbn}</dc:identifier>`);
+  md.push(`<dc:title id="title">${xt(m.title)}</dc:title>`,`<meta refines="#title" property="title-type">main</meta>`);
+  if(m.subtitle)md.push(`<dc:title id="subtitle">${xt(m.subtitle)}</dc:title>`,`<meta refines="#subtitle" property="title-type">subtitle</meta>`);
+  m.authors.forEach((a,i)=>md.push(`<dc:creator id="au${i+1}">${xt(a.name)}</dc:creator>`,`<meta refines="#au${i+1}" property="role" scheme="marc:relators">aut</meta>`,`<meta refines="#au${i+1}" property="file-as">${xt(a.sort)}</meta>`));
+  md.push(`<dc:language>${xt(m.language)}</dc:language>`);
+  if(m.publisher)md.push(`<dc:publisher>${xt(m.publisher)}</dc:publisher>`);
+  if(m.year)md.push(`<dc:date>${xt(m.year)}</dc:date>`);
+  if(m.description)md.push(`<dc:description>${xt(m.description)}</dc:description>`);
+  for(const s of m.subjects)md.push(`<dc:subject>${xt(s)}</dc:subject>`);
+  if(m.series){md.push(`<meta property="belongs-to-collection" id="series">${xt(m.series)}</meta>`,`<meta refines="#series" property="collection-type">series</meta>`);if(m.seriesIndex)md.push(`<meta refines="#series" property="group-position">${xt(m.seriesIndex)}</meta>`);md.push(`<meta name="calibre:series" content="${xa(m.series)}"/>`);if(m.seriesIndex)md.push(`<meta name="calibre:series_index" content="${xa(m.seriesIndex)}"/>`)}
+  md.push(`<meta property="dcterms:modified">${new Date().toISOString().replace(/\.\d+Z$/,'Z')}</meta>`);
+  if(hasCover)md.push(`<meta name="cover" content="cover-image"/>`);
+  return `<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid" xml:lang="${xa(m.language)}">
+<metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+${md.join('\n')}
+</metadata>
+<manifest>
+${manifest.map(i=>`<item id="${i.id}" href="${xa(i.href)}" media-type="${i.type}"${i.props?` properties="${i.props}"`:''}/>`).join('\n')}
+</manifest>
+<spine toc="ncx">
+${spine.map(id=>`<itemref idref="${id}"/>`).join('\n')}
+</spine>
+<guide>
+${guide.map(g=>`<reference type="${g.type}" title="${xa(g.title)}" href="${xa(g.href)}"/>`).join('\n')}
+</guide>
+</package>
+`}
+async function buildEpub(book,plan,m,cover,uuid,ctx){
+  const B=book.blocks,lang=m.language||'en';
+  const kept=plan.secs.filter(s=>s.keep).map((s,i)=>({...s,file:`s${String(i+1).padStart(3,'0')}.xhtml`}));
+  if(!kept.length)fail('build','sections to write','none kept');
+  const where=new Int32Array(B.length).fill(-1);kept.forEach((s,si)=>{for(let j=s.start;j<=s.end;j++)where[j]=si});
+  const imgs=new Map();
+  const R={links:0,dead:0,noimg:0,
+    idFile(sid){const bi=book.idBlock.get(sid);if(bi==null)return null;const si=where[bi];return si<0?null:kept[si].file},
+    fileFile(fi){const bi=firstLiveOf(book,fi);if(bi==null)return null;const si=where[bi];return si<0?null:kept[si].file},
+    img(p){let x=imgs.get(p);if(!x){const ext=((p.match(/\.([a-z0-9]+)$/i)||[])[1]||'').toLowerCase();const type=IMG_TYPES[ext];if(!type)return null;x={name:`i${String(imgs.size+1).padStart(3,'0')}.${ext==='jpeg'?'jpg':ext}`,type};imgs.set(p,x)}return x.name}};
+  const files=[{name:'mimetype',data:ENC.encode('application/epub+zip'),store:true},{name:'META-INF/container.xml',data:ENC.encode(CONTAINER)}];
+  const manifest=[{id:'nav',href:'nav.xhtml',type:'application/xhtml+xml',props:'nav'},{id:'ncx',href:'toc.ncx',type:'application/x-dtbncx+xml'},{id:'css',href:'style.css',type:'text/css'}];
+  const spine=[];
+  if(cover){files.push({name:'OEBPS/images/cover.jpg',data:cover.bytes,store:true},{name:'OEBPS/cover.xhtml',data:ENC.encode(coverXhtml(cover.w,cover.h,lang))});
+    manifest.push({id:'cover-image',href:'images/cover.jpg',type:'image/jpeg',props:'cover-image'},{id:'cover',href:'cover.xhtml',type:'application/xhtml+xml',props:'svg'});spine.push('cover')}
+  for(const s of kept){const id=s.file.replace('.xhtml','');files.push({name:'OEBPS/text/'+s.file,data:ENC.encode(sectionXhtml(book,s,lang,R))});manifest.push({id,href:'text/'+s.file,type:'application/xhtml+xml'});spine.push(id);if(kept.length>40&&spine.length%20===0)await tick()}
+  for(const [p,x] of imgs){const bytes=await book.zip.bytes(p);if(!bytes)fail('build',`image ${p} in the source`,'missing');files.push({name:'OEBPS/images/'+x.name,data:bytes,store:x.type!=='image/svg+xml'});manifest.push({id:'img'+x.name.replace(/\.[^.]+$/,'').slice(1),href:'images/'+x.name,type:x.type})}
+  const tree=tocTree(kept.map(s=>({label:s.label,href:'text/'+s.file,level:s.level})));
+  const body=kept.find(s=>BODY.has(s.kind))||kept.find(s=>!FRONTISH.has(s.kind))||kept[0];
+  const marks=[];if(cover)marks.push({type:'cover',href:'cover.xhtml',label:'Cover'});marks.push({type:'toc',href:'nav.xhtml#toc',label:'Contents'},{type:'bodymatter',href:'text/'+body.file,label:'Begin Reading'});
+  const guide=[];if(cover)guide.push({type:'cover',title:'Cover',href:'cover.xhtml'});guide.push({type:'toc',title:'Contents',href:'nav.xhtml'},{type:'text',title:'Begin Reading',href:'text/'+body.file});
+  files.push({name:'OEBPS/style.css',data:ENC.encode(BOOK_CSS)},{name:'OEBPS/nav.xhtml',data:ENC.encode(navXhtml(tree,lang,marks))},{name:'OEBPS/toc.ncx',data:ENC.encode(ncxXml(tree,uuid,m.title,lang))},{name:'OEBPS/content.opf',data:ENC.encode(opfXml(m,uuid,manifest,spine,guide,!!cover))});
+  if(R.dead)ctx.warn.push(`${R.dead} link${R.dead>1?'s':''} pointed at cut pages and were unlinked`);
+  if(R.noimg)ctx.warn.push(`${R.noimg} image${R.noimg>1?'s':''} in a format Books can’t show were dropped`);
+  return files;
+}
+async function verifyEpub(blob){
+  const buf=await blob.arrayBuffer();const u8=new Uint8Array(buf),dv=new DataView(buf);
+  if(dv.getUint32(0,true)!==0x04034b50||new TextDecoder().decode(u8.subarray(30,38))!=='mimetype')fail('verify','mimetype as the first entry','something else');
+  if(dv.getUint16(8,true)!==0||dv.getUint16(28,true)!==0)fail('verify','mimetype stored, no extra field','compressed or padded');
+  const zip=await zipOpen(buf);
+  if(await zip.text('mimetype')!=='application/epub+zip')fail('verify','mimetype = application/epub+zip','another value');
+  const P=new DOMParser();const bad=d=>d.getElementsByTagName('parsererror').length>0;const why=d=>clip(txt(d.getElementsByTagName('parsererror')[0]||{textContent:''}),160);
+  const opf=P.parseFromString(await zip.text('OEBPS/content.opf'),'application/xml');if(bad(opf))fail('verify','content.opf to parse',why(opf));
+  const items=els(opf,'item');const ids=new Set(items.map(i=>i.getAttribute('id')));const xhtml=[];
+  for(const it of items){const p='OEBPS/'+it.getAttribute('href');if(!zip.find(p))fail('verify',`${p} in the zip`,'missing');if(it.getAttribute('media-type')==='application/xhtml+xml')xhtml.push(p)}
+  for(const ir of els(opf,'itemref'))if(!ids.has(ir.getAttribute('idref')))fail('verify',`spine item ${ir.getAttribute('idref')} in the manifest`,'missing');
+  const ncx=P.parseFromString(await zip.text('OEBPS/toc.ncx'),'application/xml');if(bad(ncx))fail('verify','toc.ncx to parse',why(ncx));
+  const docs=new Map(),idsBy=new Map();
+  for(const p of xhtml){const d=P.parseFromString(await zip.text(p),'application/xhtml+xml');if(bad(d))fail('verify',`${p} to parse as XHTML`,why(d));docs.set(p,d);const s=new Set();for(const el of d.getElementsByTagName('*')){const id=el.getAttribute('id');if(id){if(s.has(id))fail('verify',`unique ids in ${p}`,`"${id}" twice`);s.add(id)}}idsBy.set(p,s)}
+  let links=0;
+  for(const [p,d] of docs){const dir=dirOf(p);for(const el of d.getElementsByTagName('*')){const t=lname(el);const ref=t==='a'||t==='link'?el.getAttribute('href'):t==='img'?el.getAttribute('src'):t==='image'?attrAny(el,'href'):null;if(!ref||/^(?:https?:|mailto:)/i.test(ref))continue;
+    const [rp,frag]=splitHash(ref);const target=rp?resolvePath(dir,rp):p;if(!zip.find(target))fail('verify',`${ref} from ${p.split('/').pop()}`,'a missing file');if(frag&&idsBy.has(target)&&!idsBy.get(target).has(frag))fail('verify',`#${frag} in ${target.split('/').pop()}`,'no such id');links++}}
+  return{files:zip.names.length,xhtml:xhtml.length,links};
+}
+function outName(m){let n=`${m.authors[0]?m.authors[0].name:'Unknown'} - ${m.title}`.replace(/[\\/:*?"<>|\u0000-\u001F]/g,' ').replace(/\s+/g,' ').trim();if(n.length>120)n=n.slice(0,120).trim();return n+'.epub'}
+
+/* =====================================================================
+   SLOT 3 — the pipeline, per book. Every stage named, logged, loud.
+   ===================================================================== */
+const BOOKS=new Map();
+let FLAGS=[];
+const RUN={on:false,active:new Set(),lock:null};
+const SHEET={book:null,file:null,dump:null,over:{}};
+const SAVE={files:[],url:null};
+function setStage(ctx,name){const r=BOOKS.get(ctx.id);if(r&&r.status==='working'){r.stage=name;paintLater()}}
+async function saveBaselines(ctx){for(const [stage,raw] of Object.entries(ctx.raw)){const k=`base:${ctx.id}:${stage}`;try{const prev=((await DB.get('diag',k))||{}).items||[];prev.push({at:new Date().toISOString(),build:BUILD,...raw});await DB.put('diag',{k,items:prev.slice(-3)})}catch(e){log('diag','FAIL baseline '+k+': '+e.message)}}}
+async function saveDump(ctx,r,err){
+  const at=new Date().toISOString();const k=`dump:${ctx.id}:${at}`;let base=null;
+  try{const b=await DB.get('diag',`base:${ctx.id}:${err.stage}`);base=b&&b.items?b.items[b.items.length-1]:null}catch(e){}
+  await DB.put('diag',{k,app:APP.key,build:BUILD,at,book:{id:ctx.id,name:ctx.name,size:r.size},stage:err.stage,expected:err.expected,got:err.got,stages:ctx.stages,raw:ctx.raw,baseline:base,bookLog:ctx.log,log:LOG.slice(-200)});
+  try{const ks=(await DB.keys('diag')).map(String).filter(x=>x.startsWith('dump:')).sort((a,b)=>a.split(':').slice(2).join(':')<b.split(':').slice(2).join(':')?-1:1);for(const x of ks.slice(0,Math.max(0,ks.length-30)))await DB.del('diag',x)}catch(e){}
+  return at.slice(11,19);
+}
+async function latestDump(id){const ks=(await DB.keys('diag')).map(String).filter(x=>x.startsWith('dump:'+id+':')).sort();return ks.length?DB.get('diag',ks[ks.length-1]):null}
+async function processBook(id){
+  const r=BOOKS.get(id);if(!r)return;
+  const mode=r.mode||'full';r.mode=null;r.coverDirty=false;
+  const ctx={id,name:r.name,log:[],stages:{},raw:{},warn:[]};
+  r.status='working';r.stage='read';r.err=null;paintLater();
+  blog(ctx,'start',`${r.name} · ${mode}`);
+  try{
+    const src=await blobGet('src:'+id);if(!src)fail('read','the source EPUB in storage','nothing: remove the book and add the file again');
+    const buf=await stg(ctx,'read',()=>src.arrayBuffer(),b=>({bytes:b.byteLength}));
+    const book=await stg(ctx,'parse',()=>parseEpub(buf,ctx,r),b=>({files:b.files.length,blocks:b.blocks.length,words:b.words,toc:b.tocRaw.length,cssClasses:b.cssClasses,cover:b.coverPath||null}));
+    await stg(ctx,'scrub',()=>scrub(book,ctx),s=>s);
+    const cands=await stg(ctx,'candidates',()=>candidates(book),c=>({n:c.length,strong:c.filter(x=>x.strong).length}));
+    const reuse=mode==='rebuild'&&r.plan&&r.plan.parser===PARSER&&r.plan.blocks===book.blocks.length&&r.plan.raw;
+    let raw;
+    if(reuse){raw=r.plan.raw;blog(ctx,'plan','reused the saved chapter map')}
+    else if(cfg.key&&mode!=='rules')raw=await stg(ctx,'plan',()=>planClaude(book,cands,ctx),p=>({by:'claude',sections:p.sections.length,title:p.title,author:p.author}));
+    else raw=await stg(ctx,'plan',()=>planRules(book,cands),p=>({by:'rules',sections:p.sections.length}));
+    r.plan={parser:PARSER,blocks:book.blocks.length,raw,by:raw.by};
+    const plan=await stg(ctx,'sections',()=>resolvePlan(book,raw,r.over||{}),p=>({sections:p.secs.length,kept:p.kept,cut:p.cut,cutPct:p.cutPct}));
+    if(plan.cutPct>CONF.cutWarn)ctx.warn.push(`${Math.round(plan.cutPct*100)}% of the words were cut`);
+    const meta=reuse&&r.meta0?r.meta0:await stg(ctx,'meta',()=>metadata(book,plan,raw,ctx),m=>({by:m.by,title:m.title,authors:m.authors.map(a=>a.name),year:m.year,series:m.series}));
+    r.meta0=meta;
+    const fin=validateMeta({...meta,...(r.edits||{})},book.meta,meta.title,(meta.authors[0]||{}).name||'');fin.by=meta.by;
+    const cover=await stg(ctx,'cover',()=>coverFor(book,id,ctx),c=>c?{src:c.src,w:c.w,h:c.h,bytes:c.bytes.length}:null);
+    const files=await stg(ctx,'build',()=>buildEpub(book,plan,fin,cover,r.uuid,ctx),f=>({files:f.length,bytes:f.reduce((s,x)=>s+x.data.length,0)}));
+    const out=await stg(ctx,'zip',()=>zipWrite(files),b=>({bytes:b.size}));
+    const v=await stg(ctx,'verify',()=>verifyEpub(out),x=>x);
+    await stg(ctx,'store',async()=>{await blobPut('out:'+id,out);return out.size},n=>({bytes:n}));
+    const kept=plan.secs.filter(s=>s.keep);
+    Object.assign(r,{status:'done',stage:'',meta:fin,
+      secs:plan.secs.map(s=>({b:s.start,kind:s.kind,level:s.level,label:s.label,auto:s.auto,keep:s.keep,words:s.words})),
+      stats:{chapters:kept.filter(s=>BODY.has(s.kind)&&s.kind!=='part').length||kept.length,cut:plan.cut,cutPct:plan.cutPct,words:book.words,bytes:out.size,links:v.links},
+      outName:outName(fin),coverSrc:cover?cover.src:null,warn:ctx.warn,done:Date.now()});
+    if(cover)r.thumb=cover.thumb;
+    blog(ctx,'done',`${r.outName} · ${mb(out.size)}`);
+    await saveBaselines(ctx);
+  }catch(e){
+    const err=e instanceof StageError?e:new StageError('process','a clean run',`${e.name}: ${e.message}`);
+    if(err.extra&&err.extra.secs)r.secs=err.extra.secs.map(s=>({b:s.start,kind:s.kind,level:s.level,label:s.label,auto:s.auto,keep:s.keep,words:s.words}));
+    let dk='';try{dk=await saveDump(ctx,r,err)}catch(x){log('dump','FAIL '+x.message)}
+    r.status='failed';r.stage=err.stage;r.err=err.message+(dk?` · dump ${dk}`:'');r.warn=ctx.warn;
+    redEdge();
+  }finally{
+    if(r.coverDirty&&r.status==='done'){r.mode='rebuild';r.status='queued'}
+    r.log=ctx.log.slice(-200);await saveRec(r);paintLater();refreshSheet(id);
+  }
+}
+
+/* run loop: three books in flight, screen kept awake while it works */
+async function wakeOn(){try{if(navigator.wakeLock&&!RUN.lock){RUN.lock=await navigator.wakeLock.request('screen');RUN.lock.addEventListener('release',()=>{RUN.lock=null})}}catch(e){log('wake','unavailable: '+e.message)}}
+function wakeOff(){try{if(RUN.lock)RUN.lock.release()}catch(e){}RUN.lock=null}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&RUN.active.size)wakeOn()});
+function startRun(){if(!RUN.on){RUN.on=true;RUN.n=0;wakeOn();log('run','start')}pump();render()}
+function pauseRun(){RUN.on=false;log('run','pause');if(RUN.active.size)toast('Pausing after the books in flight');render()}
+function pump(){
+  while(RUN.on&&RUN.active.size<CONF.workers){
+    const next=[...BOOKS.values()].filter(r=>r.status==='queued'&&!RUN.active.has(r.k)).sort((a,b)=>a.added-b.added)[0];if(!next)break;
+    RUN.active.add(next.k);
+    processBook(next.k).catch(e=>log('run','FAIL '+e.message)).finally(()=>{RUN.active.delete(next.k);RUN.n=(RUN.n||0)+1;pump()});
+  }
+  if(!RUN.active.size){if(RUN.on){RUN.on=false;const c=counts();log('run',`finished · ${RUN.n||0} processed · ${c.done} clean · ${c.failed} failed`);if(RUN.n)toast(c.failed?`Finished · ${c.failed} failed`:'Finished · all clean')}wakeOff()}
+  paintLater();
+}
+
+/* adding books and covers */
+async function shaHex(buf){const h=await crypto.subtle.digest('SHA-256',buf);return [...new Uint8Array(h)].map(x=>x.toString(16).padStart(2,'0')).join('')}
+function uuidOf(hex){const h=hex.slice(0,32).split('');h[12]='5';h[16]=(8+(parseInt(h[16],16)&3)).toString(16);const s=h.join('');return `${s.slice(0,8)}-${s.slice(8,12)}-${s.slice(12,16)}-${s.slice(16,20)}-${s.slice(20,32)}`}
+async function addEpubs(files){
+  let add=0,dup=0;const bad=[];toast(`Adding ${files.length}…`);
+  try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().then(p=>log('storage','persist '+p)).catch(()=>{})}catch(e){}
+  for(const f of files){
+    try{
+      if(!/\.epub$/i.test(f.name)&&f.type!=='application/epub+zip'){bad.push(f.name);continue}
+      const buf=await f.arrayBuffer();if(buf.byteLength<100){bad.push(f.name);continue}
+      const hex=await shaHex(buf);const id=hex.slice(0,16);
+      if(BOOKS.has(id)){dup++;continue}
+      await blobPut('src:'+id,new Blob([buf],{type:'application/epub+zip'}));
+      const r={k:id,uuid:uuidOf(hex),name:f.name,size:f.size,added:Date.now(),status:'queued',stage:'',warn:[],log:[]};
+      BOOKS.set(id,r);await saveRec(r);add++;paintLater();
+    }catch(e){bad.push(`${f.name} (${e.message})`);log('add','FAIL '+f.name+': '+((e&&e.message)||e))}
+  }
+  log('add',`${add} added · ${dup} already here · ${bad.length} skipped`);
+  if(bad.length)FLAGS.push({level:'warn',text:`${bad.length} file${bad.length>1?'s':''} skipped: ${clip(bad.join(', '),160)}`});
+  toast([`${add} added`,dup?`${dup} already here`:'',bad.length?`${bad.length} skipped`:''].filter(Boolean).join(' · '));
+  render();if(add)startRun();
+}
+const STOP=new Set(['the','a','an','of','and','to','in','on','for','by','with','at','from','book','ebook','epub','cover','front','jpg','jpeg','png','heic','img','image']);
+function toks(s){const all=normKey(s).split(' ').filter(w=>w&&!/^\d{1,2}$/.test(w));const k=all.filter(w=>!STOP.has(w));return new Set(k.length?k:all)}
+function matchCover(name,recs){
+  const f=toks(name.replace(/\.[a-z0-9]{2,5}$/i,''));if(!f.size)return null;
+  let best=null,bs=0,tie=false;
+  for(const r of recs){const cs=[r.meta&&r.meta.title,r.plan&&r.plan.raw&&r.plan.raw.title,r.name.replace(/\.epub$/i,'')].filter(Boolean);
+    for(const c of cs){const t=toks(c);if(!t.size)continue;let inter=0;for(const w of t)if(f.has(w))inter++;if(!inter)continue;const cov=inter/t.size;if(cov<.8)continue;const sc=cov*.7+inter/f.size*.3;
+      if(sc>bs+1e-9){best=r.k;bs=sc;tie=false}else if(Math.abs(sc-bs)<=1e-9&&best!==r.k)tie=true}}
+  return tie?null:best;
+}
+async function addCovers(files,targetId){
+  const recs=[...BOOKS.values()];const miss=[];let n=0;
+  for(const f of files){
+    const id=targetId||matchCover(f.name,recs);if(!id){miss.push(f.name);continue}
+    const r=BOOKS.get(id);if(!r)continue;
+    try{const c=await normCover(f);await blobPut('cov:'+id,c.blob);r.thumb=c.thumb;r.coverName=f.name;
+      if(r.status==='working')r.coverDirty=true;else if(r.status==='done'||(r.status==='failed'&&r.plan)){r.mode='rebuild';r.status='queued'}
+      await saveRec(r);n++;log('cover',`${f.name} → ${r.meta?r.meta.title:r.name}`)}
+    catch(e){miss.push(`${f.name} (${e.message})`);log('cover','FAIL '+f.name+': '+e.message)}
+  }
+  if(miss.length)FLAGS.push({level:'warn',text:`${miss.length} cover${miss.length>1?'s':''} matched no book: ${clip(miss.join(', '),160)}`});
+  toast(n?`${n} cover${n>1?'s':''} set`:'No covers matched');
+  render();if(targetId)refreshSheet(targetId);
+  if(n&&[...BOOKS.values()].some(r=>r.status==='queued'))startRun();
+}
+async function requeue(id,mode){const r=BOOKS.get(id);if(!r)return;if(RUN.active.has(id)){toast('Still building · try again when it finishes');return}
+  if(mode!=='rebuild')r.over={};          // a fresh chapter map starts from fresh cuts
+  r.mode=mode;r.status='queued';r.err=null;await saveRec(r);closeSheet();startRun()}
+async function removeBook(id){for(const p of ['src:','out:','cov:'])try{await DB.del('blobs',p+id)}catch(e){}try{await DB.del('books',id)}catch(e){}BOOKS.delete(id)}
+
+/* =====================================================================
+   Motion helpers (app-builder) — used here: capt, sheet, redEdge, boot
+   ===================================================================== */
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+document.body.classList.add('boot');setTimeout(()=>document.body.classList.remove('boot'),4000);
+function capt(a,b){return `<div class="cap">${a}${b?` <span class="cmp">${b}</span>`:''}</div>`;}
+function svgPill(x,y,txt,kind,anchor){const w=txt.length*6.2+10,h=14;const x0=anchor==='end'?x-w:anchor==='middle'?x-w/2:x;const fill=kind==='primary'?'var(--fg)':kind==='red'?'var(--red)':kind==='green'?'var(--green)':'var(--surface2)';const tf=kind==='muted'?'var(--fg)':'var(--bg)';return `<g class="pl"><rect x="${x0.toFixed(1)}" y="${(y-h/2).toFixed(1)}" width="${w.toFixed(1)}" height="${h}" rx="4" fill="${fill}"${kind==='muted'?' stroke="var(--line)"':''}/><text x="${(x0+w/2).toFixed(1)}" y="${(y+3.5).toFixed(1)}" text-anchor="middle" fill="${tf}" font-size="10" font-weight="700">${txt}</text></g>`;}
+function watchCharts(v,mode){if(mode==='all'){const go=()=>v.querySelectorAll('.canim,.canim2,.canim3,.heat,.lfoot').forEach(el=>{el.style.setProperty('--rd','0s');el.classList.add('go');});go();requestAnimationFrame(go);return;}const check=()=>{let k=0;const R=v.getBoundingClientRect();v.querySelectorAll('.canim,.canim2,.canim3,.heat,.lfoot').forEach(el=>{const r=el.getBoundingClientRect();if(!r.height)return;const vis=Math.min(r.bottom,R.bottom)-Math.max(r.top,R.top);const need=Math.min(Math.max(r.height*0.3,80),r.height,R.height*0.5);const inFromBottom=R.bottom-r.top,inFromTop=r.bottom-R.top;if(inFromBottom>=need&&inFromTop>=need){if(!el.classList.contains('go')){el.style.setProperty('--rd',k.toFixed(1)+'s');k+=el.classList.contains('canim3')?1.2:0.6;el.classList.add('go');}}else if(vis<=-24&&el.classList.contains('go')){el.classList.remove('go');el.style.removeProperty('--rd');}});};if(!v.dataset.cw){v.dataset.cw='1';let t=null;v.addEventListener('scroll',()=>{if(t)return;t=requestAnimationFrame(()=>{t=null;check();});},{passive:true});}check();requestAnimationFrame(check);setTimeout(check,350);}
+function redEdge(){if(reduced)return;const d=document.createElement('div');d.className='rededge';document.body.appendChild(d);setTimeout(()=>d.remove(),1800);}
+let SHEET_FROM=null;function sheet(html,onReady){const host=document.querySelector('#sheets');const from=SHEET_FROM;SHEET_FROM=null;host.innerHTML=`<div class="scrim" data-close></div><div class="sheet ${from?'from-'+from:''}"><div class="grab" data-close><i></i></div>${html}</div>`;host.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeSheet);if(onReady)onReady(host.querySelector('.sheet'));}
+function wireStrips(v){v.querySelectorAll('.hs').forEach(el=>{const chk=()=>el.classList.toggle('atend',el.scrollLeft+el.clientWidth>=el.scrollWidth-2);chk();el.addEventListener('scroll',chk,{passive:true});});}
+function closeSheet(){const host=$('sheets');const sh=host.querySelector('.sheet'),sc=host.querySelector('.scrim');SHEET.book=null;SHEET.file=null;if(!sh||reduced){host.innerHTML='';return}sh.classList.add('out');if(sc)sc.classList.add('out');setTimeout(()=>{if(host.contains(sh))host.innerHTML=''},300)}
+function toast(msg){const h=$('toasts');const d=document.createElement('div');d.className='toast';d.textContent=msg;h.appendChild(d);setTimeout(()=>d.remove(),2700)}
+
+/* =====================================================================
+   SLOT 4 — SCREENS
+   ===================================================================== */
+const IC={
+  book:'<path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v14H6.5A1.5 1.5 0 0 0 5 18.5z"/><path d="M5 18.5A1.5 1.5 0 0 0 6.5 20H19"/><path d="M9 7h6"/>',
+  gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  image:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/>',
+  play:'<path d="M8 5l11 7-11 7z"/>',
+  pause:'<path d="M8 5v14M16 5v14"/>',
+  share:'<path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>',
+  retry:'<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>',
+};
+const ic=n=>`<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${IC[n]}</svg>`;
+const STAGE_WORDS={read:'reading',parse:'opening',scrub:'cleaning',candidates:'finding chapters',plan:'mapping chapters',sections:'mapping chapters',meta:'metadata',cover:'cover',build:'building',zip:'packing',verify:'checking',store:'saving'};
+const TABS={books:{icon:'book',label:'Books'},settings:{icon:'gear',label:'Settings'}};
+let TAB='books';
+function counts(){const c={total:0,done:0,queued:0,working:0,failed:0,nocover:0,cutWarn:0};for(const r of BOOKS.values()){c.total++;c[r.status]=(c[r.status]||0)+1;if(r.status==='done'&&!r.coverSrc)c.nocover++;if(r.status==='done'&&r.stats&&r.stats.cutPct>CONF.cutWarn)c.cutWarn++}return c}
+function flagsNow(){const f=[...FLAGS];const c=counts();if(!cfg.key&&c.total)f.push({level:'warn',text:'No Claude key: chapters and cuts run on rules, metadata comes from the file and the catalogs.'});if(c.cutWarn)f.push({level:'warn',text:`${c.cutWarn} book${c.cutWarn>1?'s':''} lost over ${Math.round(CONF.cutWarn*100)}% of the words to cuts.`});return f}
+function inboxHTML(){const d=cfg.dismissed||{};const rows=flagsNow().filter(f=>!d[f.text]);if(!rows.length)return '';return `<div class="card inbox">${rows.map(f=>`<div class="row ${f.level}"><span class="small">${esc(f.text)}</span><button class="pill" data-act="dismiss" data-t="${esc(encodeURIComponent(f.text))}" aria-label="Dismiss">×</button></div>`).join('')}</div>`}
+function rowHTML(r){
+  const t=(r.meta&&r.meta.title)||r.name.replace(/\.epub$/i,'');const a=r.meta&&r.meta.authors?r.meta.authors.map(x=>x.name).join(', '):'';
+  const th=r.thumb?`<img src="${r.thumb}" alt="">`:esc((t||'?').trim().charAt(0).toUpperCase());
+  let line,cls='';
+  if(r.status==='done'){const s=r.stats||{};line=[`${s.chapters||0} ch`,s.cut?`cut ${s.cut}`:'',mb(s.bytes||0),r.coverSrc?'':'no cover'].filter(Boolean).join(' · ');if(r.warn&&r.warn.length)cls='warn'}
+  else if(r.status==='failed'){line=r.err||'failed';cls='bad'}
+  else if(r.status==='working')line=STAGE_WORDS[r.stage]||r.stage||'working';
+  else line='queued';
+  const dot=r.status==='done'?'':r.status==='failed'?'c-red':r.status==='working'?'c-amber':'muted';
+  return `<div class="brow" data-book="${r.k}"><div class="thumb">${th}</div><div class="bmid"><div class="bt">${esc(t)}</div><div class="ba">${esc(a||r.name)}</div><div class="bs ${cls}">${esc(line)}</div></div><i class="rdot ${dot}"></i></div>`;
+}
+const sortedBooks=()=>[...BOOKS.values()].sort((a,b)=>a.added-b.added);
+function booksHTML(){const recs=sortedBooks();
+  return `<div id="booksTop">${topHTML()}</div>${recs.length?`<div class="ey" style="margin:6px 2px 8px">library · ${recs.length}</div><div class="list">${recs.map(rowHTML).join('')}</div>`:'<div class="card empty dim">Nothing here yet.</div>'}`}
+function topHTML(){
+  const c=counts();
+  const verdict=RUN.on?'running':c.failed?'attention':c.queued?'waiting':c.total?'clean':'empty';
+  const dot=RUN.on?'c-amber':c.failed?'c-red':c.queued||!c.total?'muted':'';
+  const sentence=c.total?`${c.done} of ${c.total} ${c.total===1?'book is':'books are'} clean.`:'No books yet.';
+  const cmp=[c.queued+c.working?`${c.queued+c.working} to go`:'',c.failed?`${c.failed} failed`:'',c.nocover?`${c.nocover} without a cover`:''].filter(Boolean).join(' · ');
+  return `
+  <div class="plabel"><div class="ey">${ic('book')}books</div><p>${esc(APP.answer)}</p></div>
+  <div class="card top">
+    <div><div class="ey">clean</div><div class="big">${c.done}<small>/${c.total}</small></div>${capt(esc(sentence),esc(cmp))}</div>
+    <div class="pills"><button class="pill" data-act="${RUN.on?'run':c.queued?'run':'noop'}"><i class="tcdot ${dot}"></i>${verdict}</button>${cfg.key?`<span class="pill">${esc(CONF.models[cfg.model])}</span>`:'<span class="pill warn">rules only</span>'}<span class="pill">v${esc(BUILD.replace(/\D+/g,''))}</span><button class="pill" data-go="settings" aria-label="Settings">${ic('gear')}</button></div>
+  </div>
+  ${inboxHTML()}
+  <div class="acts">
+    <button class="btn" data-act="add-epub">${ic('plus')}EPUBs</button>
+    <button class="btn" data-act="add-cover">${ic('image')}Covers</button>
+    <button class="btn${RUN.on?'':' acc'}" data-act="run"${!RUN.on&&!c.queued?' disabled':''}>${RUN.on?ic('pause')+'Pause':ic('play')+'Run'}</button>
+    <button class="btn" data-act="save"${c.done?'':' disabled'}>${ic('share')}Save all</button>
+  </div>
+  ${c.failed?`<button class="btn wide" data-act="retry">${ic('retry')}Retry ${c.failed} failed</button>`:''}`;
+}
+function bookSheetHTML(r){
+  const m=r.meta||{};const title=m.title||r.name.replace(/\.epub$/i,'');const authors=(m.authors||[]).map(a=>a.name).join(', ');
+  const sub=[m.series?`${m.series}${m.seriesIndex?' #'+m.seriesIndex:''}`:'',m.year||'',m.language||''].filter(Boolean).join(' · ');
+  const st=r.status==='done'?[`${r.stats.chapters} chapters`,r.stats.cut?`${r.stats.cut} cut`:'',mb(r.stats.bytes),r.plan&&r.plan.by==='claude'?'mapped by Claude':'mapped by rules'].filter(Boolean).join(' · '):r.status==='working'?(STAGE_WORDS[r.stage]||r.stage):r.status;
+  const over=SHEET.over;const keepOf=s=>Object.prototype.hasOwnProperty.call(over,s.b)?!!over[s.b]:s.auto;
+  const secs=(r.secs||[]).map(s=>{const k=keepOf(s);return `<div class="srow${k?'':' cut'}${s.level===2?' l2':''}" data-act="toggle-sec" data-b="${s.b}"><span class="sl">${esc(s.label)}</span><span class="chip">${k?'':'cut · '}${esc(s.kind.replace(/_/g,' '))}</span><span class="mono small dim">${s.words}</span></div>`}).join('');
+  return `<div class="bhead"><button class="cvr" data-act="set-cover" data-id="${r.k}" aria-label="Set cover">${r.thumb?`<img src="${r.thumb}" alt="">`:'cover'}</button>
+    <div style="min-width:0"><div class="bt2">${esc(title)}</div><div class="dim">${esc(authors)}</div><div class="small dim mono" style="margin-top:4px">${esc(sub)}</div><div class="small" style="margin-top:6px">${esc(st)}</div></div></div>
+  ${r.status==='failed'?`<div class="card"><div class="err">${esc(r.err||'')}</div><div class="btnrow"><button class="btn" data-act="copy-dump">Copy dump</button></div></div>`:''}
+  ${r.warn&&r.warn.length?`<div class="warns">${r.warn.map(esc).join('<br>')}</div>`:''}
+  <div class="btnrow"><button class="btn acc" data-act="share-one"${r.status==='done'?'':' disabled'}>${ic('share')}Share</button><button class="btn" data-act="set-cover" data-id="${r.k}">${ic('image')}Cover</button></div>
+  ${r.meta?`<div class="lbl">title</div><input class="full" id="mTitle" type="text" value="${esc(m.title||'')}">
+  <div class="lbl">author</div><input class="full" id="mAuthor" type="text" value="${esc(authors)}">
+  <div class="fgrid"><div><div class="lbl">series</div><input id="mSeries" type="text" value="${esc(m.series||'')}"></div><div><div class="lbl">#</div><input id="mIndex" type="text" inputmode="decimal" value="${esc(m.seriesIndex||'')}"></div></div>
+  <div class="btnrow"><button class="btn" data-act="save-meta">Save details</button></div>`:''}
+  ${secs?`<div class="ey" style="margin:14px 2px 6px">sections · ${(r.secs||[]).filter(keepOf).length} kept of ${(r.secs||[]).length}</div><div class="card" style="padding:4px 12px">${secs}</div><div class="btnrow" id="applyRow" hidden><button class="btn acc" data-act="apply">Rebuild with these cuts</button></div>`:''}
+  <div class="btnrow"><button class="btn" data-act="rerun">${ic('retry')}Re-run</button><button class="btn" data-act="rules">Rules only</button><button class="btn bad" data-act="remove">Remove</button></div>
+  <div class="ey" style="margin:10px 2px 0">log</div><pre class="log">${esc((r.log||[]).join('\n'))}</pre>`;
+}
+function settingsHTML(){
+  const k=cfg.key;
+  return `
+  <div class="plabel"><div class="ey">${ic('gear')}settings</div><p>Your key, the look, and the log.</p></div>
+  <div class="card">
+    <div class="row"><span>Claude key</span><span class="mono small dim">${k?'set · ••••'+esc(k.slice(-4)):'not set'}</span></div>
+    <input class="full" type="password" data-set="key" placeholder="${k?'Paste a new key to replace it':'sk-ant-…'}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <div class="row"><span>Model</span><select data-set="model">${Object.entries(CONF.models).map(([id,n])=>`<option value="${id}"${cfg.model===id?' selected':''}>${n}</option>`).join('')}</select></div>
+    <div class="row"><span>Check the key</span><span>${k?'<button class="btn" data-act="forget-key">Forget</button> ':''}<button class="btn" data-act="test-key"${k?'':' disabled'}>Test</button></span></div>
+    ${capt(esc(USAGE.line()),'')}
+  </div>
+  <div class="card">
+    <div class="row"><span>Catalog lookups</span><input type="checkbox" data-set="lookups"${cfg.lookups?' checked':''} aria-label="Catalog lookups"></div>
+    ${capt('Open Library and Google Books, no key needed.','')}
+  </div>
+  <div class="card">
+    <div class="row"><span>Build</span><span class="mono dim">${BUILD}</span></div>
+    <div class="row"><span>Look</span><select data-set="look">${[['system','System'],['light','Light'],['dark','Dark']].map(([v,n])=>`<option value="${v}"${(cfg.look||'system')===v?' selected':''}>${n}</option>`).join('')}</select></div>
+    <div class="row"><span>Reload app</span><button class="btn" data-act="reload">Reload</button></div>
+  </div>
+  <div class="card">
+    <div class="row"><span>Storage</span><span class="mono small dim" id="storeLine">${BOOKS.size} books</span></div>
+    <div class="row"><span>Remove every book</span><button class="btn bad" data-act="clear-all">Remove</button></div>
+  </div>
+  <div class="card">
+    <div class="row"><span>Log</span><span><button class="btn" data-act="copy-log">Copy</button> <button class="btn" data-act="dump-all">Dump</button></span></div>
+    <pre class="log">${esc(LOG.slice(-200).join('\n'))}</pre>
+  </div>`;
+}
+const SCREENS={books:booksHTML,settings:settingsHTML};
+function navHTML(){const c=counts();const cls=c.failed?' short':RUN.on||c.queued?' thin':'';
+  return Object.keys(SCREENS).map(k=>`<button class="tab${k===TAB?' on':''}" data-go="${k}" aria-label="${TABS[k].label}">${ic(TABS[k].icon)}</button>`).join('')+
+  `<button class="navstat${cls}" data-act="save" aria-label="Save clean books"><div><span>clean</span><b>${c.done}</b></div><div><span>to go</span><b>${c.queued+c.working}</b></div><div><span>failed</span><b>${c.failed}</b></div></button>`}
+function render(){
+  const s=$('screen');try{s.innerHTML=SCREENS[TAB]()}catch(e){s.innerHTML=`<div class="card err">${esc(e.message)}</div>`;log('render','FAIL '+e.message)}
+  renderNav();
+  if(TAB==='settings'&&navigator.storage&&navigator.storage.estimate)navigator.storage.estimate().then(e=>{const el=$('storeLine');if(el)el.textContent=`${BOOKS.size} books · ${mb(e.usage||0)} used`}).catch(()=>{});
+}
+function renderNav(){$('nav').innerHTML=navHTML()}
+/* progress repaints: never while a finger is down (a replaced button eats the tap), and only the rows that changed */
+let paintT=0,holdUntil=0;
+document.addEventListener('pointerdown',()=>{holdUntil=Infinity},true);
+for(const t of ['pointerup','pointercancel'])document.addEventListener(t,()=>{holdUntil=Date.now()+150},true);
+function paintLater(){if(paintT)return;paintT=setTimeout(()=>{paintT=0;if(Date.now()<holdUntil){paintLater();return}if(TAB==='books')paintBooks();else renderNav()},250)}
+function paintBooks(){
+  const top=$('booksTop'),list=document.querySelector('#screen .list');const recs=sortedBooks();
+  if(!top||(recs.length&&!list)||(list&&(list.children.length!==recs.length||[...list.children].some((el,i)=>el.dataset.book!==recs[i].k)))){render();return}
+  const th=topHTML();if(top._h!==th){top.innerHTML=th;top._h=th}
+  if(list)recs.forEach((r,i)=>{const h=rowHTML(r);const el=list.children[i];if(el._h!==h){const t=document.createElement('div');t.innerHTML=h;const n=t.firstElementChild;n._h=h;list.replaceChild(n,el)}});
+  renderNav();
+}
+function go(t){if(!SCREENS[t])return;TAB=t;render();$('screen').scrollTop=0}
+function refreshSheet(id){if(!id||SHEET.book!==id)return;const r=BOOKS.get(id);const sh=document.querySelector('#sheets .sheet');if(!r||!sh||sh.classList.contains('out'))return;const top=sh.scrollTop;sh.innerHTML=`<div class="grab" data-close><i></i></div>`+bookSheetHTML(r);sh.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeSheet);sh.scrollTop=top;preloadSheet(r)}
+async function preloadSheet(r){
+  SHEET.file=null;SHEET.dump=null;
+  if(r.status==='done'){try{const b=await blobGet('out:'+r.k);if(b&&SHEET.book===r.k)SHEET.file=new File([b],r.outName||'book.epub',{type:'application/epub+zip'})}catch(e){log('sheet','FAIL load output: '+e.message)}}
+  if(r.status==='failed'){try{const d=await latestDump(r.k);if(d&&SHEET.book===r.k)SHEET.dump=JSON.stringify(d,null,1)}catch(e){}}
+}
+function openBook(id){const r=BOOKS.get(id);if(!r)return;SHEET.book=id;SHEET.over={...(r.over||{})};sheet(bookSheetHTML(r));preloadSheet(r)}
+async function openSave(){
+  const done=[...BOOKS.values()].filter(r=>r.status==='done').sort((a,b)=>a.added-b.added);
+  if(!done.length){toast('Nothing clean yet');return}
+  SHEET.book=null;SAVE.files=[];SAVE.zip=null;SHEET_FROM='stat';
+  sheet(`<div class="ey" style="margin:0 2px 10px">save · ${done.length} clean</div><div id="saveBody"><div class="dim small">Loading ${done.length} file${done.length>1?'s':''}…</div></div>`);
+  const files=[],used=new Set();
+  for(const r of done){try{const b=await blobGet('out:'+r.k);if(!b)continue;let n=r.outName||'book.epub';for(let i=2;used.has(n.toLowerCase());i++)n=(r.outName||'book.epub').replace(/\.epub$/i,` (${i}).epub`);used.add(n.toLowerCase());files.push(new File([b],n,{type:'application/epub+zip'}))}catch(e){log('save','FAIL load '+r.k+': '+e.message)}}
+  SAVE.files=files;const body=$('saveBody');if(!body)return;
+  const n=CONF.shareBatch,btns=[];for(let i=0;i<files.length;i+=n){const j=Math.min(files.length,i+n);btns.push(`<button class="btn wide acc" data-act="share-batch" data-a="${i}" data-b="${j}">${ic('share')}Share ${files.length>n?`${i+1}–${j}`:files.length===1?'1 book':`all ${files.length}`}</button>`)}
+  const total=files.reduce((s,f)=>s+f.size,0);
+  body.innerHTML=btns.join('')+`<button class="btn wide" data-act="zip-all">ZIP all · ${mb(total)}</button>`+capt('Books imports them. Files keeps them.','');
+}
+function copyText(t,msg){const done=()=>toast(msg);if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done).catch(()=>fallback())}else fallback();
+  function fallback(){const ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');done()}catch(e){toast('Copy blocked here')}ta.remove()}}
+function downloadBlob(name,blob){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000)}
+function dumpJSON(){return JSON.stringify({app:APP.key,build:BUILD,at:new Date().toISOString(),cfg:{...cfg,key:cfg.key?'<set>':null},usage:USAGE.t,books:[...BOOKS.values()].map(r=>({k:r.k,name:r.name,status:r.status,stage:r.stage,err:r.err,warn:r.warn,stats:r.stats})),log:LOG},null,2)}
+async function reloadApp(){try{if(window.caches)for(const k of await caches.keys())await caches.delete(k)}catch(e){}location.href=location.pathname+'?r='+Date.now()}
+async function testKey(){
+  if(!cfg.key){toast('Add a key first');return}
+  const ctx={id:'test00',name:'key test',log:[],stages:{},raw:{},warn:[]};
+  try{const {out}=await claudeCall(ctx,'test',{system:'Reply with ok set to true.',user:'ping',schema:{type:'object',additionalProperties:false,required:['ok'],properties:{ok:{type:'boolean'}}},maxTokens:2000,effort:'low'});toast(out.ok?`Key works · ${CONF.models[cfg.model]}`:'The key answered, oddly');if(TAB==='settings')render()}
+  catch(e){toast(e.message);redEdge()}
+}
+function arm(el,label,fn){if(el.dataset.armed!=='1'){el.dataset.armed='1';const was=el.textContent;el.textContent=label;setTimeout(()=>{if(el.isConnected&&el.dataset.armed==='1'){el.dataset.armed='';el.textContent=was}},2500);return}el.dataset.armed='';fn()}
+const ACT={
+  noop:()=>{},
+  'add-epub':()=>$('fpEpub').click(),
+  'add-cover':()=>$('fpCover').click(),
+  run:()=>{RUN.on?pauseRun():startRun()},
+  retry:()=>{for(const r of BOOKS.values())if(r.status==='failed'){r.status='queued';r.err=null;saveRec(r)}startRun()},
+  save:()=>openSave(),
+  dismiss:el=>{cfg.dismissed=cfg.dismissed||{};cfg.dismissed[decodeURIComponent(el.dataset.t)]=Date.now();saveCfg();render()},
+  'set-cover':el=>{const fp=$('fpOne');fp.dataset.id=el.dataset.id||SHEET.book||'';if(fp.dataset.id)fp.click()},
+  'share-one':()=>{const f=SHEET.file;if(!f){toast('Still loading the file');return}
+    if(navigator.canShare&&navigator.canShare({files:[f]}))navigator.share({files:[f]}).then(()=>log('share',f.name)).catch(e=>{if(e.name!=='AbortError'){log('share','FAIL '+e.message);toast('Share failed: '+e.message)}});
+    else{downloadBlob(f.name,f);log('share','download '+f.name)}},
+  'share-batch':el=>{const fs=SAVE.files.slice(+el.dataset.a,+el.dataset.b);if(!fs.length)return;
+    if(!(navigator.canShare&&navigator.canShare({files:fs}))){toast('Sharing files isn’t available here · use ZIP all');return}
+    navigator.share({files:fs}).then(()=>{log('share',`${fs.length} files`);el.classList.remove('acc');el.textContent='Shared'}).catch(e=>{if(e.name!=='AbortError'){log('share','FAIL '+e.message);toast('Share failed: '+e.message)}})},
+  'zip-all':async el=>{el.disabled=true;el.textContent='Packing…';
+    try{const blob=await zipBlobs(SAVE.files);if(SAVE.url)URL.revokeObjectURL(SAVE.url);SAVE.url=URL.createObjectURL(blob);const name=`Bookbinder ${new Date().toISOString().slice(0,10)}.zip`;
+      SAVE.zip=new File([blob],name,{type:'application/zip'});
+      el.outerHTML=`<button class="btn wide acc" data-act="share-zip">${ic('share')}Share ZIP · ${mb(blob.size)}</button><a class="btn wide" href="${SAVE.url}" download="${esc(name)}">Download ZIP</a>`;log('zip',`${SAVE.files.length} books · ${mb(blob.size)}`)}
+    catch(e){log('zip','FAIL '+e.message);toast('ZIP failed: '+e.message);el.disabled=false;el.textContent='ZIP all'}},
+  'share-zip':()=>{const f=SAVE.zip;if(!f)return;if(!(navigator.canShare&&navigator.canShare({files:[f]}))){toast('Sharing isn’t available here · use Download ZIP');return}
+    navigator.share({files:[f]}).then(()=>log('share',f.name)).catch(e=>{if(e.name!=='AbortError'){log('share','FAIL '+e.message);toast('Share failed: '+e.message)}})},
+  'toggle-sec':el=>{const r=BOOKS.get(SHEET.book);if(!r||!r.secs)return;const b=+el.dataset.b;const s=r.secs.find(x=>x.b===b);if(!s)return;
+    const cur=Object.prototype.hasOwnProperty.call(SHEET.over,b)?!!SHEET.over[b]:s.auto;const next=!cur;if(next===s.auto)delete SHEET.over[b];else SHEET.over[b]=next;
+    el.classList.toggle('cut',!next);const chip=el.querySelector('.chip');if(chip)chip.textContent=(next?'':'cut · ')+s.kind.replace(/_/g,' ');const ar=$('applyRow');if(ar)ar.hidden=false},
+  apply:async()=>{const r=BOOKS.get(SHEET.book);if(!r)return;r.over={...SHEET.over};await requeue(r.k,'rebuild')},
+  'save-meta':async()=>{const r=BOOKS.get(SHEET.book);if(!r)return;const v=id=>(($(id)||{}).value||'').trim();const e={};
+    const t=v('mTitle'),a=v('mAuthor'),s=v('mSeries'),n=v('mIndex');if(t)e.title=t;if(a)e.authors=a.split(/\s*[;&]\s*|\s+and\s+/).filter(Boolean).map(x=>({name:x,sort:sortName(x)}));e.series=s||null;e.seriesIndex=s&&/^\d+(?:\.\d+)?$/.test(n)?n:null;
+    r.edits=e;await requeue(r.k,'rebuild')},
+  rerun:()=>requeue(SHEET.book,'full'),
+  rules:()=>requeue(SHEET.book,'rules'),
+  remove:el=>arm(el,'Remove?',async()=>{const id=SHEET.book;if(RUN.active.has(id)){toast('Still building · try again when it finishes');return}await removeBook(id);closeSheet();render();toast('Removed')}),
+  'copy-dump':()=>copyText(SHEET.dump||'no dump stored for this book','Dump copied'),
+  'copy-log':()=>copyText(LOG.join('\n'),'Log copied'),
+  'dump-all':()=>downloadBlob(`${APP.key}-dump.json`,new Blob([dumpJSON()],{type:'application/json'})),
+  reload:()=>reloadApp(),
+  'test-key':()=>testKey(),
+  'forget-key':()=>{delete cfg.key;saveCfg();render();toast('Key removed')},
+  'clear-all':el=>{if(RUN.active.size){toast('Pause and let the books in flight finish first');return}arm(el,'Remove all?',async()=>{for(const s of ['books','blobs','diag'])try{await DB.clear(s)}catch(e){log('store','FAIL clear '+s+': '+e.message)}BOOKS.clear();FLAGS=[];render();toast('Everything removed')})},
+};
+document.addEventListener('click',e=>{
+  const g=e.target.closest('[data-go]');if(g){go(g.dataset.go);return}
+  const a=e.target.closest('[data-act]');if(a){if(a.disabled)return;const f=ACT[a.dataset.act];if(!f)return;
+    try{const p=f(a,e);if(p&&p.catch)p.catch(err=>{log('act',`FAIL ${a.dataset.act}: ${err.message}`);toast(err.message);redEdge()})}catch(err){log('act',`FAIL ${a.dataset.act}: ${err.message}`);toast(err.message);redEdge()}return}
+  const r=e.target.closest('[data-book]');if(r)openBook(r.dataset.book);
+});
+document.addEventListener('change',e=>{const t=e.target;const k=t.dataset&&t.dataset.set;if(!k)return;
+  if(k==='key'){const v=t.value.trim();t.value='';if(!v)return;cfg.key=v;saveCfg();log('cfg','key set');toast(/^sk-ant-/.test(v)?'Key saved':'Saved · that doesn’t look like an Anthropic key');render();return}
+  if(k==='model'){cfg.model=t.value;saveCfg();log('cfg','model '+cfg.model);render();return}
+  if(k==='lookups'){cfg.lookups=t.checked;saveCfg();return}
+  if(k==='look'){cfg.look=t.value;saveCfg();applyLook();render()}
+});
+document.addEventListener('focusout',e=>{if(e.target&&/^(?:INPUT|SELECT)$/.test(e.target.tagName))setTimeout(()=>window.scrollTo(0,0),60)});
+$('fpEpub').addEventListener('change',e=>{const fs=[...e.target.files];e.target.value='';if(fs.length)addEpubs(fs)});
+$('fpCover').addEventListener('change',e=>{const fs=[...e.target.files];e.target.value='';if(fs.length)addCovers(fs,null)});
+$('fpOne').addEventListener('change',e=>{const fs=[...e.target.files];const id=e.target.dataset.id;e.target.value='';if(fs.length&&id)addCovers(fs.slice(0,1),id)});
+function applyLook(){
+  const r=document.documentElement;const l=cfg.look==='light'||cfg.look==='dark'?cfg.look:null;
+  if(applyLook.done&&r.getAttribute('data-look')!==l&&!reduced){r.classList.add('looking');setTimeout(()=>r.classList.remove('looking'),500)}
+  if(l)r.setAttribute('data-look',l);else r.removeAttribute('data-look');applyLook.done=true;
+  const mt=document.querySelector('meta[name=theme-color]');if(mt)mt.content=getComputedStyle(r).getPropertyValue('--ground').trim()||'#000000';
+}
+try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',applyLook)}catch(e){}
+function envViewport(){try{const nav=$('nav').getBoundingClientRect();log('env viewport',{standalone:!!(navigator.standalone||matchMedia('(display-mode: standalone)').matches),vh:innerHeight,app:$('app').offsetHeight,navBottom:Math.round(nav.bottom),inner:`${innerWidth}x${innerHeight}`,screen:`${screen.width}x${screen.height}`,ua:navigator.userAgent,deflateRaw:rawSupported(),shareFiles:!!navigator.canShare,wakeLock:!!navigator.wakeLock})}catch(e){log('env viewport','FAIL '+e.message)}}
+
+/* ---- boot ---- */
+async function boot(){
+  log('boot',`${APP.name} ${BUILD}`);applyLook();
+  try{await DB.open();const recs=await DB.all('books');for(const r of recs){if(r.status==='working')r.status='queued';BOOKS.set(r.k,r)}log('boot',`${recs.length} books in storage`)}
+  catch(e){FLAGS.push({level:'bad',text:'Storage unavailable: '+((e&&e.message)||e)+'. Private Browsing blocks it.'});log('boot','FAIL storage: '+((e&&e.message)||e));redEdge()}
+  render();requestAnimationFrame(envViewport);
+}
+boot();
+</script>
+</body>
+</html>
