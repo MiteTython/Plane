@@ -208,7 +208,7 @@ return ret;
 /* =====================================================================
    SLOT 1 — APP
    ===================================================================== */
-const BUILD='build 4';                       // bump every push; shown in Settings
+const BUILD='build 5';                       // bump every push; shown in Settings
 const APP={key:'bookbinder',name:'Bookbinder',answer:'Old EPUBs and comics in. Clean ones out.'};
 const PARSER='p1';                           // bump when extraction changes: saved chapter maps then re-plan
 const COMIC_PARSER='c1';                     // bump when page reading changes: saved page maps then re-sort
@@ -242,6 +242,8 @@ const CONF={
   comicDBs:['comics.org','metron.cloud','comicvine.gamespot.com','leagueofcomicgeeks.com'],
   searchUses:3,fetchUses:2,fetchTokens:6000,searchPrice:.01,   // per comic; $ per web search
   crcChunk:8*1048576,        // ZIP packing reads files in pieces this big
+  googleGap:1200,            // ms between Google Books requests, across every book in flight
+  googleBench:30*60000,      // after a 429, Google Books sits out this long
   // keep (true) or cut (false) by kind of page; the page grid overrides any page
   pagePolicy:{cover:true,story:true,chapter:true,credits:true,letters:true,text:true,extra:true,variant:true,ad:false,preview:false,scanner:false,blank:false},
 };
@@ -1131,24 +1133,20 @@ async function getJSON(url,ctx,key,timeout=12000){
   finally{clearTimeout(tm)}
 }
 async function lookups(title,author,ctx){
-  const out={google:[],ol:[]};if(!title)return out;const t=title.replace(/:.*$/,'').trim();const last=author?author.split(/\s+/).pop():'';
-  try{const j=await getJSON('https://www.googleapis.com/books/v1/volumes?maxResults=5&printType=books&q='+encodeURIComponent(`intitle:${t}`+(last?` inauthor:${last}`:'')),ctx,'lookup.google');
-    out.google=(j.items||[]).map(v=>{const i=v.volumeInfo||{};return{title:i.title,subtitle:i.subtitle,authors:i.authors,publisher:i.publisher,date:i.publishedDate,isbn:(i.industryIdentifiers||[]).map(x=>x.identifier),categories:i.categories,language:i.language,description:clip(stripTags(i.description||''),700)}});
-    blog(ctx,'lookup.google',`${out.google.length} results`)}
-  catch(e){blog(ctx,'lookup.google','skipped: '+e.message);ctx.warn.push('Google Books lookup failed: '+e.message)}
+  const out={google:[],ol:[]};if(!title)return out;const t=title.replace(/:.*$/,'').trim();      // Open Library only: Google Books runs after Claude (googleFill)
   try{const j=await getJSON(`https://openlibrary.org/search.json?limit=5&fields=title,subtitle,author_name,first_publish_year,isbn,publisher,language,subject&title=${encodeURIComponent(t)}`+(author?`&author=${encodeURIComponent(author)}`:''),ctx,'lookup.ol');
     out.ol=(j.docs||[]).map(d=>({title:d.title,subtitle:d.subtitle,authors:d.author_name,first_year:d.first_publish_year,isbn:(d.isbn||[]).slice(0,4),publisher:(d.publisher||[]).slice(0,3),language:(d.language||[]).slice(0,3),subjects:(d.subject||[]).slice(0,8)}));
     blog(ctx,'lookup.ol',`${out.ol.length} results`)}
   catch(e){blog(ctx,'lookup.ol','skipped: '+e.message);ctx.warn.push('Open Library lookup failed: '+e.message)}
   return out;
 }
-const META_SYS=`You write catalog metadata for an ebook file. Sources: the file's own metadata (often wrong or junk), its title page and copyright page, its opening lines, and catalog search results from Google Books and Open Library, which may be different books.
+const META_SYS=`You write catalog metadata for an ebook file. Sources: the file's own metadata (often wrong or junk), its title page and copyright page, its opening lines, and catalog search results from Open Library, which may be different books.
 - title: the book's real title, capitalized the way the publisher prints it, with no series name or number. subtitle separately, or null.
 - authors: real people as "First Last"; sort is "Last, First".
 - year: the first publication year (YYYY) when you're sure; else the year on the copyright page; else null.
 - isbn: only one printed in the sources for this edition. Never invent one.
 - series, series_index: from the sources, or from your own knowledge only when certain; else null.
-- description: 2–4 plain sentences, no spoilers, no marketing lines ("NEW YORK TIMES BESTSELLER", review quotes). Prefer the catalog description of this exact book, cleaned. Otherwise write one from what you know of the book and its opening. null if you can't tell what it's about.
+- description: 2–4 plain sentences, no spoilers, no marketing lines ("NEW YORK TIMES BESTSELLER", review quotes). Write it from what you know of the book and its opening. null if you can't tell what it's about.
 - subjects: up to 4 genres such as "Crime Fiction", "Science Fiction", "Biography".
 - language: the BCP 47 code of the book's text.
 - confidence: high when the sources agree on this book; low when you're guessing.`;
@@ -1160,7 +1158,7 @@ const META_SCHEMA={type:'object',additionalProperties:false,required:['title','s
 async function metaClaude(book,raw,own,isbns,look,ctx){
   const md=book.meta;
   const src={file_metadata:{title:md.title,authors:md.authors.map(a=>a.name),language:md.language,publisher:md.publisher,date:md.date,identifiers:md.identifiers.slice(0,6),series:md.series,series_index:md.seriesIndex,subjects:md.subjects.slice(0,8),description:clip(md.description,700)},
-    file_name:book.fileName,identified:{title:raw.title||'',author:raw.author||''},title_page:own.title_page,copyright_page:own.copyright,opening:own.opening,isbns_in_book:isbns,google_books:look.google,open_library:look.ol};
+    file_name:book.fileName,identified:{title:raw.title||'',author:raw.author||''},title_page:own.title_page,copyright_page:own.copyright,opening:own.opening,isbns_in_book:isbns,open_library:look.ol};
   const {out}=await claudeCall(ctx,'meta',{system:META_SYS,user:JSON.stringify(src,null,1),schema:META_SCHEMA,maxTokens:8000,effort:'low'});
   return{title:out.title,subtitle:out.subtitle,authors:out.authors,language:out.language,publisher:out.publisher,year:out.year,isbn:out.isbn,series:out.series,seriesIndex:out.series_index,description:out.description,subjects:out.subjects,confidence:out.confidence};
 }
@@ -1195,9 +1193,49 @@ async function metadata(book,plan,raw,ctx){
   const isbns=findIsbns([own.copyright,...md.identifiers].join(' '));
   const title=cleanTitle(raw.title)||md.title||cleanTitle(book.fileName);
   const author=cleanAuthor(raw.author)||md.author||'';
-  progNote(ctx,cfg.lookups?'checking the book catalogs':null);const look=cfg.lookups?await lookups(title,author,ctx):{google:[],ol:[]};progNote(ctx,null);
+  progNote(ctx,cfg.lookups?'checking Open Library':null);const look=cfg.lookups?await lookups(title,author,ctx):{google:[],ol:[]};progNote(ctx,null);
   const m=cfg.key&&raw.by==='claude'?{...(await metaClaude(book,raw,own,isbns,look,ctx)),by:'claude'}:{...metaRules(md,title,author,isbns,look),by:'rules'};
   return validateMeta(m,md,title,author);
+}
+
+/* Google Books, after Claude has cleaned the metadata: one query with the clean title and author (or the ISBN),
+   filling only what's still empty. Keyless requests draw on one quota shared by every keyless caller, which is
+   spent most days, so the first 429 benches Google Books for half an hour instead of failing every book. */
+const GB={until:0,flagged:false,chain:Promise.resolve(),last:0};
+function gbSame(v,m){const t=normKey(v.title),mt=normKey(m.title);if(!t||!mt||!(t===mt||t.startsWith(mt)||mt.startsWith(t)))return false;
+  const lasts=(m.authors||[]).map(a=>normKey(a.name).split(' ').filter(Boolean).pop()).filter(x=>x&&x!=='unknown');const va=(v.authors||[]).map(normKey).join(' ').split(' ').filter(Boolean);
+  return !lasts.length||!va.length||lasts.some(l=>va.includes(l))}
+function gbDesc(d){let t=fixText(stripTags(String(d||''))).replace(/\s+/g,' ').trim();t=t.replace(/^(?:[A-Z0-9][A-Z0-9 ,'’&!:#.•|-]{10,}[!.:•—–|-]\s*)+/,'').trim();return t?clip(t,3000):null}   // drops a shouted "BESTSELLER" opener
+async function googleFill(m,ctx){
+  const info={query:null,status:null,results:0,match:null,filled:[]};
+  if(Date.now()<GB.until){info.status='benched';const mins=Math.ceil((GB.until-Date.now())/60000);blog(ctx,'catalog',`Google Books benched after a 429 · back in ${mins} min`);progNote(ctx,`benched after a 429 · back in ${mins} min`);return{meta:m,info}}
+  const core=String(m.title||'').replace(/:.*$/,'').trim(),last=((m.authors[0]||{}).name||'').split(/\s+/).pop();
+  if(!core&&!m.isbn){info.status='no title';return{meta:m,info}}
+  const q=m.isbn?`isbn:${m.isbn}`:`intitle:${core}`+(last&&last!=='Unknown'?` inauthor:${last}`:'');info.query=q;progNote(ctx,m.isbn?`ISBN ${m.isbn}`:`“${clip(core,40)}”`);
+  const run=GB.chain.then(async()=>{                      // one Google request at a time, a breath apart, across every book in flight
+    const wait=GB.last+CONF.googleGap-Date.now();if(wait>0)await sleep(wait);if(Date.now()<GB.until)return null;
+    try{return await getJSON('https://www.googleapis.com/books/v1/volumes?maxResults=5&printType=books&q='+encodeURIComponent(q),ctx,'lookup.google')}finally{GB.last=Date.now()}});
+  GB.chain=run.catch(()=>{});
+  let j;
+  try{j=await run}
+  catch(e){const st=(ctx.raw['lookup.google']||{}).status;info.status=st||e.message;
+    if(st===429){GB.until=Date.now()+CONF.googleBench;ctx.warn.push('Google Books said 429 (its shared keyless quota is spent), so it was skipped');
+      if(!GB.flagged){GB.flagged=true;FLAGS.push({level:'warn',text:`Google Books turned the lookup away (429): its keyless quota is one pool shared by everyone, and it’s spent most days. It sits out ${Math.round(CONF.googleBench/60000)} minutes at a time; Open Library and Claude carry the metadata.`});paintLater()}}
+    else ctx.warn.push('Google Books lookup failed: '+e.message);
+    blog(ctx,'catalog',`skipped: ${e.message}`);return{meta:m,info}}
+  if(!j){info.status='benched';return{meta:m,info}}
+  const items=(j.items||[]).map(x=>x.volumeInfo||{});info.status=200;info.results=items.length;
+  const v=m.isbn?items[0]:items.find(x=>gbSame(x,m));
+  if(!v){blog(ctx,'catalog',`${items.length} results, none of them this book`);return{meta:m,info}}
+  info.match=clip(`${v.title||''}${v.authors?' · '+v.authors.join(', '):''}`,90);
+  const out={...m},fill=(k,val)=>{if(val!=null&&val!==''&&!(Array.isArray(val)&&!val.length)){out[k]=val;info.filled.push(k)}};
+  if(!m.isbn){const ids=v.industryIdentifiers||[];fill('isbn',[...ids.filter(x=>x.type==='ISBN_13'),...ids.filter(x=>x.type==='ISBN_10')].map(x=>isbnOk(x.identifier)).find(Boolean)||null)}
+  if(!m.publisher&&v.publisher)fill('publisher',fixText(String(v.publisher)).trim());
+  if(!m.year){const y=String(v.publishedDate||'').slice(0,4);fill('year',/^\d{4}$/.test(y)?y:null)}
+  if(!m.description)fill('description',gbDesc(v.description));
+  if(!(m.subjects||[]).length)fill('subjects',[...new Set((v.categories||[]).flatMap(c=>String(c).split('/')).map(x=>x.trim()).filter(x=>x&&x.length<=60))].slice(0,4));
+  blog(ctx,'catalog',`matched ${info.match}${info.filled.length?` · filled ${info.filled.join(', ')}`:' · nothing missing'}`);
+  return{meta:out,info};
 }
 
 /* =====================================================================
@@ -1929,7 +1967,7 @@ const SAVE={groups:{},zips:{},urls:[]};
    page or byte count inside long stages and the seconds spent waiting on
    Claude. The run, adding files and packing ZIPs get bars of their own.
    ===================================================================== */
-const PW={book:{read:2,parse:10,scrub:6,candidates:4,plan:24,sections:2,meta:18,cover:6,build:12,zip:8,verify:6,store:2},
+const PW={book:{read:2,parse:10,scrub:6,candidates:4,plan:24,sections:2,meta:16,catalog:3,cover:6,build:12,zip:8,verify:6,store:2},
   comic:{unpack:6,pages:22,classify:14,identify:12,match:20,cuts:1,meta:1,cover:2,build:10,zip:6,verify:4,store:2}};
 const WAIT_TAU={plan:20,meta:12,classify:18,identify:10,match:25};      // seconds a Claude wait usually takes, per stage
 const PROG=new Map();          // id → {kind,stage,t0,i,n,unit,lo,hi,wait,note,shown}
@@ -2022,7 +2060,11 @@ async function processBook(id){
     r.plan={parser:PARSER,blocks:book.blocks.length,raw,by:raw.by};
     const plan=await stg(ctx,'sections',()=>resolvePlan(book,raw,r.over||{}),p=>({sections:p.secs.length,kept:p.kept,cut:p.cut,cutPct:p.cutPct}));
     if(plan.cutPct>CONF.cutWarn)ctx.warn.push(`${Math.round(plan.cutPct*100)}% of the words were cut`);
-    const meta=reuse&&r.meta0?r.meta0:await stg(ctx,'meta',()=>metadata(book,plan,raw,ctx),m=>({by:m.by,title:m.title,authors:m.authors.map(a=>a.name),year:m.year,series:m.series}));
+    let meta=reuse&&r.meta0?r.meta0:null;
+    if(!meta){
+      meta=await stg(ctx,'meta',()=>metadata(book,plan,raw,ctx),m=>({by:m.by,title:m.title,authors:m.authors.map(a=>a.name),year:m.year,series:m.series}));
+      if(cfg.lookups){const by=meta.by;meta={...(await stg(ctx,'catalog',()=>googleFill(meta,ctx),g=>g.info)).meta,by}}
+    }
     r.meta0=meta;
     const fin=validateMeta({...meta,...(r.edits||{})},book.meta,meta.title,(meta.authors[0]||{}).name||'');fin.by=meta.by;
     const cover=await stg(ctx,'cover',()=>coverFor(book,id,ctx),c=>c?{src:c.src,w:c.w,h:c.h,bytes:c.bytes.length}:null);
@@ -2216,7 +2258,7 @@ function shelfBytes(){let b=0;for(const r of BOOKS.values())b+=(r.size||0)+((r.s
 async function clearAll(){
   const n=BOOKS.size,bytes=shelfBytes();
   for(const st of ['books','blobs','diag'])try{await DB.clear(st)}catch(e){log('store','FAIL clear '+st+': '+e.message)}
-  BOOKS.clear();PTH.clear();FLAGS=[];
+  BOOKS.clear();PTH.clear();FLAGS=[];GB.flagged=false;
   for(const u of SAVE.urls)try{URL.revokeObjectURL(u)}catch(e){}
   SAVE.groups={};SAVE.zips={};SAVE.urls=[];
   if($('sheets').querySelector('.sheet'))closeSheet();
@@ -2254,7 +2296,7 @@ const IC={
 };
 const ic=n=>`<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${IC[n]}</svg>`;
 const STAGE_WORDS={read:'reading',parse:'opening',scrub:'cleaning',candidates:'finding chapters',plan:'mapping chapters',sections:'mapping chapters',meta:'metadata',cover:'cover',build:'building',zip:'packing',verify:'checking',store:'saving',
-  unpack:'opening',pages:'reading pages',classify:'sorting pages',identify:'reading the cover',match:'database match',cuts:'sorting pages'};
+  unpack:'opening',pages:'reading pages',classify:'sorting pages',identify:'reading the cover',match:'database match',cuts:'sorting pages',catalog:'Google Books'};
 const TABS={books:{icon:'book',label:'Library'},settings:{icon:'gear',label:'Settings'}};
 let TAB='books';
 function counts(){const c={total:0,done:0,queued:0,working:0,failed:0,nocover:0,cutWarn:0,unmatched:0};for(const r of BOOKS.values()){c.total++;c[r.status]=(c[r.status]||0)+1;if(r.status!=='done')continue;
@@ -2369,7 +2411,7 @@ function settingsHTML(){
   </div>
   <div class="card">
     <div class="row"><span>Catalog lookups</span><input type="checkbox" data-set="lookups"${cfg.lookups?' checked':''} aria-label="Catalog lookups"></div>
-    ${capt('Open Library and Google Books, no key needed.','')}
+    ${capt('Open Library goes to Claude with the book. Google Books runs after, filling only what’s still empty.','')}
   </div>
   <div class="card">
     <div class="row"><span>Comic database match</span><input type="checkbox" data-set="comicMatch"${cfg.comicMatch!==false?' checked':''} aria-label="Comic database match"></div>
